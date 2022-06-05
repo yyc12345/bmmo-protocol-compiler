@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ImportGroup Label="PropertySheets" />
+  <PropertyGroup Label="UserMacros">
+    <GLIB_INCLUDE>D:\CppLib\GLib\include\glib-2.0</GLIB_INCLUDE>
+    <GLIB_LIB>D:\CppLib\GLib\lib</GLIB_LIB>
+    <GLIB_EXTRA_INCLUDE>D:\CppLib\GLib\lib\glib-2.0\include</GLIB_EXTRA_INCLUDE>
+  </PropertyGroup>
+  <PropertyGroup />
+  <ItemDefinitionGroup />
+  <ItemGroup>
+    <BuildMacro Include="GLIB_INCLUDE">
+      <Value>$(GLIB_INCLUDE)</Value>
+    </BuildMacro>
+    <BuildMacro Include="GLIB_LIB">
+      <Value>$(GLIB_LIB)</Value>
+    </BuildMacro>
+    <BuildMacro Include="GLIB_EXTRA_INCLUDE">
+      <Value>$(GLIB_EXTRA_INCLUDE)</Value>
+    </BuildMacro>
+  </ItemGroup>
+</Project>
