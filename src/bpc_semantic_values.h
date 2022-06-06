@@ -1,5 +1,45 @@
 #pragma once
 
 #include <glib.h>
+#include <stdbool.h>
+#include <stdint.h>
 
+#define BPC_COMPILER_VERSION 1
 
+typedef enum _BPC_SEMANTIC_BASIC_TYPE {
+	BPC_SEMANTIC_BASIC_TYPE_FLOAT,
+	BPC_SEMANTIC_BASIC_TYPE_DOUBLE,
+	BPC_SEMANTIC_BASIC_TYPE_INT8,
+	BPC_SEMANTIC_BASIC_TYPE_INT16,
+	BPC_SEMANTIC_BASIC_TYPE_INT32,
+	BPC_SEMANTIC_BASIC_TYPE_INT64,
+	BPC_SEMANTIC_BASIC_TYPE_UINT8,
+	BPC_SEMANTIC_BASIC_TYPE_UINT16,
+	BPC_SEMANTIC_BASIC_TYPE_UINT32,
+	BPC_SEMANTIC_BASIC_TYPE_UINT64,
+	BPC_SEMANTIC_BASIC_TYPE_STRING
+}BPC_SEMANTIC_BASIC_TYPE;
+
+typedef enum _BPC_SEMANTIC_LANGUAGE {
+	BPC_SEMANTIC_LANGUAGE_CSHARP,
+	BPC_SEMANTIC_LANGUAGE_PYTHON,
+	BPC_SEMANTIC_LANGUAGE_CPP
+}BPC_SEMANTIC_LANGUAGE;
+
+typedef struct _BPC_SEMANTIC_MEMBER {
+	bool is_basic_type;
+	BPC_SEMANTIC_BASIC_TYPE v_basic_type;
+	char* v_user_type;
+
+	char* vname;
+
+	bool is_array;
+	bool is_static_array;
+	uint32_t array_len;
+}BPC_SEMANTIC_MEMBER;
+
+BPC_SEMANTIC_LANGUAGE bpc_parse_language_string(const char*);
+BPC_SEMANTIC_BASIC_TYPE bpc_parse_basic_type_string(const char*);
+
+BPC_SEMANTIC_MEMBER* bpc_constructor_semantic_member();
+void bpc_destructor_semantic_member(BPC_SEMANTIC_MEMBER* ptr);

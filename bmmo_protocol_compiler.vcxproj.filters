@@ -13,6 +13,12 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Resources\examples">
+      <UniqueIdentifier>{6775c0e8-1778-4d19-9b35-3e4695b30cca}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resources\snippets">
+      <UniqueIdentifier>{c2eade62-f1ca-4a3f-821d-dfdf932bb8c6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\bmmo_protocol_compiler.c">
@@ -25,6 +31,9 @@
       <Filter>Sources</Filter>
     </ClCompile>
     <ClCompile Include="src\y.tab.c">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\bpc_code_gen.c">
       <Filter>Sources</Filter>
     </ClCompile>
   </ItemGroup>
@@ -43,5 +52,16 @@
     <ClInclude Include="src\y.tab.h">
       <Filter>Headers</Filter>
     </ClInclude>
+    <ClInclude Include="src\bpc_code_gen.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="snippets\header.py">
+      <Filter>Resources\snippets</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="examples\example.bp">
+      <Filter>Resources\examples</Filter>
+    </CopyFileToFolders>
   </ItemGroup>
 </Project>

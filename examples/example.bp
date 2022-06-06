@@ -1,6 +1,6 @@
 bpc 1;
-namespace bmmo.data_struct;
 language: csharp; // csharp, python, cpp
+namespace bmmo.data_struct;
 
 /*
 basic type:
