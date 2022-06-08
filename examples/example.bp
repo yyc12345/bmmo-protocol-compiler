@@ -1,5 +1,5 @@
 bpc 1;
-language: csharp; // csharp, python, cpp
+language: python; // csharp, python, cpp
 namespace bmmo.data_struct;
 
 /*

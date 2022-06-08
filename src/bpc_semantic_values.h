@@ -26,20 +26,31 @@ typedef enum _BPC_SEMANTIC_LANGUAGE {
 	BPC_SEMANTIC_LANGUAGE_CPP
 }BPC_SEMANTIC_LANGUAGE;
 
-typedef struct _BPC_SEMANTIC_MEMBER {
-	bool is_basic_type;
-	BPC_SEMANTIC_BASIC_TYPE v_basic_type;
-	char* v_user_type;
-
-	char* vname;
-
+typedef struct _BPC_SEMANTIC_MEMBER_ARRAY_PROP {
 	bool is_array;
 	bool is_static_array;
 	uint32_t array_len;
+}BPC_SEMANTIC_MEMBER_ARRAY_PROP;
+
+typedef struct _BPC_SEMANTIC_MEMBER {
+	bool is_basic_type;
+	BPC_SEMANTIC_BASIC_TYPE v_basic_type;
+	char* v_struct_type;
+
+	char* vname;
+
+	BPC_SEMANTIC_MEMBER_ARRAY_PROP array_prop;
 }BPC_SEMANTIC_MEMBER;
+
 
 BPC_SEMANTIC_LANGUAGE bpc_parse_language_string(const char*);
 BPC_SEMANTIC_BASIC_TYPE bpc_parse_basic_type_string(const char*);
 
 BPC_SEMANTIC_MEMBER* bpc_constructor_semantic_member();
-void bpc_destructor_semantic_member(BPC_SEMANTIC_MEMBER* ptr);
+void bpc_destructor_semantic_member(gpointer rawptr);
+void bpc_destructor_semantic_member_slist(GSList* list);
+
+void bpc_destructor_string(gpointer rawptr);
+void bpc_destructor_string_slist(GSList* list);
+
+void bpc_lambda_semantic_member_copy_array_prop(gpointer raw_item, gpointer raw_data);

@@ -31,9 +31,9 @@ void yyerror(const char *s)
 	BPC_BASIC_TYPE token_basic_type;
 	char* token_name;
 	uint32_t token_num;
-	GList* nterm_namespace;	// item is char*
-	GList* nterm_enum;		// item is char*
-	GList* nterm_members;	// item is BPC_SEMANTIC_MEMBER*
+	GSList* nterm_namespace;	// item is char*
+	GSList* nterm_enum;		// item is char*
+	GSList* nterm_members;	// item is BPC_SEMANTIC_MEMBER*
 }
 %token <token_num> BPC_TOKEN_NUM
 %token <token_name> BPC_TOKEN_NAME
@@ -52,21 +52,21 @@ void yyerror(const char *s)
 bpc_document:
 bpc_version bpc_language bpc_namespace bpc_alias_group bpc_define_group
 {
-
+	; //skip
 };
 
 bpc_version:
-BPC_VERSION BPC_TOKEN_NUM[version_num] BPC_SEMICOLON 
+BPC_VERSION BPC_TOKEN_NUM[sdd_version_num] BPC_SEMICOLON 
 {
-	if ($version_num != BPC_COMPILER_VERSION) {
+	if ($sdd_version_num != BPC_COMPILER_VERSION) {
 		// todo: throw error: unsupported version
 	}
 };
 
 bpc_language:
-BPC_LANGUAGE BPC_TOKEN_NAME[lang_name] BPC_SEMICOLON 
+BPC_LANGUAGE BPC_TOKEN_NAME[sdd_lang_name] BPC_SEMICOLON 
 {
-	BPC_LANGUAGE lang = bpc_parse_language_string($lang_name);
+	BPC_LANGUAGE lang = bpc_parse_language_string($sdd_lang_name);
 	if (lang == -1) {
 		// todo: throw error: unsupported language
 	}
@@ -77,158 +77,223 @@ BPC_LANGUAGE BPC_TOKEN_NAME[lang_name] BPC_SEMICOLON
 bpc_namespace:
 BPC_NAMESPACE bpc_namespace_chain BPC_SEMICOLON 
 {
+	// init namespace
 	init_namespace($bpc_namespace_chain);
+	// and free namespace chain
+	bpc_destructor_string_slist($bpc_namespace_chain);
 };
 
 
 bpc_namespace_chain:
-BPC_TOKEN_NAME[ns_name]
+BPC_TOKEN_NAME[sdd_name]
 {
-	$$ = NULL;
-	$$ = g_slist_append($$, $ns_name);
+	$$ = g_slist_append(NULL, $sdd_name);
 }
 |
-bpc_namespace_chain[old_chain] BPC_DOT BPC_TOKEN_NAME[new_ns_name]
+bpc_namespace_chain[sdd_old_chain] BPC_DOT BPC_TOKEN_NAME[sdd_name]
 {
-	$$ = $old_chain;
-	$$ = g_slist_append($$, $new_ns_name);
+	$$ = g_slist_append($sdd_old_chain, $sdd_name);
 };
 
 bpc_alias_group:
-|
-bpc_alias_group BPC_ALIAS BPC_TOKEN_NAME[user_type] BPC_BASIC_TYPE[predefined_type] BPC_SEMICOLON
+%empty
 {
-	write_alias($user_type, $predefined_type);
-	free($user_type);
-	free($predefined_type);
+	; //skip
+}
+|
+bpc_alias_group BPC_ALIAS BPC_TOKEN_NAME[sdd_user_type] BPC_BASIC_TYPE[sdd_basic_type] BPC_SEMICOLON
+{
+	write_alias($sdd_user_type, $sdd_basic_type);
+	g_free($sdd_user_type);
+	g_free($sdd_basic_type);
 };
 
 bpc_define_group:
 %empty
 {
-
+	; //skip
 }
 |
 bpc_define_group bpc_enum
 {
-
+	; //skip
 }
 |
 bpc_define_group bpc_struct
 {
-
+	; //skip
 }
 |
 bpc_define_group bpc_msg
 {
-
+	; //skip
 };
 
 bpc_enum:
-BPC_ENUM BPC_TOKEN_NAME BPC_COLON BPC_BASIC_TYPE BPC_LEFT_BRACKET
+BPC_ENUM BPC_TOKEN_NAME[sdd_enum_name] BPC_COLON BPC_BASIC_TYPE[sdd_enum_type] BPC_LEFT_BRACKET
 bpc_enum_body
 BPC_RIGHT_BRACKET
 {
-
+	// gen code for enum
+	bpc_codegen_write_enum($sdd_enum_name, $sdd_enum_type, $bpc_enum_body);
+	// and free name and member list
+	g_free($sdd_enum_name);
+	bpc_destructor_string_slist($bpc_enum_body);
 };
 
 bpc_enum_body:
-BPC_TOKEN_NAME
+BPC_TOKEN_NAME[sdd_name]
 {
-	
+	$$ = g_slist_append(NULL, $sdd_name);
 }
 |
-bpc_enum_body BPC_COMMA BPC_TOKEN_NAME[enum_item_name]
+bpc_enum_body[sdd_enum_chain] BPC_COMMA BPC_TOKEN_NAME[sdd_name]
 {
-
+	$$ = g_slist_append($sdd_enum_chain, $sdd_name);
 };
 
 bpc_struct:
-BPC_STRUCT BPC_TOKEN_NAME BPC_LEFT_BRACKET
+BPC_STRUCT BPC_TOKEN_NAME[sdd_struct_name] BPC_LEFT_BRACKET
 bpc_member_collection
 BPC_RIGHT_BRACKET
 {
-
+	// gen code for struct
+	bpc_codegen_write_struct($sdd_struct_name, $bpc_member_collection);
+	// and free name and member list
+	g_free($sdd_struct_name);
+	bpc_destructor_semantic_member_slist($bpc_member_collection);
 };
 
 bpc_msg:
-BPC_MSG BPC_TOKEN_NAME BPC_LEFT_BRACKET
+BPC_MSG BPC_TOKEN_NAME[sdd_msg_name] BPC_LEFT_BRACKET
 bpc_member_collection
 BPC_RIGHT_BRACKET
 {
-
+	// gen code for msg
+	bpc_codegen_write_msg($sdd_msg_name, $bpc_member_collection);
+	// and free name and member list
+	g_free($sdd_msg_name);
+	bpc_destructor_semantic_member_slist($bpc_member_collection);
 };
 
 bpc_member_collection:
 %empty
 {
-
+	$$ = NULL;
 }
 |
-bpc_member_collection bpc_member_array
+bpc_member_collection[sdd_old_members] bpc_member_array
 {
-
+	$$ = g_slist_concat($sdd_old_members, $bpc_member_array);
 };
 
 bpc_member_array:
 bpc_member BPC_SEMICOLON
 {
+	BPC_SEMANTIC_MEMBER_ARRAY_PROP data;
+	data.is_array = false;
+	data.is_static_array = false;
+	data.array_len = 0u;
 
+	// apply array prop and move list
+	g_slist_foreach($bpc_member, bpc_lambda_semantic_member_copy_array_prop, &data);
+	$$ = $bpc_member;
 }
 |
-bpc_member BPC_ARRAY_TUPLE BPC_TOKEN_NUM BPC_SEMICOLON
+bpc_member BPC_ARRAY_TUPLE BPC_TOKEN_NUM[sdd_count] BPC_SEMICOLON
 {
+	BPC_SEMANTIC_MEMBER_ARRAY_PROP data;
+	data.is_array = true;
+	data.is_static_array = true;
+	data.array_len = (uint32_t)%sdd_count;
 
+	// apply array prop and move list
+	g_slist_foreach($bpc_member, bpc_lambda_semantic_member_copy_array_prop, &data);
+	$$ = $bpc_member;
 }
 |
 bpc_member BPC_ARRAY_LIST BPC_SEMICOLON
 {
+	BPC_SEMANTIC_MEMBER_ARRAY_PROP data;
+	data.is_array = true;
+	data.is_static_array = false;
+	data.array_len = 0u;
 
+	// apply array prop and move list
+	g_slist_foreach($bpc_member, bpc_lambda_semantic_member_copy_array_prop, &data);
+	$$ = $bpc_member;
 };
 
 bpc_member:
-BPC_BASIC_TYPE[member_basic_type] BPC_TOKEN_NAME[member_name]
+BPC_BASIC_TYPE[sdd_basic_type] BPC_TOKEN_NAME[sdd_name]
 {
 	BPC_SEMANTIC_MEMBER* data = bpc_constructor_semantic_member();
 	data->is_basic_type = true;
-	data->v_basic_type = $member_basic_type;
-	data->vname = $member_name;
+	data->v_basic_type = $sdd_basic_type;
+	data->vname = $sdd_name;
 
-	$$ = NULL;
-	$$ = g_slist_append($$, data);
+	$$ = g_slist_append(NULL, data);
 }
 |
-BPC_TOKEN_NAME[member_user_type] BPC_TOKEN_NAME[member_name]
+BPC_TOKEN_NAME[sdd_struct_type] BPC_TOKEN_NAME[sdd_name]
 {
 	BPC_SEMANTIC_MEMBER* data = bpc_constructor_semantic_member();
 	data->is_basic_type = false;
-	data->v_user_type = $member_user_type;
-	data->vname = $member_name;
+	data->v_struct_type = $sdd_struct_type;
+	data->vname = $sdd_name;
 
-	$$ = NULL;
-	$$ = g_slist_append($$, data);
+	$$ = g_slist_append(NULL, data);
 }
 |
-bpc_member[old_member] BPC_COMMA BPC_TOKEN_NAME[member_name]
+bpc_member[sdd_member_chain] BPC_COMMA BPC_TOKEN_NAME[sdd_name]
 {
-	BPC_SEMANTIC_MEMBER* existed_define = (BPC_SEMANTIC_MEMBER*)$old_member;
+	// get a references item from old chain. old chain have at least item so 
+	// this oper is safe.
+	BPC_SEMANTIC_MEMBER* references_item = (BPC_SEMANTIC_MEMBER*)$sdd_member_chain;
 
+	// construct new item and apply some properties from
+	// references item
 	BPC_SEMANTIC_MEMBER* data = bpc_constructor_semantic_member();
-	data->is_basic_type = $old_member;
+	data->vname = $sdd_name;
+	data->is_basic_type = references_item->is_basic_type;
 	if (data->is_basic_type) {
-		data->v_basic_type = existed_define->v_basic_type;
-		data->vname = $member_name;
+		data->v_basic_type = references_item->v_basic_type;
 	} else {
-		data->v_user_type = g_strdup(existed_define->v_user_type);
-		data->vname = $member_name;
+		// use strdup to ensure each item have unique string in memory
+		// for safely free memory for each item.
+		data->v_struct_type = g_strdup(references_item->v_struct_type);
 	}
 
-	$$ = $old_member;
-	$$ = g_slist_append($$, data);
+	// add into list
+	$$ = g_slist_append($sdd_member_chain, data);
 };
 
 %%
 
 int run_compiler(const char* srcfile, const char* destfile) {
+	// setup parameters
+	yyout = stdout;
+	yyin = fopen(srcfile, "r+");
+	if (yyin == NULL) {
+		fprintf(yyout, "[Error] Fail to open src file: %s\n", srcfile);
+		return 1;
+	}
+	if (!bpc_codegen_init_code_file(destfile)) {
+		fprintf(yyout, "[Error] Fail to open dest file: %s\n", destfile);
 
+		fclose(yyin);
+		yyin = stdin;
+
+		return 1;
+	}
+
+	// do parse
+	yyparse();
+
+	// free resources
+	fclose(yyin);
+	yyin = stdin;
+	bpc_codegen_free_code_file();
+
+	return 0;
 }
