@@ -1,3 +1,5 @@
+%require "3.2"
+
 %code top {
 
 }
@@ -16,19 +18,19 @@ int run_compiler(const char* srcfile, const char* destfile);
 }
 
 %{
-
 int yywrap() {
 	return 1;
 }
 
-void yyerror(const char *s)
-{
+void yyerror(const char *s) {
 	printf("[ERROR] %s\n", s);
 }
 %}
 
+%define parse.error detailed
+
 %union {
-	BPC_BASIC_TYPE token_basic_type;
+	BPC_SEMANTIC_BASIC_TYPE token_basic_type;
 	char* token_name;
 	uint32_t token_num;
 	GSList* nterm_namespace;	// item is char*
@@ -47,19 +49,25 @@ void yyerror(const char *s)
 %nterm <nterm_enum> bpc_enum_body
 %nterm <nterm_members> bpc_member_collection bpc_member_array bpc_member
 
+%destructor { bpc_destructor_string_slist($$); } <nterm_namespace>
+%destructor { bpc_destructor_string_slist($$); } <nterm_enum> 
+%destructor { bpc_destructor_semantic_member_slist($$); } <nterm_members>
+
 %%
 
 bpc_document:
 bpc_version bpc_language bpc_namespace bpc_alias_group bpc_define_group
 {
-	; //skip
+	// finish parsing
+	bpc_codegen_write_opcode();
 };
 
 bpc_version:
 BPC_VERSION BPC_TOKEN_NUM[sdd_version_num] BPC_SEMICOLON 
 {
 	if ($sdd_version_num != BPC_COMPILER_VERSION) {
-		// todo: throw error: unsupported version
+		yyerror("[Error] unsupported version: %d. expect: %d.", $sdd_version_num, BPC_COMPILER_VERSION);
+		YYABORT;
 	}
 };
 
@@ -68,7 +76,8 @@ BPC_LANGUAGE BPC_TOKEN_NAME[sdd_lang_name] BPC_SEMICOLON
 {
 	BPC_LANGUAGE lang = bpc_parse_language_string($sdd_lang_name);
 	if (lang == -1) {
-		// todo: throw error: unsupported language
+		yyerror("[Error] unsupported language: %s", $sdd_lang_name);
+		YYABORT;
 	}
 
 	init_language(lang);
@@ -105,7 +114,6 @@ bpc_alias_group BPC_ALIAS BPC_TOKEN_NAME[sdd_user_type] BPC_BASIC_TYPE[sdd_basic
 {
 	write_alias($sdd_user_type, $sdd_basic_type);
 	g_free($sdd_user_type);
-	g_free($sdd_basic_type);
 };
 
 bpc_define_group:
@@ -134,6 +142,12 @@ BPC_ENUM BPC_TOKEN_NAME[sdd_enum_name] BPC_COLON BPC_BASIC_TYPE[sdd_enum_type] B
 bpc_enum_body
 BPC_RIGHT_BRACKET
 {
+	// check token duplication
+	if (bpc_codegen_get_token_entry($sdd_enum_name) != NULL) {
+		yyerror("[Error] token %s has been defined.", $sdd_enum_name);
+		YYERROR;
+	}
+
 	// gen code for enum
 	bpc_codegen_write_enum($sdd_enum_name, $sdd_enum_type, $bpc_enum_body);
 	// and free name and member list
@@ -157,6 +171,12 @@ BPC_STRUCT BPC_TOKEN_NAME[sdd_struct_name] BPC_LEFT_BRACKET
 bpc_member_collection
 BPC_RIGHT_BRACKET
 {
+	// check token duplication
+	if (bpc_codegen_get_token_entry($sdd_struct_name) != NULL) {
+		yyerror("[Error] token %s has been defined.", $sdd_struct_name);
+		YYERROR;
+	}
+
 	// gen code for struct
 	bpc_codegen_write_struct($sdd_struct_name, $bpc_member_collection);
 	// and free name and member list
@@ -169,6 +189,12 @@ BPC_MSG BPC_TOKEN_NAME[sdd_msg_name] BPC_LEFT_BRACKET
 bpc_member_collection
 BPC_RIGHT_BRACKET
 {
+	// check token duplication
+	if (bpc_codegen_get_token_entry($sdd_msg_name) != NULL) {
+		yyerror("[Error] token %s has been defined.", $sdd_msg_name);
+		YYERROR;
+	}
+
 	// gen code for msg
 	bpc_codegen_write_msg($sdd_msg_name, $bpc_member_collection);
 	// and free name and member list
@@ -237,6 +263,13 @@ BPC_BASIC_TYPE[sdd_basic_type] BPC_TOKEN_NAME[sdd_name]
 |
 BPC_TOKEN_NAME[sdd_struct_type] BPC_TOKEN_NAME[sdd_name]
 {
+	// check token name validation
+	BPC_CODEGEN_TOKEN_ENTRY* entry = bpc_codegen_get_token_entry($sdd_struct_type)
+	if (entry == NULL || entry->token_type == BPC_CODEGEN_TOKEN_TYPE_MSG) {
+		yyerror("[Error] token %s is not defined.", $sdd_struct_type);
+		YYERROR;
+	}
+
 	BPC_SEMANTIC_MEMBER* data = bpc_constructor_semantic_member();
 	data->is_basic_type = false;
 	data->v_struct_type = $sdd_struct_type;

@@ -1,6 +1,20 @@
 #include "bpc_code_gen.h"
 #include <stdio.h>
 
+const char* bpc_codegen_python_struct_pattern[] = {
+	"f",
+	"d",
+	"b",
+	"h",
+	"i",
+	"q",
+	"B",
+	"H",
+	"I",
+	"Q"
+};
+const size_t bpc_codegen_python_struct_pattern_len = sizeof(bpc_codegen_python_struct_pattern) / sizeof(char*);
+
 FILE* codegen_fileptr = NULL;
 BPC_SEMANTIC_LANGUAGE codegen_spec_lang = BPC_SEMANTIC_LANGUAGE_PYTHON;
 GSList* codegen_user_defined_token_slist = NULL;
@@ -55,7 +69,23 @@ void bpc_codegen_init_namespace(GList* namespace_chain) {
 	}
 }
 
+BPC_CODEGEN_TOKEN_ENTRY* bpc_codegen_get_token_entry(const char* token_name) {
+	GSList* cursor;
+	for (cursor = codegen_user_defined_token_slist; cursor != NULL; cursor = cursor->next) {
+		BPC_CODEGEN_TOKEN_ENTRY* data = (BPC_CODEGEN_TOKEN_ENTRY*)cursor->data;
+		if (g_str_equal(token_name, data->token_name)) return data;
+	}
+	return NULL;
+}
+
 void bpc_codegen_write_alias(const char* alias_name, BPC_SEMANTIC_BASIC_TYPE basic_t) {
+	// alloc entry and push into list
+	BPC_CODEGEN_TOKEN_ENTRY* entry = g_new0(BPC_CODEGEN_TOKEN_ENTRY, 1);
+	entry->token_name = g_strdup(alias_name);
+	entry->token_type = BPC_CODEGEN_TOKEN_TYPE_ALIAS;
+	entry->token_basic_type = basic_t;
+	codegen_user_defined_token_slist = g_slist_append(codegen_user_defined_token_slist, entry);
+
 	switch (codegen_spec_lang) {
 		case BPC_SEMANTIC_LANGUAGE_CPP:
 		{
@@ -81,6 +111,13 @@ void bpc_codegen_write_alias(const char* alias_name, BPC_SEMANTIC_BASIC_TYPE bas
 }
 
 void bpc_codegen_write_enum(const char* enum_name, BPC_SEMANTIC_BASIC_TYPE basic_type, GSList* member_list) {
+	// alloc entry and push into list
+	BPC_CODEGEN_TOKEN_ENTRY* entry = g_new0(BPC_CODEGEN_TOKEN_ENTRY, 1);
+	entry->token_name = g_strdup(enum_name);
+	entry->token_type = BPC_CODEGEN_TOKEN_TYPE_ENUM;
+	entry->token_basic_type = basic_type;
+	codegen_user_defined_token_slist = g_slist_append(codegen_user_defined_token_slist, entry);
+
 	switch (codegen_spec_lang) {
 		case BPC_SEMANTIC_LANGUAGE_CPP:
 		{
@@ -96,11 +133,11 @@ void bpc_codegen_write_enum(const char* enum_name, BPC_SEMANTIC_BASIC_TYPE basic
 		break;
 		case BPC_SEMANTIC_LANGUAGE_PYTHON:
 		{
-			GSList* cursor = member_list;
+			GSList* cursor;
 			uint32_t counter = 0;
 
 			fprintf(codegen_fileptr, "class %s():\n", enum_name);
-			while (cursor != NULL) {
+			for (cursor = member_list; cursor != NULL; cursor = cursor->next) {
 				char* data = (char*)cursor->data;
 				fprintf("\t%s = %d\n", data, counter++);
 				cursor = cursor->next;
@@ -120,6 +157,17 @@ void _bpc_codegen_gen_struct_msg_body(const char* token_name, GSList* member_lis
 	// generate msg index
 	uint32_t msg_index = 0;
 	if (is_msg) msg_index = codegen_msg_counter++;
+
+	// alloc entry and push into list
+	BPC_CODEGEN_TOKEN_ENTRY* entry = g_new0(BPC_CODEGEN_TOKEN_ENTRY, 1);
+	entry->token_name = g_strdup(token_name);
+	if (is_msg) {
+		entry->token_type = BPC_CODEGEN_TOKEN_TYPE_MSG;
+		entry->token_arranged_index = msg_index;
+	} else {
+		entry->token_type = BPC_CODEGEN_TOKEN_TYPE_STRUCT;
+	}
+	codegen_user_defined_token_slist = g_slist_append(codegen_user_defined_token_slist, entry);
 
 	switch (codegen_spec_lang) {
 		case BPC_SEMANTIC_LANGUAGE_CPP:
@@ -181,9 +229,23 @@ void _bpc_codegen_gen_struct_msg_body(const char* token_name, GSList* member_lis
 				}
 
 				// determine read method
+				bool is_real_basic_type;
+				BPC_SEMANTIC_BASIC_TYPE real_basic_type;
 				if (data->is_basic_type) {
+					is_real_basic_type = true;
+					real_basic_type = data->v_basic_type;
+				} else {
+					BPC_CODEGEN_TOKEN_ENTRY* entry = bpc_codegen_get_token_entry(data->v_struct_type);
+					if (entry->token_type == BPC_CODEGEN_TOKEN_TYPE_STRUCT) {
+						is_real_basic_type = false;
+					} else {
+						is_real_basic_type = true;
+						real_basic_type = entry->token_basic_type;
+					}
+				}
+				if (is_real_basic_type) {
 					// basic type serialize
-					switch (data->v_basic_type) {
+					switch (real_basic_type) {
 						case BPC_SEMANTIC_BASIC_TYPE_FLOAT:
 							fprintf(codegen_fileptr, "%s = struct.unpack('f', ss.read(4))[0]\n", array_item_head->str);
 							break;
@@ -257,9 +319,23 @@ void _bpc_codegen_gen_struct_msg_body(const char* token_name, GSList* member_lis
 				}
 
 				// determine read method
+				bool is_real_basic_type;
+				BPC_SEMANTIC_BASIC_TYPE real_basic_type;
 				if (data->is_basic_type) {
+					is_real_basic_type = true;
+					real_basic_type = data->v_basic_type;
+				} else {
+					BPC_CODEGEN_TOKEN_ENTRY* entry = bpc_codegen_get_token_entry(data->v_struct_type);
+					if (entry->token_type == BPC_CODEGEN_TOKEN_TYPE_STRUCT) {
+						is_real_basic_type = false;
+					} else {
+						is_real_basic_type = true;
+						real_basic_type = entry->token_basic_type;
+					}
+				}
+				if (is_real_basic_type) {
 					// basic type serialize
-					switch (data->v_basic_type) {
+					switch (real_basic_type) {
 						case BPC_SEMANTIC_BASIC_TYPE_FLOAT:
 							fprintf(codegen_fileptr, "%sss.write(struct.unpack('f', item))\n", array_item_head->str);
 							break;
@@ -325,18 +401,39 @@ void bpc_codegen_write_opcode() {
 		break;
 		case BPC_SEMANTIC_LANGUAGE_PYTHON:
 		{
-			GSList* cursor = codegen_user_defined_token_slist;
+			GSList* cursor;
 
+			// write opcode enum
 			fprintf(codegen_fileptr, "class opcode():\n");
-			while (cursor != NULL) {
-				_bpc_codegen_token_entry* data = (_bpc_codegen_token_entry*)cursor->data;
+			for (cursor = codegen_user_defined_token_slist; cursor != NULL; cursor = cursor->next) {
+				BPC_CODEGEN_TOKEN_ENTRY* data = (BPC_CODEGEN_TOKEN_ENTRY*)cursor->data;
 
-				if (data->token_type == bpc_codegen_token_type_msg) {
+				if (data->token_type == BPC_CODEGEN_TOKEN_TYPE_MSG) {
 					fprintf(codegen_fileptr, "\t%s = %d\n", data->token_name, data->token_arranged_index);
 				}
-
-				cursor = cursor->next;
 			}
+
+			// write uniformed deserialize func
+			bool is_first = true;
+			fprintf(codegen_fileptr, "def uniform_deserialize(ss: io.BytesIO):\n");
+			fprintf(codegen_fileptr, "\t_opcode = _peek_opcode(ss)\n");
+			for (cursor = codegen_user_defined_token_slist; cursor != NULL; cursor = cursor->next) {
+				BPC_CODEGEN_TOKEN_ENTRY* data = (BPC_CODEGEN_TOKEN_ENTRY*)cursor->data;
+
+				if (data->token_type == BPC_CODEGEN_TOKEN_TYPE_MSG) {
+					if (is_first) {
+						fprintf(codegen_fileptr, "if _opcode == opcode.%s:\n", data->token_name);
+						is_first = false;
+					} else {
+						fprintf(codegen_fileptr, "elif _opcode == opcode.%s:\n", data->token_name);
+					}
+
+					fprintf(codegen_fileptr, "\t\t_data = %s\n", data->token_name);
+					fprintf(codegen_fileptr, "\t\t_data.deserialize(ss)\n");
+					fprintf(codegen_fileptr, "\t\treturn _data\n");
+				}
+			}
+			fprintf(codegen_fileptr, "\treturn None\n");
 		}
 		break;
 	}
@@ -372,7 +469,7 @@ void _bpc_codegen_copy_template(const char* template_code_file_path) {
 void _bpc_codegen_free_token_entry(gpointer rawptr) {
 	if (rawptr == NULL) return;
 
-	_bpc_codegen_token_entry* ptr = (_bpc_codegen_token_entry*)rawptr;
+	BPC_CODEGEN_TOKEN_ENTRY* ptr = (BPC_CODEGEN_TOKEN_ENTRY*)rawptr;
 	if (ptr->token_name != NULL) g_free(ptr->token_name);
 	g_free(ptr);
 }
