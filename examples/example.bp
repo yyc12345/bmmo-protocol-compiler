@@ -1,5 +1,5 @@
 bpc 1;
-language: python; // csharp, python, cpp
+language python; // csharp, python, cpp
 namespace bmmo.data_struct;
 
 /*
@@ -104,7 +104,7 @@ struct level_finish {
 
     int32 startPoints,currentLevel;
     uint8 cheated;
-};
+}
 msg level_finish_msg {
     level_finish data;
 }

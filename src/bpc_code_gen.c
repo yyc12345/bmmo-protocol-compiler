@@ -26,6 +26,7 @@ bool bpc_codegen_init_code_file(const char* filepath) {
 
 	codegen_user_defined_token_slist = NULL;
 	codegen_msg_counter = 0;
+	return true;
 }
 
 void bpc_codegen_init_language(BPC_SEMANTIC_LANGUAGE lang) {
@@ -46,7 +47,7 @@ void bpc_codegen_init_language(BPC_SEMANTIC_LANGUAGE lang) {
 	}
 }
 
-void bpc_codegen_init_namespace(GList* namespace_chain) {
+void bpc_codegen_init_namespace(GSList* namespace_chain) {
 	switch (codegen_spec_lang) {
 		case BPC_SEMANTIC_LANGUAGE_CPP:
 		{
@@ -139,8 +140,7 @@ void bpc_codegen_write_enum(const char* enum_name, BPC_SEMANTIC_BASIC_TYPE basic
 			fprintf(codegen_fileptr, "class %s():\n", enum_name);
 			for (cursor = member_list; cursor != NULL; cursor = cursor->next) {
 				char* data = (char*)cursor->data;
-				fprintf("\t%s = %d\n", data, counter++);
-				cursor = cursor->next;
+				fprintf(codegen_fileptr, "\t%s = %d\n", data, counter++);
 			}
 		}
 		break;
@@ -198,7 +198,6 @@ void _bpc_codegen_gen_struct_msg_body(const char* token_name, GSList* member_lis
 				} else {
 					fprintf(codegen_fileptr, "\t\tself.%s = None\n", data->vname);
 				}
-				cursor = cursor->next;
 			}
 
 			// generate deserialize func
@@ -312,12 +311,15 @@ void _bpc_codegen_gen_struct_msg_body(const char* token_name, GSList* member_lis
 				}
 
 				// determine reader level
+				const char* header_level;
 				if (data->array_prop.is_array) {
-					g_string_printf(array_item_head, "\t\t\t");
+					header_level = "\t\t\t";
+					g_string_printf(array_item_head, "_item");
 				} else {
-					g_string_printf(array_item_head, "\t\t");
+					header_level = "\t\t";
+					g_string_printf(array_item_head, "self.%s", data->vname);
 				}
-
+				
 				// determine read method
 				bool is_real_basic_type;
 				BPC_SEMANTIC_BASIC_TYPE real_basic_type;
@@ -337,44 +339,44 @@ void _bpc_codegen_gen_struct_msg_body(const char* token_name, GSList* member_lis
 					// basic type serialize
 					switch (real_basic_type) {
 						case BPC_SEMANTIC_BASIC_TYPE_FLOAT:
-							fprintf(codegen_fileptr, "%sss.write(struct.unpack('f', item))\n", array_item_head->str);
+							fprintf(codegen_fileptr, "%sss.write(struct.unpack('f', %s))\n", header_level, array_item_head->str);
 							break;
 						case BPC_SEMANTIC_BASIC_TYPE_DOUBLE:
-							fprintf(codegen_fileptr, "%sss.write(struct.unpack('d', item))\n", array_item_head->str);
+							fprintf(codegen_fileptr, "%sss.write(struct.unpack('d', %s))\n", header_level, array_item_head->str);
 							break;
 						case BPC_SEMANTIC_BASIC_TYPE_INT8:
-							fprintf(codegen_fileptr, "%sss.write(struct.unpack('b', item))\n", array_item_head->str);
+							fprintf(codegen_fileptr, "%sss.write(struct.unpack('b', %s))\n", header_level, array_item_head->str);
 							break;
 						case BPC_SEMANTIC_BASIC_TYPE_INT16:
-							fprintf(codegen_fileptr, "%sss.write(struct.unpack('h', item))\n", array_item_head->str);
+							fprintf(codegen_fileptr, "%sss.write(struct.unpack('h', %s))\n", header_level, array_item_head->str);
 							break;
 						case BPC_SEMANTIC_BASIC_TYPE_INT32:
-							fprintf(codegen_fileptr, "%sss.write(struct.unpack('i', item))\n", array_item_head->str);
+							fprintf(codegen_fileptr, "%sss.write(struct.unpack('i', %s))\n", header_level, array_item_head->str);
 							break;
 						case BPC_SEMANTIC_BASIC_TYPE_INT64:
-							fprintf(codegen_fileptr, "%sss.write(struct.unpack('q', item))\n", array_item_head->str);
+							fprintf(codegen_fileptr, "%sss.write(struct.unpack('q', %s))\n", header_level, array_item_head->str);
 							break;
 						case BPC_SEMANTIC_BASIC_TYPE_UINT8:
-							fprintf(codegen_fileptr, "%sss.write(struct.unpack('B', item))\n", array_item_head->str);
+							fprintf(codegen_fileptr, "%sss.write(struct.unpack('B', %s))\n", header_level, array_item_head->str);
 							break;
 						case BPC_SEMANTIC_BASIC_TYPE_UINT16:
-							fprintf(codegen_fileptr, "%sss.write(struct.unpack('H', item))\n", array_item_head->str);
+							fprintf(codegen_fileptr, "%sss.write(struct.unpack('H', %s))\n", header_level, array_item_head->str);
 							break;
 						case BPC_SEMANTIC_BASIC_TYPE_UINT32:
-							fprintf(codegen_fileptr, "%sss.write(struct.unpack('I', item))\n", array_item_head->str);
+							fprintf(codegen_fileptr, "%sss.write(struct.unpack('I', %s))\n", header_level, array_item_head->str);
 							break;
 						case BPC_SEMANTIC_BASIC_TYPE_UINT64:
-							fprintf(codegen_fileptr, "%sss.write(struct.unpack('Q', item))\n", array_item_head->str);
+							fprintf(codegen_fileptr, "%sss.write(struct.unpack('Q', %s))\n", header_level, array_item_head->str);
 							break;
 						case BPC_SEMANTIC_BASIC_TYPE_STRING:
-							fprintf(codegen_fileptr, "%s_binstr = item.encode(encoding='gb2312', errors='ignore')\n", array_item_head->str);
-							fprintf(codegen_fileptr, "%sss.write(struct.unpack('I', len(_binstr)))\n", array_item_head->str);
-							fprintf(codegen_fileptr, "%sss.write(_binstr)\n", array_item_head->str);
+							fprintf(codegen_fileptr, "%s_binstr = %s.encode(encoding='gb2312', errors='ignore')\n", header_level, array_item_head->str);
+							fprintf(codegen_fileptr, "%sss.write(struct.unpack('I', len(_binstr)))\n", header_level);
+							fprintf(codegen_fileptr, "%sss.write(_binstr)\n", header_level);
 							break;
 					}
 				} else {
 					// call struct.serialize()
-					fprintf(codegen_fileptr, "%sitem.serialize(ss)\n", array_item_head->str);
+					fprintf(codegen_fileptr, "%s%s.serialize(ss)\n", header_level, array_item_head->str);
 				}
 
 			}

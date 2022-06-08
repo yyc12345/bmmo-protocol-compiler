@@ -8,10 +8,11 @@ int main(int argc, char* argv[]) {
 		return 1;
 	}
 
-	if (run_compiler(argv[1], argv[2])) {
-		printf("Compile Done.\n");
-	} else {
+	int result;
+	if (result = run_compiler(argv[1], argv[2])) {
 		printf("Compile Failed.\n");
+	} else {
+		printf("Compile Done.\n");
 	}
-	return 0;
+	return result;
 }

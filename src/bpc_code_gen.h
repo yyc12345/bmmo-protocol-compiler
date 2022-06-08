@@ -25,7 +25,7 @@ typedef struct _BPC_CODEGEN_TOKEN_ENTRY {
 // call in order
 bool bpc_codegen_init_code_file(const char* filepath);
 void bpc_codegen_init_language(BPC_SEMANTIC_LANGUAGE lang);
-void bpc_codegen_init_namespace(GList* namespace_chain);
+void bpc_codegen_init_namespace(GSList* namespace_chain);
 // end call in order
 
 BPC_CODEGEN_TOKEN_ENTRY* bpc_codegen_get_token_entry(const char* token_name);

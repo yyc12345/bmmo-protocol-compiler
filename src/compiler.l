@@ -1,11 +1,30 @@
 %{
 #include <stdio.h>
+#include <io.h>
 #include "y.tab.h"
 #include "bpc_semantic_values.h"
+
+// https://www.techtalk7.com/how-does-flex-support-bison-location-exactly/
+#define YY_USER_ACTION \
+    yylloc.first_line = yylloc.last_line; \
+    yylloc.first_column = yylloc.last_column; \
+    for(int i = 0; yytext[i] != '\0'; i++) { \
+        if(yytext[i] == '\n') { \
+            yylloc.last_line++; \
+            yylloc.last_column = 1; \
+        } \
+        else { \
+            yylloc.last_column++; \
+        } \
+    }
+
 %}
 
 TOKEN_NUM		[1-9][0-9]*
 TOKEN_NAME		[a-zA-Z][a-zA-Z0-9_]*
+
+%option never-interactive
+%option nounistd
 
 %x BLOCK_COMMENT
 %x LINE_COMMENT
@@ -86,7 +105,7 @@ TOKEN_NAME		[a-zA-Z][a-zA-Z0-9_]*
 }
 
 {TOKEN_NUM} {
-	yylval.token_num = (int)atol(yytext, NULL, 10);
+	yylval.token_num = (int)g_ascii_strtoll(yytext, NULL, 10);
 	return BPC_TOKEN_NUM;
 }
 

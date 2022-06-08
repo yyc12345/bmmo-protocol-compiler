@@ -49,7 +49,7 @@ BPC_SEMANTIC_MEMBER* bpc_constructor_semantic_member() {
 
 void bpc_destructor_semantic_member(gpointer rawptr) {
 	if (rawptr == NULL) return;
-
+	
 	BPC_SEMANTIC_MEMBER* ptr = (BPC_SEMANTIC_MEMBER*)rawptr;
 	
 	if (ptr->vname != NULL) g_free(ptr->vname);

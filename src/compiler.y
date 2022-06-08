@@ -1,9 +1,5 @@
 %require "3.2"
 
-%code top {
-
-}
-
 %code requires {
 #include <stdio.h>
 #include <string.h>
@@ -17,17 +13,21 @@
 int run_compiler(const char* srcfile, const char* destfile);
 }
 
-%{
-int yywrap() {
-	return 1;
-}
+%code {
+int yywrap();
+void yyerror(const char *s);
+void bpc_yyerror(const char* format, ...);
 
-void yyerror(const char *s) {
-	printf("[ERROR] %s\n", s);
+// yyin, yyout and yylex is comes from flex code
+// so declare them as extern here
+extern FILE* yyin;
+extern FILE* yyout;
+extern int yylex(void); 
+
 }
-%}
 
 %define parse.error detailed
+%locations
 
 %union {
 	BPC_SEMANTIC_BASIC_TYPE token_basic_type;
@@ -66,7 +66,7 @@ bpc_version:
 BPC_VERSION BPC_TOKEN_NUM[sdd_version_num] BPC_SEMICOLON 
 {
 	if ($sdd_version_num != BPC_COMPILER_VERSION) {
-		yyerror("[Error] unsupported version: %d. expect: %d.", $sdd_version_num, BPC_COMPILER_VERSION);
+		bpc_yyerror("[Error] unsupported version: %d. expecting: %d.", $sdd_version_num, BPC_COMPILER_VERSION);
 		YYABORT;
 	}
 };
@@ -74,20 +74,20 @@ BPC_VERSION BPC_TOKEN_NUM[sdd_version_num] BPC_SEMICOLON
 bpc_language:
 BPC_LANGUAGE BPC_TOKEN_NAME[sdd_lang_name] BPC_SEMICOLON 
 {
-	BPC_LANGUAGE lang = bpc_parse_language_string($sdd_lang_name);
+	BPC_SEMANTIC_LANGUAGE lang = bpc_parse_language_string($sdd_lang_name);
 	if (lang == -1) {
-		yyerror("[Error] unsupported language: %s", $sdd_lang_name);
+		bpc_yyerror("[Error] unsupported language: %s", $sdd_lang_name);
 		YYABORT;
 	}
 
-	init_language(lang);
+	bpc_codegen_init_language(lang);
 };
 
 bpc_namespace:
 BPC_NAMESPACE bpc_namespace_chain BPC_SEMICOLON 
 {
 	// init namespace
-	init_namespace($bpc_namespace_chain);
+	bpc_codegen_init_namespace($bpc_namespace_chain);
 	// and free namespace chain
 	bpc_destructor_string_slist($bpc_namespace_chain);
 };
@@ -112,7 +112,7 @@ bpc_alias_group:
 |
 bpc_alias_group BPC_ALIAS BPC_TOKEN_NAME[sdd_user_type] BPC_BASIC_TYPE[sdd_basic_type] BPC_SEMICOLON
 {
-	write_alias($sdd_user_type, $sdd_basic_type);
+	bpc_codegen_write_alias($sdd_user_type, $sdd_basic_type);
 	g_free($sdd_user_type);
 };
 
@@ -144,7 +144,7 @@ BPC_RIGHT_BRACKET
 {
 	// check token duplication
 	if (bpc_codegen_get_token_entry($sdd_enum_name) != NULL) {
-		yyerror("[Error] token %s has been defined.", $sdd_enum_name);
+		bpc_yyerror("[Error] token %s has been defined.", $sdd_enum_name);
 		YYERROR;
 	}
 
@@ -173,7 +173,7 @@ BPC_RIGHT_BRACKET
 {
 	// check token duplication
 	if (bpc_codegen_get_token_entry($sdd_struct_name) != NULL) {
-		yyerror("[Error] token %s has been defined.", $sdd_struct_name);
+		bpc_yyerror("[Error] token %s has been defined.", $sdd_struct_name);
 		YYERROR;
 	}
 
@@ -191,7 +191,7 @@ BPC_RIGHT_BRACKET
 {
 	// check token duplication
 	if (bpc_codegen_get_token_entry($sdd_msg_name) != NULL) {
-		yyerror("[Error] token %s has been defined.", $sdd_msg_name);
+		bpc_yyerror("[Error] token %s has been defined.", $sdd_msg_name);
 		YYERROR;
 	}
 
@@ -231,7 +231,7 @@ bpc_member BPC_ARRAY_TUPLE BPC_TOKEN_NUM[sdd_count] BPC_SEMICOLON
 	BPC_SEMANTIC_MEMBER_ARRAY_PROP data;
 	data.is_array = true;
 	data.is_static_array = true;
-	data.array_len = (uint32_t)%sdd_count;
+	data.array_len = (uint32_t)$sdd_count;
 
 	// apply array prop and move list
 	g_slist_foreach($bpc_member, bpc_lambda_semantic_member_copy_array_prop, &data);
@@ -264,9 +264,9 @@ BPC_BASIC_TYPE[sdd_basic_type] BPC_TOKEN_NAME[sdd_name]
 BPC_TOKEN_NAME[sdd_struct_type] BPC_TOKEN_NAME[sdd_name]
 {
 	// check token name validation
-	BPC_CODEGEN_TOKEN_ENTRY* entry = bpc_codegen_get_token_entry($sdd_struct_type)
+	BPC_CODEGEN_TOKEN_ENTRY* entry = bpc_codegen_get_token_entry($sdd_struct_type);
 	if (entry == NULL || entry->token_type == BPC_CODEGEN_TOKEN_TYPE_MSG) {
-		yyerror("[Error] token %s is not defined.", $sdd_struct_type);
+		bpc_yyerror("[Error] token %s is not defined.", $sdd_struct_type);
 		YYERROR;
 	}
 
@@ -303,6 +303,31 @@ bpc_member[sdd_member_chain] BPC_COMMA BPC_TOKEN_NAME[sdd_name]
 
 %%
 
+int yywrap() {
+	return 1;
+}
+
+void yyerror(const char *s) {
+	printf("[Error] %s\n", s);
+	printf("[Error]     from ln:%d col:%d - ln:%d col:%d\n", 
+		yylloc.first_line, yylloc.first_column, yylloc.last_line, yylloc.last_column);
+}
+
+void bpc_yyerror(const char* format, ...) {
+	// generate format string
+	GString* buf = g_string_new(NULL);
+	va_list ap;
+	va_start(ap, format);
+	g_string_vprintf(buf, format, ap);
+	va_end(ap);
+
+	// call real yyerror
+	yyerror(buf->str);
+
+	// free
+	g_string_free(buf, TRUE);
+}
+
 int run_compiler(const char* srcfile, const char* destfile) {
 	// setup parameters
 	yyout = stdout;
@@ -321,12 +346,12 @@ int run_compiler(const char* srcfile, const char* destfile) {
 	}
 
 	// do parse
-	yyparse();
+	int result = yyparse();
 
 	// free resources
 	fclose(yyin);
 	yyin = stdin;
 	bpc_codegen_free_code_file();
 
-	return 0;
+	return result;
 }
