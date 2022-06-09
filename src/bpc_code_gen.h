@@ -42,7 +42,7 @@ void bpc_codegen_free_code_file();
 
 
 
-
+void _bpc_codegen_get_underlaying_type(BPC_SEMANTIC_MEMBER* token, bool* pout_proc_like_basic_type, BPC_SEMANTIC_BASIC_TYPE* pout_underlaying_basic_type);
 void _bpc_codegen_gen_struct_msg_body(const char* token_name, GSList* member_list, bool is_msg);
 void _bpc_codegen_copy_template(const char* template_code_file_path);
 void _bpc_codegen_free_token_entry(gpointer rawptr);

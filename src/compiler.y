@@ -282,7 +282,8 @@ bpc_member[sdd_member_chain] BPC_COMMA BPC_TOKEN_NAME[sdd_name]
 {
 	// get a references item from old chain. old chain have at least item so 
 	// this oper is safe.
-	BPC_SEMANTIC_MEMBER* references_item = (BPC_SEMANTIC_MEMBER*)$sdd_member_chain;
+	GSList* formed_member_chain = (GSList*)$sdd_member_chain;
+	BPC_SEMANTIC_MEMBER* references_item = (BPC_SEMANTIC_MEMBER*)formed_member_chain->data;
 
 	// construct new item and apply some properties from
 	// references item
@@ -298,7 +299,7 @@ bpc_member[sdd_member_chain] BPC_COMMA BPC_TOKEN_NAME[sdd_name]
 	}
 
 	// add into list
-	$$ = g_slist_append($sdd_member_chain, data);
+	$$ = g_slist_append(formed_member_chain, data);
 };
 
 %%

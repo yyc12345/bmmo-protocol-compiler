@@ -13,12 +13,29 @@ const char* bpc_codegen_python_struct_pattern[] = {
 	"I",
 	"Q"
 };
-const size_t bpc_codegen_python_struct_pattern_len = sizeof(bpc_codegen_python_struct_pattern) / sizeof(char*);
+const char* bpc_codegen_python_struct_pattern_len[] = {
+	"4",
+	"8",
+	"1",
+	"2",
+	"4",
+	"8",
+	"1",
+	"2",
+	"4",
+	"8"
+};
+
 
 FILE* codegen_fileptr = NULL;
 BPC_SEMANTIC_LANGUAGE codegen_spec_lang = BPC_SEMANTIC_LANGUAGE_PYTHON;
 GSList* codegen_user_defined_token_slist = NULL;
 uint32_t codegen_msg_counter = 0;
+
+#define BPC_CODEGEN_INDENT_INIT uint32_t _indent_level = 0, _indent_loop = 0;
+#define BPC_CODEGEN_INDENT_INC ++_indent_level;
+#define BPC_CODEGEN_INDENT_DEC --_indent_level;
+#define BPC_CODEGEN_INDENT_PRINT fputc('\n', codegen_fileptr); for(_indent_loop=0;_indent_loop<_indent_level;++_indent_loop) fputc('\t', codegen_fileptr);
 
 bool bpc_codegen_init_code_file(const char* filepath) {
 	codegen_fileptr = fopen(filepath, "w+");
@@ -119,6 +136,11 @@ void bpc_codegen_write_enum(const char* enum_name, BPC_SEMANTIC_BASIC_TYPE basic
 	entry->token_basic_type = basic_type;
 	codegen_user_defined_token_slist = g_slist_append(codegen_user_defined_token_slist, entry);
 
+	// define some useful variable
+	BPC_CODEGEN_INDENT_INIT;
+	GSList* cursor;
+	uint32_t counter = 0;
+
 	switch (codegen_spec_lang) {
 		case BPC_SEMANTIC_LANGUAGE_CPP:
 		{
@@ -134,14 +156,15 @@ void bpc_codegen_write_enum(const char* enum_name, BPC_SEMANTIC_BASIC_TYPE basic
 		break;
 		case BPC_SEMANTIC_LANGUAGE_PYTHON:
 		{
-			GSList* cursor;
-			uint32_t counter = 0;
-
-			fprintf(codegen_fileptr, "class %s():\n", enum_name);
+			BPC_CODEGEN_INDENT_PRINT;
+			fprintf(codegen_fileptr, "class %s():", enum_name); BPC_CODEGEN_INDENT_INC;
 			for (cursor = member_list; cursor != NULL; cursor = cursor->next) {
-				char* data = (char*)cursor->data;
-				fprintf(codegen_fileptr, "\t%s = %d\n", data, counter++);
+				BPC_CODEGEN_INDENT_PRINT;
+				fprintf(codegen_fileptr, "%s = %d", (char*)cursor->data, counter++);
 			}
+			// enum is over
+			BPC_CODEGEN_INDENT_DEC;
+
 		}
 		break;
 	}
@@ -169,6 +192,13 @@ void _bpc_codegen_gen_struct_msg_body(const char* token_name, GSList* member_lis
 	}
 	codegen_user_defined_token_slist = g_slist_append(codegen_user_defined_token_slist, entry);
 
+	// define some useful variable
+	BPC_CODEGEN_INDENT_INIT;
+	GSList* cursor;
+	GString* operator_name = g_string_new(NULL);
+	bool proc_like_basic_type;
+	BPC_SEMANTIC_BASIC_TYPE underlaying_basic_type;
+
 	switch (codegen_spec_lang) {
 		case BPC_SEMANTIC_LANGUAGE_CPP:
 		{
@@ -184,210 +214,192 @@ void _bpc_codegen_gen_struct_msg_body(const char* token_name, GSList* member_lis
 		break;
 		case BPC_SEMANTIC_LANGUAGE_PYTHON:
 		{
-			GSList* cursor;
-			GString* array_item_head = g_string_new(NULL);
-
 			// generate header and props
-			fprintf(codegen_fileptr, "class %s():\n", token_name);
-			fprintf(codegen_fileptr, "\tdef __init__(self):\n");
+			BPC_CODEGEN_INDENT_PRINT;
+			fprintf(codegen_fileptr, "class %s():", token_name); BPC_CODEGEN_INDENT_INC;
+			BPC_CODEGEN_INDENT_PRINT;
+			fprintf(codegen_fileptr, "def __init__(self):");
 
+			BPC_CODEGEN_INDENT_INC;
 			for (cursor = member_list; cursor != NULL; cursor = cursor->next) {
 				BPC_SEMANTIC_MEMBER* data = (BPC_SEMANTIC_MEMBER*)cursor->data;
+
+				BPC_CODEGEN_INDENT_PRINT;
 				if (data->array_prop.is_array) {
-					fprintf(codegen_fileptr, "\t\tself.%s = []\n", data->vname);
+					fprintf(codegen_fileptr, "self.%s = []", data->vname);
 				} else {
-					fprintf(codegen_fileptr, "\t\tself.%s = None\n", data->vname);
+					fprintf(codegen_fileptr, "self.%s = None", data->vname);
 				}
 			}
+			BPC_CODEGEN_INDENT_DEC;
 
 			// generate deserialize func
-			fprintf(codegen_fileptr, "\tdef deserialize(ss: io.BytesIO)\n");
+			BPC_CODEGEN_INDENT_PRINT;
+			fprintf(codegen_fileptr, "def deserialize(self, ss: io.BytesIO):"); BPC_CODEGEN_INDENT_INC;
 			if (is_msg) {
-				fprintf(codegen_fileptr, "\t\tif struct.unpack('I', ss.read(4))[0] != %d:\n", msg_index);
-				fprintf(codegen_fileptr, "\t\t\traise Exception('invalid opcode!')\n");
+				BPC_CODEGEN_INDENT_PRINT;
+				fprintf(codegen_fileptr, "if struct.unpack('I', ss.read(4))[0] != %d:", msg_index); BPC_CODEGEN_INDENT_INC;
+				BPC_CODEGEN_INDENT_PRINT;
+				fprintf(codegen_fileptr, "raise Exception('invalid opcode!')"); BPC_CODEGEN_INDENT_DEC;
 			}
 			for (cursor = member_list; cursor != NULL; cursor = cursor->next) {
 				BPC_SEMANTIC_MEMBER* data = (BPC_SEMANTIC_MEMBER*)cursor->data;
 
+				// annotation
+				BPC_CODEGEN_INDENT_PRINT;
+				fprintf(codegen_fileptr, "# %s", data->vname);
+
 				// if member is array, we need construct a loop
 				if (data->array_prop.is_array) {
-					fprintf(codegen_fileptr, "\t\tself.%s.clear()\n", data->vname);
+					BPC_CODEGEN_INDENT_PRINT;
+					fprintf(codegen_fileptr, "self.%s.clear()", data->vname);
 					if (data->array_prop.is_static_array) {
-						fprintf(codegen_fileptr, "\t\tfor _i in range(%d):\n", data->array_prop.array_len);
+						BPC_CODEGEN_INDENT_PRINT;
+						fprintf(codegen_fileptr, "for _i in range(%d):", data->array_prop.array_len);
 					} else {
-						fprintf(codegen_fileptr, "\t\t_count = struct.unpack('I', ss.read(4))[0]\n");
-						fprintf(codegen_fileptr, "\t\tfor _i in range(_count):\n");
+						BPC_CODEGEN_INDENT_PRINT;
+						fprintf(codegen_fileptr, "_count = struct.unpack('I', ss.read(4))[0]");
+						BPC_CODEGEN_INDENT_PRINT;
+						fprintf(codegen_fileptr, "for _i in range(_count):");
 					}
+
+					// increase indent level for array item
+					BPC_CODEGEN_INDENT_INC;
 				}
 
-				// determine reader level
+				// determine operator name
 				if (data->array_prop.is_array) {
-					g_string_printf(array_item_head, "\t\t\t_cache");
+					g_string_printf(operator_name, "_cache");
 				} else {
-					g_string_printf(array_item_head, "\t\tself.%s", data->vname);
+					g_string_printf(operator_name, "self.%s", data->vname);
 				}
 
+				// resolve basic type
+				_bpc_codegen_get_underlaying_type(data, &proc_like_basic_type, &underlaying_basic_type);
 				// determine read method
-				bool is_real_basic_type;
-				BPC_SEMANTIC_BASIC_TYPE real_basic_type;
-				if (data->is_basic_type) {
-					is_real_basic_type = true;
-					real_basic_type = data->v_basic_type;
-				} else {
-					BPC_CODEGEN_TOKEN_ENTRY* entry = bpc_codegen_get_token_entry(data->v_struct_type);
-					if (entry->token_type == BPC_CODEGEN_TOKEN_TYPE_STRUCT) {
-						is_real_basic_type = false;
+				if (proc_like_basic_type) {
+					// basic type deserialize
+					if (underlaying_basic_type == BPC_SEMANTIC_BASIC_TYPE_STRING) {
+						// string is special
+						BPC_CODEGEN_INDENT_PRINT;
+						fprintf(codegen_fileptr, "_strlen = struct.unpack('f', ss.read(4))[0]");
+						BPC_CODEGEN_INDENT_PRINT;
+						fprintf(codegen_fileptr, "%s = ss.read(_strlen).decode(encoding='gb2312', errors='ignore')", operator_name->str);
 					} else {
-						is_real_basic_type = true;
-						real_basic_type = entry->token_basic_type;
-					}
-				}
-				if (is_real_basic_type) {
-					// basic type serialize
-					switch (real_basic_type) {
-						case BPC_SEMANTIC_BASIC_TYPE_FLOAT:
-							fprintf(codegen_fileptr, "%s = struct.unpack('f', ss.read(4))[0]\n", array_item_head->str);
-							break;
-						case BPC_SEMANTIC_BASIC_TYPE_DOUBLE:
-							fprintf(codegen_fileptr, "%s = struct.unpack('d', ss.read(8))[0]\n", array_item_head->str);
-							break;
-						case BPC_SEMANTIC_BASIC_TYPE_INT8:
-							fprintf(codegen_fileptr, "%s = struct.unpack('b', ss.read(1))[0]\n", array_item_head->str);
-							break;
-						case BPC_SEMANTIC_BASIC_TYPE_INT16:
-							fprintf(codegen_fileptr, "%s = struct.unpack('h', ss.read(2))[0]\n", array_item_head->str);
-							break;
-						case BPC_SEMANTIC_BASIC_TYPE_INT32:
-							fprintf(codegen_fileptr, "%s = struct.unpack('i', ss.read(4))[0]\n", array_item_head->str);
-							break;
-						case BPC_SEMANTIC_BASIC_TYPE_INT64:
-							fprintf(codegen_fileptr, "%s = struct.unpack('q', ss.read(8))[0]\n", array_item_head->str);
-							break;
-						case BPC_SEMANTIC_BASIC_TYPE_UINT8:
-							fprintf(codegen_fileptr, "%s = struct.unpack('B', ss.read(1))[0]\n", array_item_head->str);
-							break;
-						case BPC_SEMANTIC_BASIC_TYPE_UINT16:
-							fprintf(codegen_fileptr, "%s = struct.unpack('H', ss.read(2))[0]\n", array_item_head->str);
-							break;
-						case BPC_SEMANTIC_BASIC_TYPE_UINT32:
-							fprintf(codegen_fileptr, "%s = struct.unpack('I', ss.read(4))[0]\n", array_item_head->str);
-							break;
-						case BPC_SEMANTIC_BASIC_TYPE_UINT64:
-							fprintf(codegen_fileptr, "%s = struct.unpack('Q', ss.read(8))[0]\n", array_item_head->str);
-							break;
-						case BPC_SEMANTIC_BASIC_TYPE_STRING:
-							fprintf(codegen_fileptr, "%s = struct.unpack('f', ss.read(4))[0]\n", array_item_head->str);
-							fprintf(codegen_fileptr, "%s = ss.read(_count).decode(encoding='gb2312', errors='ignore')\n", array_item_head->str);
-							break;
+						// other value type can use table to generate
+						BPC_CODEGEN_INDENT_PRINT;
+						fprintf(codegen_fileptr, "%s = struct.unpack('%s', ss.read(%s))[0]",
+							operator_name->str,
+							bpc_codegen_python_struct_pattern[(size_t)underlaying_basic_type],
+							bpc_codegen_python_struct_pattern_len[(size_t)underlaying_basic_type]);
 					}
 				} else {
+					// struct deserialize
 					// call struct.deserialize()
-					fprintf(codegen_fileptr, "%s = %s()\n", array_item_head->str, data->v_struct_type);
-					fprintf(codegen_fileptr, "%s.deserialize(ss)\n", array_item_head->str);
+					BPC_CODEGEN_INDENT_PRINT;
+					fprintf(codegen_fileptr, "%s = %s()", operator_name->str, data->v_struct_type);
+					BPC_CODEGEN_INDENT_PRINT;
+					fprintf(codegen_fileptr, "%s.deserialize(ss)", operator_name->str);
 				}
 
+				// array extra proc
 				if (data->array_prop.is_array) {
-					fprintf(codegen_fileptr, "\t\t\tself.%s.append(_cache)\n", data->vname);
+					BPC_CODEGEN_INDENT_PRINT;
+					fprintf(codegen_fileptr, "self.%s.append(_cache)", data->vname);
+
+					// shink indent
+					BPC_CODEGEN_INDENT_DEC;
 				}
 			}
+			// func deserialize is over
+			BPC_CODEGEN_INDENT_DEC;
 
 			// generate serialize func
-			fprintf(codegen_fileptr, "\tdef serialize(ss: io.BytesIO)\n");
+			BPC_CODEGEN_INDENT_PRINT;
+			fprintf(codegen_fileptr, "def serialize(self, ss: io.BytesIO):"); BPC_CODEGEN_INDENT_INC;
 			if (is_msg) {
-				fprintf(codegen_fileptr, "\t\tss.write(struct.pack('I', %d))\n", msg_index);
+				BPC_CODEGEN_INDENT_PRINT;
+				fprintf(codegen_fileptr, "ss.write(struct.pack('I', %d))", msg_index);
 			}
 			for (cursor = member_list; cursor != NULL; cursor = cursor->next) {
 				BPC_SEMANTIC_MEMBER* data = (BPC_SEMANTIC_MEMBER*)cursor->data;
 
+				// annotation
+				BPC_CODEGEN_INDENT_PRINT;
+				fprintf(codegen_fileptr, "# %s", data->vname);
+
 				// if member is array, we need construct a loop
 				if (data->array_prop.is_array) {
+					// increase indent level for array
 					if (data->array_prop.is_static_array) {
-						fprintf(codegen_fileptr, "\t\tfor _i in range(%d):\n", data->array_prop.array_len);
-						fprintf(codegen_fileptr, "\t\t\t_item = self.%s[_i]\n", data->vname);
+						BPC_CODEGEN_INDENT_PRINT;
+						fprintf(codegen_fileptr, "for _i in range(%d):", data->array_prop.array_len); BPC_CODEGEN_INDENT_INC;
+						BPC_CODEGEN_INDENT_PRINT;
+						fprintf(codegen_fileptr, "_item = self.%s[_i]", data->vname);
 					} else {
-						fprintf(codegen_fileptr, "\t\tss.write('I', len(self.%s))\n", data->vname);
-						fprintf(codegen_fileptr, "\t\tfor _item in self.%s:\n", data->vname);
+						BPC_CODEGEN_INDENT_PRINT;
+						fprintf(codegen_fileptr, "ss.write('I', len(self.%s))", data->vname);
+						BPC_CODEGEN_INDENT_PRINT;
+						fprintf(codegen_fileptr, "for _item in self.%s:", data->vname); BPC_CODEGEN_INDENT_INC;
 					}
 				}
 
-				// determine reader level
-				const char* header_level;
+				// determine operator name
 				if (data->array_prop.is_array) {
-					header_level = "\t\t\t";
-					g_string_printf(array_item_head, "_item");
+					g_string_printf(operator_name, "_item");
 				} else {
-					header_level = "\t\t";
-					g_string_printf(array_item_head, "self.%s", data->vname);
+					g_string_printf(operator_name, "self.%s", data->vname);
 				}
-				
+
 				// determine read method
-				bool is_real_basic_type;
-				BPC_SEMANTIC_BASIC_TYPE real_basic_type;
-				if (data->is_basic_type) {
-					is_real_basic_type = true;
-					real_basic_type = data->v_basic_type;
-				} else {
-					BPC_CODEGEN_TOKEN_ENTRY* entry = bpc_codegen_get_token_entry(data->v_struct_type);
-					if (entry->token_type == BPC_CODEGEN_TOKEN_TYPE_STRUCT) {
-						is_real_basic_type = false;
-					} else {
-						is_real_basic_type = true;
-						real_basic_type = entry->token_basic_type;
-					}
-				}
-				if (is_real_basic_type) {
+				_bpc_codegen_get_underlaying_type(data, &proc_like_basic_type, &underlaying_basic_type);
+				if (proc_like_basic_type) {
 					// basic type serialize
-					switch (real_basic_type) {
-						case BPC_SEMANTIC_BASIC_TYPE_FLOAT:
-							fprintf(codegen_fileptr, "%sss.write(struct.unpack('f', %s))\n", header_level, array_item_head->str);
-							break;
-						case BPC_SEMANTIC_BASIC_TYPE_DOUBLE:
-							fprintf(codegen_fileptr, "%sss.write(struct.unpack('d', %s))\n", header_level, array_item_head->str);
-							break;
-						case BPC_SEMANTIC_BASIC_TYPE_INT8:
-							fprintf(codegen_fileptr, "%sss.write(struct.unpack('b', %s))\n", header_level, array_item_head->str);
-							break;
-						case BPC_SEMANTIC_BASIC_TYPE_INT16:
-							fprintf(codegen_fileptr, "%sss.write(struct.unpack('h', %s))\n", header_level, array_item_head->str);
-							break;
-						case BPC_SEMANTIC_BASIC_TYPE_INT32:
-							fprintf(codegen_fileptr, "%sss.write(struct.unpack('i', %s))\n", header_level, array_item_head->str);
-							break;
-						case BPC_SEMANTIC_BASIC_TYPE_INT64:
-							fprintf(codegen_fileptr, "%sss.write(struct.unpack('q', %s))\n", header_level, array_item_head->str);
-							break;
-						case BPC_SEMANTIC_BASIC_TYPE_UINT8:
-							fprintf(codegen_fileptr, "%sss.write(struct.unpack('B', %s))\n", header_level, array_item_head->str);
-							break;
-						case BPC_SEMANTIC_BASIC_TYPE_UINT16:
-							fprintf(codegen_fileptr, "%sss.write(struct.unpack('H', %s))\n", header_level, array_item_head->str);
-							break;
-						case BPC_SEMANTIC_BASIC_TYPE_UINT32:
-							fprintf(codegen_fileptr, "%sss.write(struct.unpack('I', %s))\n", header_level, array_item_head->str);
-							break;
-						case BPC_SEMANTIC_BASIC_TYPE_UINT64:
-							fprintf(codegen_fileptr, "%sss.write(struct.unpack('Q', %s))\n", header_level, array_item_head->str);
-							break;
-						case BPC_SEMANTIC_BASIC_TYPE_STRING:
-							fprintf(codegen_fileptr, "%s_binstr = %s.encode(encoding='gb2312', errors='ignore')\n", header_level, array_item_head->str);
-							fprintf(codegen_fileptr, "%sss.write(struct.unpack('I', len(_binstr)))\n", header_level);
-							fprintf(codegen_fileptr, "%sss.write(_binstr)\n", header_level);
-							break;
+					if (underlaying_basic_type == BPC_SEMANTIC_BASIC_TYPE_STRING) {
+						// string is special in basic type
+						BPC_CODEGEN_INDENT_PRINT;
+						fprintf(codegen_fileptr, "_binstr = %s.encode(encoding='gb2312', errors='ignore')", operator_name->str);
+						BPC_CODEGEN_INDENT_PRINT;
+						fprintf(codegen_fileptr, "ss.write(struct.unpack('I', len(_binstr)))");
+						BPC_CODEGEN_INDENT_PRINT;
+						fprintf(codegen_fileptr, "ss.write(_binstr)");
+					} else {
+						// other value can be generated by table search
+						BPC_CODEGEN_INDENT_PRINT;
+						fprintf(codegen_fileptr, "ss.write(struct.unpack('%s', %s))",
+							bpc_codegen_python_struct_pattern[(size_t)underlaying_basic_type],
+							operator_name->str);
 					}
 				} else {
+					// struct serialize
 					// call struct.serialize()
-					fprintf(codegen_fileptr, "%s%s.serialize(ss)\n", header_level, array_item_head->str);
+					BPC_CODEGEN_INDENT_PRINT;
+					fprintf(codegen_fileptr, "%s.serialize(ss)", operator_name->str);
 				}
 
+				// array extra proc
+				if (data->array_prop.is_array) {
+					// shink indent
+					BPC_CODEGEN_INDENT_DEC;
+				}
 			}
+			// func deserialize is over
+			BPC_CODEGEN_INDENT_DEC;
 
-			g_string_free(array_item_head, TRUE);
+			// class define is over
+			BPC_CODEGEN_INDENT_DEC;
+
+			g_string_free(operator_name, TRUE);
 		}
 		break;
 	}
 }
 
 void bpc_codegen_write_opcode() {
+	// define useful variable
+	BPC_CODEGEN_INDENT_INIT;
+	GSList* cursor;
+
 	switch (codegen_spec_lang) {
 		case BPC_SEMANTIC_LANGUAGE_CPP:
 		{
@@ -403,39 +415,55 @@ void bpc_codegen_write_opcode() {
 		break;
 		case BPC_SEMANTIC_LANGUAGE_PYTHON:
 		{
-			GSList* cursor;
-
 			// write opcode enum
-			fprintf(codegen_fileptr, "class opcode():\n");
+			BPC_CODEGEN_INDENT_PRINT;
+			fprintf(codegen_fileptr, "class opcode():"); BPC_CODEGEN_INDENT_INC;
 			for (cursor = codegen_user_defined_token_slist; cursor != NULL; cursor = cursor->next) {
 				BPC_CODEGEN_TOKEN_ENTRY* data = (BPC_CODEGEN_TOKEN_ENTRY*)cursor->data;
 
 				if (data->token_type == BPC_CODEGEN_TOKEN_TYPE_MSG) {
-					fprintf(codegen_fileptr, "\t%s = %d\n", data->token_name, data->token_arranged_index);
+					BPC_CODEGEN_INDENT_PRINT;
+					fprintf(codegen_fileptr, "%s = %d", data->token_name, data->token_arranged_index);
 				}
 			}
+			// class opcode is over
+			BPC_CODEGEN_INDENT_DEC;
 
 			// write uniformed deserialize func
 			bool is_first = true;
-			fprintf(codegen_fileptr, "def uniform_deserialize(ss: io.BytesIO):\n");
-			fprintf(codegen_fileptr, "\t_opcode = _peek_opcode(ss)\n");
+			BPC_CODEGEN_INDENT_PRINT;
+			fprintf(codegen_fileptr, "def uniform_deserialize(ss: io.BytesIO):"); BPC_CODEGEN_INDENT_INC;
+			BPC_CODEGEN_INDENT_PRINT;
+			fprintf(codegen_fileptr, "_opcode = _peek_opcode(ss)");
 			for (cursor = codegen_user_defined_token_slist; cursor != NULL; cursor = cursor->next) {
 				BPC_CODEGEN_TOKEN_ENTRY* data = (BPC_CODEGEN_TOKEN_ENTRY*)cursor->data;
 
 				if (data->token_type == BPC_CODEGEN_TOKEN_TYPE_MSG) {
+					BPC_CODEGEN_INDENT_PRINT;
 					if (is_first) {
-						fprintf(codegen_fileptr, "if _opcode == opcode.%s:\n", data->token_name);
+						fprintf(codegen_fileptr, "if _opcode == opcode.%s:", data->token_name);
 						is_first = false;
 					} else {
-						fprintf(codegen_fileptr, "elif _opcode == opcode.%s:\n", data->token_name);
+						fprintf(codegen_fileptr, "elif _opcode == opcode.%s:", data->token_name);
 					}
 
-					fprintf(codegen_fileptr, "\t\t_data = %s\n", data->token_name);
-					fprintf(codegen_fileptr, "\t\t_data.deserialize(ss)\n");
-					fprintf(codegen_fileptr, "\t\treturn _data\n");
+					// write if body
+					BPC_CODEGEN_INDENT_INC;
+					BPC_CODEGEN_INDENT_PRINT;
+					fprintf(codegen_fileptr, "_data = %s", data->token_name);
+					BPC_CODEGEN_INDENT_PRINT;
+					fprintf(codegen_fileptr, "_data.deserialize(ss)");
+					BPC_CODEGEN_INDENT_PRINT;
+					fprintf(codegen_fileptr, "return _data");
+					BPC_CODEGEN_INDENT_DEC;
 				}
 			}
-			fprintf(codegen_fileptr, "\treturn None\n");
+			// default return
+			BPC_CODEGEN_INDENT_PRINT;
+			fprintf(codegen_fileptr, "return None");
+			// uniform func is over
+			BPC_CODEGEN_INDENT_DEC;
+
 		}
 		break;
 	}
@@ -447,6 +475,25 @@ void bpc_codegen_free_code_file() {
 	}
 	if (codegen_user_defined_token_slist) {
 		g_slist_free_full(codegen_user_defined_token_slist, _bpc_codegen_free_token_entry);
+	}
+}
+
+void _bpc_codegen_get_underlaying_type(BPC_SEMANTIC_MEMBER* token, bool* pout_proc_like_basic_type, BPC_SEMANTIC_BASIC_TYPE* pout_underlaying_basic_type) {
+	if (token->is_basic_type) {
+		*pout_proc_like_basic_type = true;
+		*pout_underlaying_basic_type = token->v_basic_type;
+	} else {
+		// check user defined type
+		// token type will never be msg accoring to syntax define
+		BPC_CODEGEN_TOKEN_ENTRY* entry = bpc_codegen_get_token_entry(token->v_struct_type);
+		if (entry->token_type == BPC_CODEGEN_TOKEN_TYPE_STRUCT) {
+			// struct
+			*pout_proc_like_basic_type = false;
+		} else {
+			// alias and enum
+			*pout_proc_like_basic_type = true;
+			*pout_underlaying_basic_type = entry->token_basic_type;
+		}
 	}
 }
 
