@@ -63,5 +63,8 @@
     <CopyFileToFolders Include="examples\example.bp">
       <Filter>Resources\examples</Filter>
     </CopyFileToFolders>
+        <CopyFileToFolders Include="examples\bmmo.bp">
+      <Filter>Resources\examples</Filter>
+    </CopyFileToFolders>
   </ItemGroup>
 </Project>

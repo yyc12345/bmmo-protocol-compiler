@@ -1,64 +1,110 @@
+// specific bmmo_protocol_compiler version
+// not matched version will abort the process of parsing
 bpc 1;
-language python; // csharp, python, cpp
+
+// specific output language
+// supported language: csharp, python, cpp
+language python;
+
+// namespace property
+// only valid for csharp and cpp
+// but this is essential field. you should fill it even if you don't need it.
 namespace bmmo.data_struct;
 
-/*
-basic type:
-
-float
-double
-
-int8
-int16
-int32
-int64
-uint8
-uint16
-uint32
-uint64
-
-string
-
-repeated item:
-struct and msg allow repeated items
-
-syntax:
-
-TYPE VARIABLE_NAME tuple COUNT;
-or
-TYPE VARIABLE_NAME list;
-or variable sequence
-TYPE VARIABLE_NAME1, VARIABLE_NAME2 list;
-
-it mean that variable1 and variable2 both are dynamic array.
-
-just like python, `tuple` is static array and `list` is dynamic array 
-and its length will be indicated by a uint32_t located at the head of this list.
-
-*/
-
-// second param must be basic type
-alias valvegns_player_uuid uint64;
+// bp file support line-comment
 
 /*
-enum should have at least member,
-however, msg and struct can keep a empty body.
+bp file
+also support block-comment
 */
 
-enum action_denied_reason : uint8 {
-    UnknownReason,
-    NoPermission,
-    InvalidAction,
-    InvalidTarget,
-    TargetNotFound
-}
-struct action_denied {
-    action_denied_reason reason;
-}
-msg action_denied_msg {
-    action_denied data;
+/*
+Bpc supported basic type:
+
+* float
+* double
+* int8
+* int16
+* int32
+* int64
+* uint8
+* uint16
+* uint32
+* uint64
+* string
+*/
+
+/*
+===============   Alias section: ===============
+You can give any alias to any *basic type* with following syntax:
+`alias YOUR_NAME BASIC_TYPE;`
+There are some examples:
+*/
+alias my_type uint32
+alias simple_string string
+
+/*
+===============   Defination section: ===============
+You can define enum, struct or msg in there now.
+Please note their order to prevent undefined token problem.
+*/
+
+/*
+===== Define a enum with following syntax: =====
+enum ENUM_NAME : BASIC_TYPE {
+    enter your enum entries in here with comma to split them...
 }
 
+Please note that `BASIC_TYPE` only can be:
+* int8
+* int16
+* int32
+* int64
+* uint8
+* uint16
+* uint32
+* uint64
+following basic couldn't be used as enum type:
+* float
+* double
+* string
+
+Alias can not be specific as enum type, 
+even if this alias point to a basic type accepted by enum.
+
+*/
+enum weather : uint8 {
+    Sunday,
+    Cloudy,
+    Raining
+}
+
+/*
+===== Define a struct with following syntax: =====
+struct STRUCT_NAME {
+    enter your struct entries...
+}
+
+Each struct entries following next syntax:
+BASIC_TYPE ENTRY_NAME1, ENTRY_NAME2, ENTRY_NAME3;
+
+Each entry can have array suffix:
+BASIC_TYPE ENTRY_NAME tuple 16;
+BASIC_TYPE ENTRY_NAME list;
+BASIC_TYPE ENTRY_NAME1, ENTRY_NAME2 tuple 16;
+BASIC_TYPE ENTRY_NAME1, ENTRY_NAME2 list;
+
+Just like python, `tuple` reference a static array. The number following `tuple` indicate its length.
+`list` reference a dynamic array and its length will be indicated by a uint32_t located at the head of this list.
+And please notice the 3rd and 4th statements, it mean that ENTRY_NAME1 and ENTRY_NAME2 both are array.
+
+In struct, `BASIC_TYPE` do not have any limitation, not like enum.
+
+Each entry also can use other struct, enum and alias type, just like following syntax:
+ENUM_NAME ENTRY_NAME;
+STRUCT_NAME ENTRY_NAME;
+ALIAS_NAME ENTRY_NAME;
+*/
 struct vx_position {
     float x,y,z;
 }
@@ -70,152 +116,19 @@ struct ball_state {
     vx_position position;
     vx_quaternion rotation;
 }
-msg ball_state_msg {
-    ball_state data;
-}
 
-msg chat_msg {
-    valvegns_player_uuid player_id;
-    string chat_content;
-}
-
-struct cheat_state {
-    uint8 cheated;
-    uint8 notify;
-}
-msg cheat_state_msg {
-    cheat_state data;
-}
-
-msg cheat_toggle_msg {
-    cheat_state data;
-}
-
-msg kick_request_msg {
-    string kicked_player_name;
-    valvegns_player_uuid operator_player;
-    string reason;
-}
-
-struct level_finish {
-    valvegns_player_uuid player_id;
-    int32 points,lifes,lifeBonus,levelBonus;
-    float timeElapsed;
-
-    int32 startPoints,currentLevel;
-    uint8 cheated;
-}
-msg level_finish_msg {
-    level_finish data;
-}
-
-enum map_type : uint8 {
-    UnknownType,
-    Original,
-    Custom
-}
-msg level_finish_v2_msg {
-    level_finish v1_data;
-    string map_name;
-    map_type bmap_type;
-    uint8 map_md5 tuple 16;
-}
-
-struct login_accepted {
-    string nickname;
-    valvegns_player_uuid uuid;
-}
-msg login_accepted_msg {
-    login_accepted data list;
-}
-
-struct login_accepted_v2 {
-    valvegns_player_uuid uuid;
-    string nickname;
-    uint8 cheated;
-}
-msg login_accepted_v2_msg {
-    login_accepted_v2 data list;
-}
-
-
-msg login_denied_msg {}
-
-msg login_request_msg {
-    string nickname;
-}
-
-enum bmmo_stage : uint8 {
-    Alpha,
-    Beta,
-    RC,
-    Release
-}
-struct bmmo_version {
-    uint8 major;
-    uint8 minor;
-    uint8 subminor;
-    bmmo_stage stage;
-    uint8 build;
-}
-msg login_request_v2_msg {
-    string nickname;
-    bmmo_version version;
-    uint8 cheated;
-}
-
-msg login_request_v3_msg {
-    string nickname;
-    bmmo_version version;
-    uint8 cheated;
-    uint8 uuid tuple 16;
-}
-
-msg op_state_msg {
-    uint8 op;
-}
-
-struct owned_ball_state {
-    ball_state state;
-    valvegns_player_uuid player_id;
-}
-msg owned_ball_state_msg {
-    owned_ball_state data;
-}
-
-msg owned_ball_state_v2_msg {
-    owned_ball_state data list;
-}
-
-msg owned_cheat_state_msg {
-    cheat_state state;
-    valvegns_player_uuid player_id;
-}
-
-msg owned_cheat_toggle_msg {
-    cheat_state state;
-    valvegns_player_uuid player_id;
-}
-
-msg player_connected_msg {
-    valvegns_player_uuid player_id;
-    string nickname;
-}
-
-msg player_connected_v2_msg {
-    valvegns_player_uuid player_id;
-    string nickname;
-    uint8 cheated;
-}
-
-msg player_disconnected_msg {
-    valvegns_player_uuid player_id;
-}
-
+/*
+===== Define a msg: =====
+msg is very very similar than struct.
+Everything which can be used in struct, also can be used in msg.
+The only different between msg and struct is that:
+bpc will distribute a unique index for each msg to and organize them at the end of output. 
+bpc will group these index as a enum called `opcode`.
+bpc will never distribute any index for struct.
+*/
 msg player_kicked_msg {
     string kicked_player_name;
     string executor_name;
     string reason;
     uint8 crashed;
 }
-
