@@ -171,12 +171,16 @@ void bpc_codegen_write_enum(const char* enum_name, BPC_SEMANTIC_BASIC_TYPE basic
 }
 
 void bpc_codegen_write_struct(const char* struct_name, GSList* member_list) {
-	_bpc_codegen_gen_struct_msg_body(struct_name, member_list, false);
+	_bpc_codegen_gen_struct_msg_body(struct_name, member_list, NULL);
 }
-void bpc_codegen_write_msg(const char* msg_name, GSList* member_list) {
-	_bpc_codegen_gen_struct_msg_body(msg_name, member_list, true);
+void bpc_codegen_write_msg(const char* msg_name, GSList* member_list, bool is_reliable) {
+	BPC_CODEGEN_MSG_EXTRA_PROPS props;
+	props.is_reliable = is_reliable;
+	_bpc_codegen_gen_struct_msg_body(msg_name, member_list, &props);
 }
-void _bpc_codegen_gen_struct_msg_body(const char* token_name, GSList* member_list, bool is_msg) {
+void _bpc_codegen_gen_struct_msg_body(const char* token_name, GSList* member_list, BPC_CODEGEN_MSG_EXTRA_PROPS* msg_prop) {
+	bool is_msg = msg_prop != NULL;
+
 	// generate msg index
 	uint32_t msg_index = 0;
 	if (is_msg) msg_index = codegen_msg_counter++;
@@ -237,6 +241,17 @@ void _bpc_codegen_gen_struct_msg_body(const char* token_name, GSList* member_lis
 				fprintf(codegen_fileptr, "pass");
 			}
 			BPC_CODEGEN_INDENT_DEC;
+
+			// generate reliable getter for msg
+			if (is_msg) {
+				BPC_CODEGEN_INDENT_PRINT;
+				fprintf(codegen_fileptr, "def get_reliable(self) -> bool:"); BPC_CODEGEN_INDENT_INC;
+
+				BPC_CODEGEN_INDENT_PRINT;
+				if (msg_prop->is_reliable) fprintf(codegen_fileptr, "return True");
+				else fprintf(codegen_fileptr, "return False");
+				BPC_CODEGEN_INDENT_DEC;
+			}
 
 			// generate deserialize func
 			BPC_CODEGEN_INDENT_PRINT;

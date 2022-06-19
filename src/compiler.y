@@ -33,6 +33,7 @@ extern int yylex(void);
 	BPC_SEMANTIC_BASIC_TYPE token_basic_type;
 	char* token_name;
 	uint32_t token_num;
+	bool token_bool;
 	GSList* nterm_namespace;	// item is char*
 	GSList* nterm_enum;		// item is char*
 	GSList* nterm_members;	// item is BPC_SEMANTIC_MEMBER*
@@ -40,6 +41,7 @@ extern int yylex(void);
 %token <token_num> BPC_TOKEN_NUM
 %token <token_name> BPC_TOKEN_NAME
 %token <token_basic_type> BPC_BASIC_TYPE
+%token <token_bool> BPC_RELIABLE
 %token BPC_VERSION BPC_NAMESPACE BPC_LANGUAGE
 %token BPC_ALIAS BPC_ENUM BPC_STRUCT BPC_MSG
 %token BPC_ARRAY_TUPLE BPC_ARRAY_LIST
@@ -185,7 +187,7 @@ BPC_RIGHT_BRACKET
 };
 
 bpc_msg:
-BPC_MSG BPC_TOKEN_NAME[sdd_msg_name] BPC_LEFT_BRACKET
+BPC_MSG BPC_TOKEN_NAME[sdd_msg_name] BPC_COLON BPC_RELIABLE[sdd_is_reliable] BPC_LEFT_BRACKET
 bpc_member_collection
 BPC_RIGHT_BRACKET
 {
@@ -196,7 +198,7 @@ BPC_RIGHT_BRACKET
 	}
 
 	// gen code for msg
-	bpc_codegen_write_msg($sdd_msg_name, $bpc_member_collection);
+	bpc_codegen_write_msg($sdd_msg_name, $bpc_member_collection, $sdd_is_reliable);
 	// and free name and member list
 	g_free($sdd_msg_name);
 	bpc_destructor_semantic_member_slist($bpc_member_collection);

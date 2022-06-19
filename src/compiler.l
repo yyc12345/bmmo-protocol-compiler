@@ -3,6 +3,7 @@
 #include <io.h>
 #include "y.tab.h"
 #include "bpc_semantic_values.h"
+#include <stdbool.h>
 
 // https://www.techtalk7.com/how-does-flex-support-bison-location-exactly/
 #define YY_USER_ACTION \
@@ -79,6 +80,10 @@ TOKEN_NAME		[a-zA-Z][a-zA-Z0-9_]*
 }
 "list" {
 	return BPC_ARRAY_LIST;
+}
+"reliable"|"unreliable" {
+	yylval.token_bool = !strcmp(yytext, "reliable");
+	return BPC_RELIABLE;
 }
 ":" {
 	return BPC_COLON;
