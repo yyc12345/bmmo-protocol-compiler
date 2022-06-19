@@ -6,9 +6,9 @@ alias valvegns_player_uuid uint64;
 
 // ============= basic msg chapter
 
-msg none_msg {} // not used
+msg none_msg : reliable {} // not used
 
-msg login_request_msg {
+msg login_request_msg : reliable {
     string nickname;
 }
 
@@ -16,22 +16,22 @@ struct login_accepted {
     string nickname;
     valvegns_player_uuid uuid;
 }
-msg login_accepted_msg {
+msg login_accepted_msg : reliable {
     login_accepted data list;
 }
 
-msg login_denied_msg {}
+msg login_denied_msg : reliable {}
 
-msg player_disconnected_msg {
+msg player_disconnected_msg : reliable {
     valvegns_player_uuid player_id;
 }
 
-msg player_connected_msg {
+msg player_connected_msg : reliable {
     valvegns_player_uuid player_id;
     string nickname;
 }
 
-msg ping_msg {} // not used
+msg ping_msg : reliable {} // not used
 
 struct vx_position {
     float x,y,z;
@@ -44,7 +44,7 @@ struct ball_state {
     vx_position position;
     vx_quaternion rotation;
 }
-msg ball_state_msg {
+msg ball_state_msg : unreliable {
     ball_state data;
 }
 
@@ -52,13 +52,13 @@ struct owned_ball_state {
     ball_state state;
     valvegns_player_uuid player_id;
 }
-msg owned_ball_state_msg {
+msg owned_ball_state_msg : unreliable {
     owned_ball_state data;
 }
 
-msg keyboard_input_msg {} // not used
+msg keyboard_input_msg : reliable {} // not used
 
-msg chat_msg {
+msg chat_msg : reliable {
     valvegns_player_uuid player_id;
     string chat_content;
 }
@@ -71,7 +71,7 @@ struct level_finish {
     int32 startPoints,currentLevel;
     uint8 cheated;
 }
-msg level_finish_msg {
+msg level_finish_msg : reliable {
     level_finish data;
 }
 
@@ -90,7 +90,7 @@ struct bmmo_version {
     bmmo_stage stage;
     uint8 build;
 }
-msg login_request_v2_msg {
+msg login_request_v2_msg : reliable {
     string nickname;
     bmmo_version version;
     uint8 cheated;
@@ -101,11 +101,11 @@ struct login_accepted_v2 {
     string nickname;
     uint8 cheated;
 }
-msg login_accepted_v2_msg {
+msg login_accepted_v2_msg : reliable {
     login_accepted_v2 data list;
 }
 
-msg player_connected_v2_msg {
+msg player_connected_v2_msg : reliable {
     valvegns_player_uuid player_id;
     string nickname;
     uint8 cheated;
@@ -115,33 +115,33 @@ struct cheat_state {
     uint8 cheated;
     uint8 notify;
 }
-msg cheat_state_msg {
+msg cheat_state_msg : reliable {
     cheat_state data;
 }
 
-msg owned_cheat_state_msg {
+msg owned_cheat_state_msg : reliable {
     cheat_state state;
     valvegns_player_uuid player_id;
 }
 
-msg cheat_toggle_msg {
+msg cheat_toggle_msg : reliable {
     cheat_state data;
 }
 
-msg owned_cheat_toggle_msg {
+msg owned_cheat_toggle_msg : reliable {
     cheat_state state;
     valvegns_player_uuid player_id;
 }
 
 // ============= v3.2 kick update chapter
 
-msg kick_request_msg {
+msg kick_request_msg : reliable {
     string kicked_player_name;
     valvegns_player_uuid operator_player;
     string reason;
 }
 
-msg player_kicked_msg {
+msg player_kicked_msg : reliable {
     string kicked_player_name;
     string executor_name;
     string reason;
@@ -150,11 +150,11 @@ msg player_kicked_msg {
 
 // ============= v3.2 bandwidth reduce & map hash update chapter
 
-msg owned_ball_state_v2_msg {
+msg owned_ball_state_v2_msg : reliable {
     owned_ball_state data list;
 }
 
-msg login_request_v3_msg {
+msg login_request_v3_msg : reliable {
     string nickname;
     bmmo_version version;
     uint8 cheated;
@@ -166,7 +166,7 @@ enum map_type : uint8 {
     Original,
     Custom
 }
-msg level_finish_v2_msg {
+msg level_finish_v2_msg : reliable {
     level_finish v1_data;
     string map_name;
     map_type bmap_type;
@@ -185,10 +185,10 @@ enum action_denied_reason : uint8 {
 struct action_denied {
     action_denied_reason reason;
 }
-msg action_denied_msg {
+msg action_denied_msg : reliable {
     action_denied data;
 }
 
-msg op_state_msg {
+msg op_state_msg : reliable {
     uint8 op;
 }

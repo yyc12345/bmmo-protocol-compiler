@@ -125,8 +125,9 @@ The only different between msg and struct is that:
 bpc will distribute a unique index for each msg to and organize them at the end of output. 
 bpc will group these index as a enum called `opcode`.
 bpc will never distribute any index for struct.
+msg requires a extra field called reliability. The valid value of it are `reliable` or `unreliable`
 */
-msg player_kicked_msg {
+msg player_kicked_msg : reliable {
     string kicked_player_name;
     string executor_name;
     string reason;
