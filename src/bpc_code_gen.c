@@ -242,14 +242,24 @@ void _bpc_codegen_gen_struct_msg_body(const char* token_name, GSList* member_lis
 			}
 			BPC_CODEGEN_INDENT_DEC;
 
-			// generate reliable getter for msg
+			// generate reliable getter and opcode getter for msg
 			if (is_msg) {
+				// reliable
 				BPC_CODEGEN_INDENT_PRINT;
 				fprintf(codegen_fileptr, "def get_reliable(self) -> bool:"); BPC_CODEGEN_INDENT_INC;
 
 				BPC_CODEGEN_INDENT_PRINT;
 				if (msg_prop->is_reliable) fprintf(codegen_fileptr, "return True");
 				else fprintf(codegen_fileptr, "return False");
+				BPC_CODEGEN_INDENT_DEC;
+
+				// opcode
+				BPC_CODEGEN_INDENT_PRINT;
+				fprintf(codegen_fileptr, "def get_opcode(self) -> int:"); 
+				
+				BPC_CODEGEN_INDENT_INC;
+				BPC_CODEGEN_INDENT_PRINT;
+				fprintf(codegen_fileptr, "return %d", msg_index);
 				BPC_CODEGEN_INDENT_DEC;
 			}
 
@@ -302,7 +312,7 @@ void _bpc_codegen_gen_struct_msg_body(const char* token_name, GSList* member_lis
 					if (underlaying_basic_type == BPC_SEMANTIC_BASIC_TYPE_STRING) {
 						// string is special
 						BPC_CODEGEN_INDENT_PRINT;
-						fprintf(codegen_fileptr, "_strlen = struct.unpack('f', ss.read(4))[0]");
+						fprintf(codegen_fileptr, "_strlen = struct.unpack('I', ss.read(4))[0]");
 						BPC_CODEGEN_INDENT_PRINT;
 						fprintf(codegen_fileptr, "%s = ss.read(_strlen).decode(encoding='gb2312', errors='ignore')", operator_name->str);
 					} else {

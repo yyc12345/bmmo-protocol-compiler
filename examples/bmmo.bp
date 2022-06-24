@@ -2,7 +2,12 @@ bpc 1;
 language python;
 namespace bmmo.data_struct;
 
-alias valvegns_player_uuid uint64;
+// assume:
+// bpbool -> uint8
+// bpint -> int32
+alias valvegns_player_uuid uint32;
+alias bpbool uint8;
+alias bpint int32;
 
 // ============= basic msg chapter
 
@@ -63,16 +68,13 @@ msg chat_msg : reliable {
     string chat_content;
 }
 
-struct level_finish {
+msg level_finish_msg : reliable {
     valvegns_player_uuid player_id;
     int32 points,lifes,lifeBonus,levelBonus;
     float timeElapsed;
 
     int32 startPoints,currentLevel;
-    uint8 cheated;
-}
-msg level_finish_msg : reliable {
-    level_finish data;
+    bpbool cheated;
 }
 
 // ============= v3.1 cheat update chapter
@@ -91,8 +93,8 @@ struct bmmo_version {
     uint8 build;
 }
 msg login_request_v2_msg : reliable {
-    string nickname;
     bmmo_version version;
+    string nickname;
     uint8 cheated;
 }
 
@@ -106,9 +108,7 @@ msg login_accepted_v2_msg : reliable {
 }
 
 msg player_connected_v2_msg : reliable {
-    valvegns_player_uuid player_id;
-    string nickname;
-    uint8 cheated;
+    login_accepted_v2 data;
 }
 
 struct cheat_state {
@@ -155,8 +155,8 @@ msg owned_ball_state_v2_msg : reliable {
 }
 
 msg login_request_v3_msg : reliable {
-    string nickname;
     bmmo_version version;
+    string nickname;
     uint8 cheated;
     uint8 uuid tuple 16;
 }
@@ -166,11 +166,22 @@ enum map_type : uint8 {
     Original,
     Custom
 }
-msg level_finish_v2_msg : reliable {
-    level_finish v1_data;
-    string map_name;
+struct map {
     map_type bmap_type;
+    string map_name;
     uint8 map_md5 tuple 16;
+    uint32 map_level;
+}
+msg level_finish_v2_msg : reliable {
+    valvegns_player_uuid player_id;
+    int32 points,lifes,lifeBonus,levelBonus;
+    float timeElapsed;
+
+    int32 startPoints;
+    bpbool cheated;
+    
+    map bmap;
+    bpint rank;
 }
 
 // ============= v3.2 op permission update chapter
@@ -191,4 +202,21 @@ msg action_denied_msg : reliable {
 
 msg op_state_msg : reliable {
     uint8 op;
+}
+
+// ============= v3.2 sync-restart update chapter
+
+enum countdown_type: uint8 {
+    CountdownType_Go,
+    CountdownType_1,
+    CountdownType_2,
+    CountdownType_3,
+    CountdownType_Unknown
+}
+msg countdown_msg : reliable {
+    countdown_type cd_type;
+    valvegns_player_uuid sender;
+    map for_map;
+    uint8 restart_level;
+    uint8 force_restart;
 }
