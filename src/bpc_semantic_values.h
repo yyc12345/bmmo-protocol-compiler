@@ -31,6 +31,10 @@ typedef struct _BPC_SEMANTIC_MEMBER_ARRAY_PROP {
 	bool is_static_array;
 	uint32_t array_len;
 }BPC_SEMANTIC_MEMBER_ARRAY_PROP;
+typedef struct _BPC_SEMANTIC_MEMBER_ALIGN_PROP {
+	bool use_align;
+	uint32_t padding_size;
+}BPC_SEMANTIC_MEMBER_ALIGN_PROP;
 
 typedef struct _BPC_SEMANTIC_MEMBER {
 	bool is_basic_type;
@@ -40,6 +44,7 @@ typedef struct _BPC_SEMANTIC_MEMBER {
 	char* vname;
 
 	BPC_SEMANTIC_MEMBER_ARRAY_PROP array_prop;
+	BPC_SEMANTIC_MEMBER_ALIGN_PROP align_prop;
 }BPC_SEMANTIC_MEMBER;
 
 
@@ -54,3 +59,4 @@ void bpc_destructor_string(gpointer rawptr);
 void bpc_destructor_string_slist(GSList* list);
 
 void bpc_lambda_semantic_member_copy_array_prop(gpointer raw_item, gpointer raw_data);
+void bpc_lambda_semantic_member_copy_align_prop(gpointer raw_item, gpointer raw_data);

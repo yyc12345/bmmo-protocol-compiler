@@ -85,6 +85,9 @@ TOKEN_NAME		[a-zA-Z][a-zA-Z0-9_]*
 	yylval.token_bool = !strcmp(yytext, "reliable");
 	return BPC_RELIABLE;
 }
+"align" {
+	return BPC_ALIGN;
+}
 ":" {
 	return BPC_COLON;
 }

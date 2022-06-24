@@ -45,11 +45,12 @@ extern int yylex(void);
 %token BPC_VERSION BPC_NAMESPACE BPC_LANGUAGE
 %token BPC_ALIAS BPC_ENUM BPC_STRUCT BPC_MSG
 %token BPC_ARRAY_TUPLE BPC_ARRAY_LIST
+%token BPC_ALIGN
 %token BPC_COLON BPC_COMMA BPC_SEMICOLON BPC_LEFT_BRACKET BPC_RIGHT_BRACKET BPC_DOT
 
 %nterm <nterm_namespace> bpc_namespace_chain
 %nterm <nterm_enum> bpc_enum_body
-%nterm <nterm_members> bpc_member_collection bpc_member_array bpc_member
+%nterm <nterm_members> bpc_member_collection bpc_member_with_align bpc_member_with_array bpc_member
 
 %destructor { bpc_destructor_string_slist($$); } <nterm_namespace>
 %destructor { bpc_destructor_string_slist($$); } <nterm_enum> 
@@ -210,13 +211,36 @@ bpc_member_collection:
 	$$ = NULL;
 }
 |
-bpc_member_collection[sdd_old_members] bpc_member_array
+bpc_member_collection[sdd_old_members] bpc_member_with_align
 {
-	$$ = g_slist_concat($sdd_old_members, $bpc_member_array);
+	$$ = g_slist_concat($sdd_old_members, $bpc_member_with_align);
 };
 
-bpc_member_array:
-bpc_member BPC_SEMICOLON
+bpc_member_with_align:
+bpc_member_with_array BPC_SEMICOLON
+{
+	BPC_SEMANTIC_MEMBER_ALIGN_PROP data;
+	data.use_align = false;
+	data.padding_size = 0;
+
+	// apply array prop and move list
+	g_slist_foreach($bpc_member_with_array, bpc_lambda_semantic_member_copy_align_prop, &data);
+	$$ = $bpc_member_with_array;
+}
+|
+bpc_member_with_array BPC_ALIGN BPC_TOKEN_NUM[sdd_expected_size] BPC_SEMICOLON
+{
+	BPC_SEMANTIC_MEMBER_ALIGN_PROP data;
+	data.use_align = true;
+	data.padding_size = (uint32_t)$sdd_expected_size;
+
+	// apply array prop and move list
+	g_slist_foreach($bpc_member_with_array, bpc_lambda_semantic_member_copy_align_prop, &data);
+	$$ = $bpc_member_with_array;
+};
+
+bpc_member_with_array:
+bpc_member
 {
 	BPC_SEMANTIC_MEMBER_ARRAY_PROP data;
 	data.is_array = false;
@@ -228,7 +252,7 @@ bpc_member BPC_SEMICOLON
 	$$ = $bpc_member;
 }
 |
-bpc_member BPC_ARRAY_TUPLE BPC_TOKEN_NUM[sdd_count] BPC_SEMICOLON
+bpc_member BPC_ARRAY_TUPLE BPC_TOKEN_NUM[sdd_count]
 {
 	BPC_SEMANTIC_MEMBER_ARRAY_PROP data;
 	data.is_array = true;
@@ -240,7 +264,7 @@ bpc_member BPC_ARRAY_TUPLE BPC_TOKEN_NUM[sdd_count] BPC_SEMICOLON
 	$$ = $bpc_member;
 }
 |
-bpc_member BPC_ARRAY_LIST BPC_SEMICOLON
+bpc_member BPC_ARRAY_LIST
 {
 	BPC_SEMANTIC_MEMBER_ARRAY_PROP data;
 	data.is_array = true;

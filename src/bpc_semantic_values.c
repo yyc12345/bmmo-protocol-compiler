@@ -83,3 +83,13 @@ void bpc_lambda_semantic_member_copy_array_prop(gpointer raw_item, gpointer raw_
 	ptr->array_prop.is_static_array = data->is_static_array;
 	ptr->array_prop.array_len = data->array_len;
 }
+
+void bpc_lambda_semantic_member_copy_align_prop(gpointer raw_item, gpointer raw_data) {
+	if (raw_data == NULL || raw_item == NULL) return;
+
+	BPC_SEMANTIC_MEMBER* ptr = (BPC_SEMANTIC_MEMBER*)raw_item;
+	BPC_SEMANTIC_MEMBER_ALIGN_PROP* data = (BPC_SEMANTIC_MEMBER_ALIGN_PROP*)raw_data;
+
+	ptr->align_prop.use_align = data->use_align;
+	ptr->align_prop.padding_size = data->padding_size;
+}

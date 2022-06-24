@@ -120,7 +120,7 @@ msg cheat_state_msg : reliable {
 }
 
 msg owned_cheat_state_msg : reliable {
-    cheat_state state;
+    cheat_state state align 2;
     valvegns_player_uuid player_id;
 }
 
@@ -129,7 +129,7 @@ msg cheat_toggle_msg : reliable {
 }
 
 msg owned_cheat_toggle_msg : reliable {
-    cheat_state state;
+    cheat_state state align 2;
     valvegns_player_uuid player_id;
 }
 

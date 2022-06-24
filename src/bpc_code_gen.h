@@ -44,7 +44,7 @@ void bpc_codegen_free_code_file();
 // end call in order
 
 
-
+//uint32_t _bpc_codegen_get_align_padding_size(BPC_SEMANTIC_MEMBER* token);
 void _bpc_codegen_get_underlaying_type(BPC_SEMANTIC_MEMBER* token, bool* pout_proc_like_basic_type, BPC_SEMANTIC_BASIC_TYPE* pout_underlaying_basic_type);
 void _bpc_codegen_gen_struct_msg_body(const char* token_name, GSList* member_list, BPC_CODEGEN_MSG_EXTRA_PROPS* msg_prop);
 void _bpc_codegen_copy_template(const char* template_code_file_path);

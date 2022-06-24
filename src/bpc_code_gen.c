@@ -1,6 +1,10 @@
 #include "bpc_code_gen.h"
 #include <stdio.h>
 
+//const uint32_t bpc_codegen_basic_type_size[] = {
+//	4, 8, 1, 2, 4, 8, 1, 2, 4, 8
+//};
+
 const char* bpc_codegen_python_struct_pattern[] = {
 	"f",
 	"d",
@@ -331,6 +335,11 @@ void _bpc_codegen_gen_struct_msg_body(const char* token_name, GSList* member_lis
 					BPC_CODEGEN_INDENT_PRINT;
 					fprintf(codegen_fileptr, "%s.deserialize(ss)", operator_name->str);
 				}
+				// compute align data
+				if (data->align_prop.use_align) {
+					BPC_CODEGEN_INDENT_PRINT;
+					fprintf(codegen_fileptr, "ss.read(%d)", data->align_prop.padding_size);
+				}
 
 				// array extra proc
 				if (data->array_prop.is_array) {
@@ -412,6 +421,11 @@ void _bpc_codegen_gen_struct_msg_body(const char* token_name, GSList* member_lis
 					// call struct.serialize()
 					BPC_CODEGEN_INDENT_PRINT;
 					fprintf(codegen_fileptr, "%s.serialize(ss)", operator_name->str);
+				}
+				// compute align size
+				if (data->align_prop.use_align) {
+					BPC_CODEGEN_INDENT_PRINT;
+					fprintf(codegen_fileptr, "ss.write(b'\\0' * %d)", data->align_prop.padding_size);
 				}
 
 				// array extra proc
@@ -522,6 +536,14 @@ void bpc_codegen_free_code_file() {
 		g_slist_free_full(codegen_user_defined_token_slist, _bpc_codegen_free_token_entry);
 	}
 }
+
+//uint32_t _bpc_codegen_get_align_padding_size(BPC_SEMANTIC_MEMBER* token, BPC_SEMANTIC_BASIC_TYPE underlaying_type) {
+//	if (!token->align_prop.use_align) return 0;
+//	int32_t original_size = bpc_codegen_basic_type_size[underlaying_type];
+//	int32_t padding_size = token->align_prop.expected_size - original_size;
+//	if (padding_size > 0) return (uint32_t)padding_size;
+//	else return 0u;
+//}
 
 void _bpc_codegen_get_underlaying_type(BPC_SEMANTIC_MEMBER* token, bool* pout_proc_like_basic_type, BPC_SEMANTIC_BASIC_TYPE* pout_underlaying_basic_type) {
 	if (token->is_basic_type) {
