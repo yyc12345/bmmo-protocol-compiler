@@ -2,21 +2,33 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros">
-    <GLIB_INCLUDE>D:\CppLib\GLib\include\glib-2.0</GLIB_INCLUDE>
-    <GLIB_LIB>D:\CppLib\GLib\lib</GLIB_LIB>
-    <GLIB_EXTRA_INCLUDE>D:\CppLib\GLib\lib\glib-2.0\include</GLIB_EXTRA_INCLUDE>
+    <GLIB_WIN32_INCLUDE>D:\CppLib\GLib\Win32\include\glib-2.0</GLIB_WIN32_INCLUDE>
+    <GLIB_WIN32_LIB>D:\CppLib\GLib\Win32\lib</GLIB_WIN32_LIB>
+    <GLIB_WIN32_EXTRA_INCLUDE>D:\CppLib\GLib\Win32\lib\glib-2.0\include</GLIB_WIN32_EXTRA_INCLUDE>
+    <GLIB_WIN64_INCLUDE>D:\CppLib\GLib\x64\include\glib-2.0</GLIB_WIN64_INCLUDE>
+    <GLIB_WIN64_LIB>D:\CppLib\GLib\x64\lib</GLIB_WIN64_LIB>
+    <GLIB_WIN64_EXTRA_INCLUDE>D:\CppLib\GLib\x64\lib\glib-2.0\include</GLIB_WIN64_EXTRA_INCLUDE>
   </PropertyGroup>
   <PropertyGroup />
   <ItemDefinitionGroup />
   <ItemGroup>
-    <BuildMacro Include="GLIB_INCLUDE">
-      <Value>$(GLIB_INCLUDE)</Value>
+    <BuildMacro Include="GLIB_WIN32_INCLUDE">
+      <Value>$(GLIB_WIN32_INCLUDE)</Value>
     </BuildMacro>
-    <BuildMacro Include="GLIB_LIB">
-      <Value>$(GLIB_LIB)</Value>
+    <BuildMacro Include="GLIB_WIN32_LIB">
+      <Value>$(GLIB_WIN32_LIB)</Value>
     </BuildMacro>
-    <BuildMacro Include="GLIB_EXTRA_INCLUDE">
-      <Value>$(GLIB_EXTRA_INCLUDE)</Value>
+    <BuildMacro Include="GLIB_WIN32_EXTRA_INCLUDE">
+      <Value>$(GLIB_WIN32_EXTRA_INCLUDE)</Value>
+    </BuildMacro>
+    <BuildMacro Include="GLIB_WIN64_INCLUDE">
+      <Value>$(GLIB_WIN64_INCLUDE)</Value>
+    </BuildMacro>
+    <BuildMacro Include="GLIB_WIN64_LIB">
+      <Value>$(GLIB_WIN64_LIB)</Value>
+    </BuildMacro>
+    <BuildMacro Include="GLIB_WIN64_EXTRA_INCLUDE">
+      <Value>$(GLIB_WIN64_EXTRA_INCLUDE)</Value>
     </BuildMacro>
   </ItemGroup>
 </Project>

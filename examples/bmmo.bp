@@ -167,8 +167,8 @@ enum map_type : uint8 {
     Custom
 }
 struct map {
-    map_type bmap_type;
     string map_name;
+    map_type bmap_type;
     uint8 map_md5 tuple 16;
     uint32 map_level;
 }
