@@ -36,6 +36,9 @@
     <ClCompile Include="src\bpc_code_gen.c">
       <Filter>Sources</Filter>
     </ClCompile>
+    <ClCompile Include="src\bpc_cmd.c">
+      <Filter>Sources</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="src\compiler.l">
@@ -55,6 +58,12 @@
     <ClInclude Include="src\bpc_code_gen.h">
       <Filter>Headers</Filter>
     </ClInclude>
+    <ClInclude Include="src\bpc_cmd.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\bpc_ver.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="snippets\header.py">
@@ -63,7 +72,7 @@
     <CopyFileToFolders Include="examples\example.bp">
       <Filter>Resources\examples</Filter>
     </CopyFileToFolders>
-        <CopyFileToFolders Include="examples\bmmo.bp">
+    <CopyFileToFolders Include="examples\bmmo.bp">
       <Filter>Resources\examples</Filter>
     </CopyFileToFolders>
   </ItemGroup>

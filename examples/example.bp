@@ -2,10 +2,6 @@
 // not matched version will abort the process of parsing
 bpc 1;
 
-// specific output language
-// supported language: csharp, python, cpp
-language python;
-
 // namespace property
 // only valid for csharp and cpp
 // but this is essential field. you should fill it even if you don't need it.

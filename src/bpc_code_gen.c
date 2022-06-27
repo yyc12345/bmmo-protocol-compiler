@@ -6,28 +6,10 @@
 //};
 
 const char* bpc_codegen_python_struct_pattern[] = {
-	"f",
-	"d",
-	"b",
-	"h",
-	"i",
-	"q",
-	"B",
-	"H",
-	"I",
-	"Q"
+	"f", "d", "b", "h", "i", "q", "B", "H", "I", "Q"
 };
 const char* bpc_codegen_python_struct_pattern_len[] = {
-	"4",
-	"8",
-	"1",
-	"2",
-	"4",
-	"8",
-	"1",
-	"2",
-	"4",
-	"8"
+	"4", "8", "1", "2", "4", "8", "1", "2", "4", "8"
 };
 
 
@@ -41,8 +23,8 @@ uint32_t codegen_msg_counter = 0;
 #define BPC_CODEGEN_INDENT_DEC --_indent_level;
 #define BPC_CODEGEN_INDENT_PRINT fputc('\n', codegen_fileptr); for(_indent_loop=0;_indent_loop<_indent_level;++_indent_loop) fputc('\t', codegen_fileptr);
 
-bool bpc_codegen_init_code_file(const char* filepath) {
-	codegen_fileptr = fopen(filepath, "w+");
+bool bpc_codegen_init_code_file(BPC_CMD_PARSED_ARGS * bpc_args) {
+	codegen_fileptr = bpc_args->out_python_path;
 	if (codegen_fileptr == NULL) return false;
 
 	codegen_user_defined_token_slist = NULL;
@@ -50,23 +32,23 @@ bool bpc_codegen_init_code_file(const char* filepath) {
 	return true;
 }
 
-void bpc_codegen_init_language(BPC_SEMANTIC_LANGUAGE lang) {
-	codegen_spec_lang = lang;
-	switch (codegen_spec_lang) {
-		case BPC_SEMANTIC_LANGUAGE_CPP:
-			printf("[Warning] Cpp code gen is unsupported now. It will come soon.\n");
-			break;
-		case BPC_SEMANTIC_LANGUAGE_CSHARP:
-			printf("[Warning] Csharp code gen is unsupported now. It will come soon.\n");
-			break;
-		case BPC_SEMANTIC_LANGUAGE_PYTHON:
-			_bpc_codegen_copy_template("snippets/header.py");
-			break;
-		default:
-			printf("[Warning] Unknow language type.\n");
-			break;
-	}
-}
+//void bpc_codegen_init_language(BPC_SEMANTIC_LANGUAGE lang) {
+//	codegen_spec_lang = lang;
+//	switch (codegen_spec_lang) {
+//		case BPC_SEMANTIC_LANGUAGE_CPP:
+//			printf("[Warning] Cpp code gen is unsupported now. It will come soon.\n");
+//			break;
+//		case BPC_SEMANTIC_LANGUAGE_CSHARP:
+//			printf("[Warning] Csharp code gen is unsupported now. It will come soon.\n");
+//			break;
+//		case BPC_SEMANTIC_LANGUAGE_PYTHON:
+//			_bpc_codegen_copy_template("snippets/header.py");
+//			break;
+//		default:
+//			printf("[Warning] Unknow language type.\n");
+//			break;
+//	}
+//}
 
 void bpc_codegen_init_namespace(GSList* namespace_chain) {
 	switch (codegen_spec_lang) {

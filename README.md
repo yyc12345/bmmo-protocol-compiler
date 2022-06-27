@@ -38,16 +38,20 @@ Considering Google Protobuf, this project is not suit for production environment
 
 ## Usage
 
-Syntax: `bmmo_protocol_compiler [input_file] [generation_switch]`
+Syntax: `bmmo_protocol_compiler [switches]`
 
-Available generation switch:
-
+### Basic Switches
 * `-v --version`: Show compiler version.
 * `-h --help`: Print help page.
-* `-p --python PATH`: Generate a Python code file in `PATH`
-* `-c --cs PATH`: Generate a C\# code file in `PATH`
-* `-d --cpp-header PATH`: Generate a C++ header file in `PATH`
+* `-i --input PATH`: Specific input file in `PATH`.
+
+### Output Switches
+* `-p --python PATH`: Generate a Python code file in `PATH`.
+* `-c --cs PATH`: Generate a C\# code file in `PATH`.
+* `-d --cpp-header PATH`: Generate a C++ header file in `PATH`.
 * `-s --cpp-source PATH`: Generate a C++ source file in `PATH`.
+
+### Annotations
 
 `-d` and `-s` both are usually used together to generate full C++ code file.  
 If there are no any generation switches chosen, the compiler will only check the syntax of the input file.  

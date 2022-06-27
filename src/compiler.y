@@ -7,10 +7,11 @@
 #include <stdbool.h>
 #include "bpc_semantic_values.h"
 #include "bpc_code_gen.h"
+#include "bpc_cmd.h"
 }
 
 %code provides {
-int run_compiler(const char* srcfile, const char* destfile);
+int run_compiler(BPC_CMD_PARSED_ARGS* bpc_args);
 }
 
 %code {
@@ -42,7 +43,7 @@ extern int yylex(void);
 %token <token_name> BPC_TOKEN_NAME
 %token <token_basic_type> BPC_BASIC_TYPE
 %token <token_bool> BPC_RELIABLE
-%token BPC_VERSION BPC_NAMESPACE BPC_LANGUAGE
+%token BPC_VERSION BPC_NAMESPACE
 %token BPC_ALIAS BPC_ENUM BPC_STRUCT BPC_MSG
 %token BPC_ARRAY_TUPLE BPC_ARRAY_LIST
 %token BPC_ALIGN
@@ -59,7 +60,7 @@ extern int yylex(void);
 %%
 
 bpc_document:
-bpc_version bpc_language bpc_namespace bpc_alias_group bpc_define_group
+bpc_version bpc_namespace bpc_alias_group bpc_define_group
 {
 	// finish parsing
 	bpc_codegen_write_opcode();
@@ -72,18 +73,6 @@ BPC_VERSION BPC_TOKEN_NUM[sdd_version_num] BPC_SEMICOLON
 		bpc_yyerror("[Error] unsupported version: %d. expecting: %d.", $sdd_version_num, BPC_COMPILER_VERSION);
 		YYABORT;
 	}
-};
-
-bpc_language:
-BPC_LANGUAGE BPC_TOKEN_NAME[sdd_lang_name] BPC_SEMICOLON 
-{
-	BPC_SEMANTIC_LANGUAGE lang = bpc_parse_language_string($sdd_lang_name);
-	if (lang == -1) {
-		bpc_yyerror("[Error] unsupported language: %s", $sdd_lang_name);
-		YYABORT;
-	}
-
-	bpc_codegen_init_language(lang);
 };
 
 bpc_namespace:
@@ -355,16 +344,16 @@ void bpc_yyerror(const char* format, ...) {
 	g_string_free(buf, TRUE);
 }
 
-int run_compiler(const char* srcfile, const char* destfile) {
+int run_compiler(BPC_CMD_PARSED_ARGS* bpc_args) {
 	// setup parameters
 	yyout = stdout;
-	yyin = fopen(srcfile, "r+");
+	yyin = bpc_args->input_file;
 	if (yyin == NULL) {
-		fprintf(yyout, "[Error] Fail to open src file: %s\n", srcfile);
+		fprintf(yyout, "[Error] Fail to open src file.\n");
 		return 1;
 	}
-	if (!bpc_codegen_init_code_file(destfile)) {
-		fprintf(yyout, "[Error] Fail to open dest file: %s\n", destfile);
+	if (!bpc_codegen_init_code_file(bpc_args)) {
+		fprintf(yyout, "[Error] Fail to open dest file.\n");
 
 		fclose(yyin);
 		yyin = stdin;

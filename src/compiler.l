@@ -56,9 +56,6 @@ TOKEN_NAME		[a-zA-Z][a-zA-Z0-9_]*
 "namespace" {
 	return BPC_NAMESPACE;
 }
-"language" {
-	return BPC_LANGUAGE;
-}
 "alias" {
 	return BPC_ALIAS;
 }

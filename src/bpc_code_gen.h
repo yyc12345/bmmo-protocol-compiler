@@ -3,6 +3,7 @@
 #include "bpc_semantic_values.h"
 #include <stdint.h>
 #include <stdbool.h>
+#include "bpc_cmd.h"
 
 typedef enum _BPC_CODEGEN_TOKEN_TYPE {
 	BPC_CODEGEN_TOKEN_TYPE_ENUM,
@@ -26,8 +27,7 @@ typedef struct _BPC_CODEGEN_MSG_EXTRA_PROPS {
 
 
 // call in order
-bool bpc_codegen_init_code_file(const char* filepath);
-void bpc_codegen_init_language(BPC_SEMANTIC_LANGUAGE lang);
+bool bpc_codegen_init_code_file(BPC_CMD_PARSED_ARGS* bpc_args);
 void bpc_codegen_init_namespace(GSList* namespace_chain);
 // end call in order
 

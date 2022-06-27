@@ -1,5 +1,4 @@
 bpc 1;
-language python;
 namespace bmmo.data_struct;
 
 // assume:

@@ -180,6 +180,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\bmmo_protocol_compiler.c" />
+    <ClCompile Include="src\bpc_cmd.c" />
     <ClCompile Include="src\bpc_code_gen.c" />
     <ClCompile Include="src\bpc_semantic_values.c" />
     <ClCompile Include="src\lex.yy.c" />
@@ -214,8 +215,10 @@
     <None Include="src\compiler.y" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\bpc_cmd.h" />
     <ClInclude Include="src\bpc_code_gen.h" />
     <ClInclude Include="src\bpc_semantic_values.h" />
+    <ClInclude Include="src\bpc_ver.h" />
     <ClInclude Include="src\y.tab.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
