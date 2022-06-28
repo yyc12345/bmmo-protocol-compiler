@@ -1,13 +1,6 @@
 #include "bpc_semantic_values.h"
 
-const char* language_dict[] = {
-	"csharp",
-	"python",
-	"cpp"
-};
-const size_t language_dict_len = sizeof(language_dict) / sizeof(char*);
-
-const char* basic_type_dict[] = {
+static const char* basic_type_dict[] = {
 	"float",
 	"double",
 
@@ -22,34 +15,24 @@ const char* basic_type_dict[] = {
 
 	"string"
 };
-const size_t basic_type_dict_len = sizeof(basic_type_dict) / sizeof(char*);
+static const size_t basic_type_dict_len = sizeof(basic_type_dict) / sizeof(char*);
 
-
-BPC_SEMANTIC_LANGUAGE bpc_parse_language_string(const char* strl) {
-	for (size_t i = 0; i < language_dict_len; ++i) {
-		if (g_str_equal(strl, language_dict[i])) return (BPC_SEMANTIC_LANGUAGE)i;
-	}
-
-	// error
-	return -1;
-}
 
 BPC_SEMANTIC_BASIC_TYPE bpc_parse_basic_type_string(const char* strl) {
 	for (size_t i = 0; i < basic_type_dict_len; ++i) {
-		if (g_str_equal(strl, basic_type_dict[i])) return (BPC_SEMANTIC_LANGUAGE)i;
+		if (g_str_equal(strl, basic_type_dict[i])) return (BPC_SEMANTIC_BASIC_TYPE)i;
 	}
 
 	// error
 	return -1;
 }
 
-BPC_SEMANTIC_MEMBER* bpc_constructor_semantic_member() {
+BPC_SEMANTIC_MEMBER* bpc_constructor_member() {
 	return g_new0(BPC_SEMANTIC_MEMBER, 1);
 }
 
-void bpc_destructor_semantic_member(gpointer rawptr) {
+void bpc_destructor_member(gpointer rawptr) {
 	if (rawptr == NULL) return;
-	
 	BPC_SEMANTIC_MEMBER* ptr = (BPC_SEMANTIC_MEMBER*)rawptr;
 	
 	if (ptr->vname != NULL) g_free(ptr->vname);
@@ -57,9 +40,25 @@ void bpc_destructor_semantic_member(gpointer rawptr) {
 	g_free(ptr);
 }
 
-void bpc_destructor_semantic_member_slist(GSList* list) {
+void bpc_destructor_member_slist(GSList* list) {
 	if (list == NULL) return;
-	g_slist_free_full(list, bpc_destructor_semantic_member);
+	g_slist_free_full(list, bpc_destructor_member);
+}
+
+BPC_SEMANTIC_ENUM_BODY* bpc_constructor_enum_body() {
+	return g_new0(BPC_SEMANTIC_ENUM_BODY, 1);
+}
+
+void bpc_destructor_enum_body(gpointer rawptr) {
+	if (rawptr == NULL) return;
+	BPC_SEMANTIC_ENUM_BODY* ptr = (BPC_SEMANTIC_ENUM_BODY*)rawptr;
+
+	if (ptr->enum_name != NULL) g_free(ptr->enum_name);
+}
+
+void bpc_destructor_enum_body_slist(GSList* list) {
+	if (list == NULL) return;
+	g_slist_free_full(list, bpc_destructor_enum_body);
 }
 
 void bpc_destructor_string(gpointer rawptr) {

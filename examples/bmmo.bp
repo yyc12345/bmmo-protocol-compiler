@@ -210,7 +210,7 @@ enum countdown_type: uint8 {
     CountdownType_1,
     CountdownType_2,
     CountdownType_3,
-    CountdownType_Unknown
+    CountdownType_Unknown = 255
 }
 msg countdown_msg : reliable {
     countdown_type cd_type;

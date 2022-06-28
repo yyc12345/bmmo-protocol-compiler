@@ -7,10 +7,11 @@
 
 typedef struct _BPC_CMD_PARSED_ARGS {
 	FILE* input_file;
-	FILE* out_python_path;
-	FILE* out_csharp_path;
-	FILE* out_cpp_header_path;
-	FILE* out_cpp_source_path;
+	FILE* out_python_file;
+	FILE* out_csharp_file;
+	FILE* out_cpp_header_file;
+	FILE* out_cpp_source_file;
+	FILE* out_proto_file;
 }BPC_CMD_PARSED_ARGS;
 
 BPC_CMD_PARSED_ARGS* bpccmd_get_parsed_args(int argc, char* argv[]);

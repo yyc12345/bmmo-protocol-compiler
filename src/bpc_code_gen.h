@@ -12,12 +12,30 @@ typedef enum _BPC_CODEGEN_TOKEN_TYPE {
 	BPC_CODEGEN_TOKEN_TYPE_ALIAS
 }BPC_CODEGEN_TOKEN_TYPE;
 
+/// <summary>
+/// the struct recording the properties of each token 
+/// including alias, enum, struct and msg
+/// </summary>
 typedef struct _BPC_CODEGEN_TOKEN_ENTRY {
+	/// <summary>
+	/// the name of this token
+	/// </summary>
 	char* token_name;
+	/// <summary>
+	/// the type of this token: alias, enum, struct and msg
+	/// </summary>
 	BPC_CODEGEN_TOKEN_TYPE token_type;
 
-	uint32_t token_arranged_index;	// only valid in msg type
-	BPC_SEMANTIC_BASIC_TYPE token_basic_type;	// only valid in enum and alias type
+	/// <summary>
+	/// the distributed ordered index of `msg` type. 
+	/// only valid in msg type
+	/// </summary>
+	uint32_t token_arranged_index;
+	/// <summary>
+	/// underlaying basic type. 
+	/// only valid in enum and alias type. 
+	/// </summary>
+	BPC_SEMANTIC_BASIC_TYPE token_basic_type;
 }BPC_CODEGEN_TOKEN_ENTRY;
 
 typedef struct _BPC_CODEGEN_MSG_EXTRA_PROPS {

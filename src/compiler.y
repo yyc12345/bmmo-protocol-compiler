@@ -33,10 +33,10 @@ extern int yylex(void);
 %union {
 	BPC_SEMANTIC_BASIC_TYPE token_basic_type;
 	char* token_name;
-	uint32_t token_num;
+	int64_t token_num;
 	bool token_bool;
 	GSList* nterm_namespace;	// item is char*
-	GSList* nterm_enum;		// item is char*
+	GSList* nterm_enum;		// item is BPC_SEMANTIC_ENUM_BODY*
 	GSList* nterm_members;	// item is BPC_SEMANTIC_MEMBER*
 }
 %token <token_num> BPC_TOKEN_NUM
@@ -47,15 +47,16 @@ extern int yylex(void);
 %token BPC_ALIAS BPC_ENUM BPC_STRUCT BPC_MSG
 %token BPC_ARRAY_TUPLE BPC_ARRAY_LIST
 %token BPC_ALIGN
-%token BPC_COLON BPC_COMMA BPC_SEMICOLON BPC_LEFT_BRACKET BPC_RIGHT_BRACKET BPC_DOT
+%token BPC_COLON BPC_COMMA BPC_SEMICOLON BPC_LEFT_BRACKET BPC_RIGHT_BRACKET BPC_DOT BPC_EQUAL
 
 %nterm <nterm_namespace> bpc_namespace_chain
-%nterm <nterm_enum> bpc_enum_body
+%nterm <nterm_enum> bpc_enum_body bpc_enum_body_entry
 %nterm <nterm_members> bpc_member_collection bpc_member_with_align bpc_member_with_array bpc_member
 
+%destructor { bpc_destructor_string($$); } <token_name>
 %destructor { bpc_destructor_string_slist($$); } <nterm_namespace>
-%destructor { bpc_destructor_string_slist($$); } <nterm_enum> 
-%destructor { bpc_destructor_semantic_member_slist($$); } <nterm_members>
+%destructor { bpc_destructor_enum_body_slist($$); } <nterm_enum>
+%destructor { bpc_destructor_member_slist($$); } <nterm_members>
 
 %%
 
@@ -144,18 +145,39 @@ BPC_RIGHT_BRACKET
 	bpc_codegen_write_enum($sdd_enum_name, $sdd_enum_type, $bpc_enum_body);
 	// and free name and member list
 	g_free($sdd_enum_name);
-	bpc_destructor_string_slist($bpc_enum_body);
+	bpc_destructor_enum_body_slist($bpc_enum_body);
 };
 
 bpc_enum_body:
-BPC_TOKEN_NAME[sdd_name]
+bpc_enum_body_entry
 {
-	$$ = g_slist_append(NULL, $sdd_name);
+	$$ = $bpc_enum_body_entry;
 }
 |
-bpc_enum_body[sdd_enum_chain] BPC_COMMA BPC_TOKEN_NAME[sdd_name]
+bpc_enum_body[sdd_enum_chain] BPC_COMMA bpc_enum_body_entry
 {
-	$$ = g_slist_append($sdd_enum_chain, $sdd_name);
+	$$ = g_slist_concat($sdd_enum_chain, $bpc_enum_body_entry);
+};
+
+bpc_enum_body_entry:
+BPC_TOKEN_NAME[sdd_name]
+{
+	BPC_SEMANTIC_ENUM_BODY* entry = bpc_constructor_enum_body();
+	entry->enum_name = $sdd_name;
+	entry->have_specific_value = false;
+	entry->specific_value = 0;
+
+	$$ = g_slist_append(NULL, entry);
+}
+|
+BPC_TOKEN_NAME[sdd_name] BPC_EQUAL BPC_TOKEN_NUM[sdd_spec_num]
+{
+	BPC_SEMANTIC_ENUM_BODY* entry = bpc_constructor_enum_body();
+	entry->enum_name = $sdd_name;
+	entry->have_specific_value = true;
+	entry->specific_value = $sdd_spec_num;
+
+	$$ = g_slist_append(NULL, entry);
 };
 
 bpc_struct:
@@ -173,7 +195,7 @@ BPC_RIGHT_BRACKET
 	bpc_codegen_write_struct($sdd_struct_name, $bpc_member_collection);
 	// and free name and member list
 	g_free($sdd_struct_name);
-	bpc_destructor_semantic_member_slist($bpc_member_collection);
+	bpc_destructor_member_slist($bpc_member_collection);
 };
 
 bpc_msg:
@@ -191,7 +213,7 @@ BPC_RIGHT_BRACKET
 	bpc_codegen_write_msg($sdd_msg_name, $bpc_member_collection, $sdd_is_reliable);
 	// and free name and member list
 	g_free($sdd_msg_name);
-	bpc_destructor_semantic_member_slist($bpc_member_collection);
+	bpc_destructor_member_slist($bpc_member_collection);
 };
 
 bpc_member_collection:
@@ -268,7 +290,7 @@ bpc_member BPC_ARRAY_LIST
 bpc_member:
 BPC_BASIC_TYPE[sdd_basic_type] BPC_TOKEN_NAME[sdd_name]
 {
-	BPC_SEMANTIC_MEMBER* data = bpc_constructor_semantic_member();
+	BPC_SEMANTIC_MEMBER* data = bpc_constructor_member();
 	data->is_basic_type = true;
 	data->v_basic_type = $sdd_basic_type;
 	data->vname = $sdd_name;
@@ -285,7 +307,7 @@ BPC_TOKEN_NAME[sdd_struct_type] BPC_TOKEN_NAME[sdd_name]
 		YYERROR;
 	}
 
-	BPC_SEMANTIC_MEMBER* data = bpc_constructor_semantic_member();
+	BPC_SEMANTIC_MEMBER* data = bpc_constructor_member();
 	data->is_basic_type = false;
 	data->v_struct_type = $sdd_struct_type;
 	data->vname = $sdd_name;
@@ -302,7 +324,7 @@ bpc_member[sdd_member_chain] BPC_COMMA BPC_TOKEN_NAME[sdd_name]
 
 	// construct new item and apply some properties from
 	// references item
-	BPC_SEMANTIC_MEMBER* data = bpc_constructor_semantic_member();
+	BPC_SEMANTIC_MEMBER* data = bpc_constructor_member();
 	data->vname = $sdd_name;
 	data->is_basic_type = references_item->is_basic_type;
 	if (data->is_basic_type) {
@@ -355,9 +377,7 @@ int run_compiler(BPC_CMD_PARSED_ARGS* bpc_args) {
 	if (!bpc_codegen_init_code_file(bpc_args)) {
 		fprintf(yyout, "[Error] Fail to open dest file.\n");
 
-		fclose(yyin);
 		yyin = stdin;
-
 		return 1;
 	}
 

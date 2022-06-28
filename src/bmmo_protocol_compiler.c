@@ -7,11 +7,11 @@ int main(int argc, char* argv[]) {
 	if (args == NULL) return 0;
 
 	int result = 0;
-	//if (result = run_compiler(args)) {
-	//	printf("Compile Failed.\n");
-	//} else {
-	//	printf("Compile Done.\n");
-	//}
+	if (result = run_compiler(args)) {
+		printf("Compile Failed.\n");
+	} else {
+		printf("Compile Done.\n");
+	}
 
 	bpccmd_free_parsed_args(args);
 	return result;
