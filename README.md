@@ -50,6 +50,7 @@ Syntax: `bmmo_protocol_compiler [switches]`
 * `-c --cs PATH`: Generate a C\# code file in `PATH`.
 * `-d --cpp-header PATH`: Generate a C++ header file in `PATH`.
 * `-s --cpp-source PATH`: Generate a C++ source file in `PATH`.
+* `-t --proto PATH`: Generate a Proto3 file in `PATH`.
 
 ### Annotations
 

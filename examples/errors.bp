@@ -1,0 +1,404 @@
+bpc 1;
+namespace test.ns;
+
+// ============= alias test
+// correct alias
+alias alias_name1 uint32;
+
+// reverse alias
+alias uint32 alias_name2;
+
+// invalid basic type
+alias alias_name3 unknown_basic_type;
+
+// wrong name
+alias _alias_name4 uint32;
+alias 1alias_name5 uint32;
+
+// duplicated name
+alias alias_name1 uint32;
+
+// ============= enum test
+// correct enum
+enum enum_name1 : uint32 {
+    entry1,
+    entry2,
+    entry3
+}
+
+// duplicated name
+enum enum_name1 : uint32 {
+    entry1,
+    entry2,
+    entry3
+}
+
+// wrong type of enum
+enum enum_name2 : double {
+    entry1,
+    entry2,
+    entry3
+}
+
+// wrong name
+enum _enum_name3 : uint32 {
+    entry1,
+    entry2,
+    entry3
+}
+enum 1enum_name4 : uint32 {
+    entry1,
+    entry2,
+    entry3
+}
+
+// unexpcetd ;
+enum enum_name5 : uint32 {
+    entry1;
+    entry2;
+    entry3;
+}
+enum enum_name6 : uint32 {
+    entry1,
+    entry2,
+    entry3
+};
+enum enum_name7 : uint32 {;}
+
+// unexpected ,
+enum enum_name8 : uint32 {
+    entry1,
+    entry2,
+    entry3,
+}
+enum enum_name9 : uint32 {
+    entry1,
+    entry2,,
+    entry3
+}
+enum enum_name10 : uint32 {
+    ,
+    entry1,
+    entry2,
+    entry3
+}
+
+// lost bracket
+enum enum_name11 : uint32 {
+    entry1,
+    entry2,
+    entry3
+enum enum_name12 : uint32 {
+    entry1,
+    entry2,
+    entry3
+}
+
+// entry duplicated
+enum enum_name13 : uint32 {
+    entry1,
+    entry2,
+    entry2
+}
+
+// blank body
+enum enum_name14 : uint32 { }
+
+// ============= struct test
+//correct struct
+struct struct_name1 {
+    uint32 entry1;
+    enum_name entry2;
+    string entry3;
+    
+    uint32 entry4 tuple 16;
+    uint32 entry5 list;
+    
+    uint32 entry6, entry7, entry8;
+    
+    uint32 entry9 align 2;
+    
+    uint32 entry10, entry11, entry12 tuple 16 align 2;
+}
+
+// duplicated name
+struct struct_name1 {
+    uint32 entry1;
+    enum_name entry2;
+    string entry3;
+    
+    uint32 entry4 tuple 16;
+    uint32 entry5 list;
+    
+    uint32 entry6, entry7, entry8;
+    
+    uint32 entry9 align 2;
+    
+    uint32 entry10, entry11, entry12 tuple 16 align 2;
+}
+
+// unexpected ;
+struct struct_name2 {
+    uint32 entry1;
+    enum_name entry2;
+    string entry3;
+    
+    uint32 entry4 tuple 16;
+    uint32 entry5 list;
+    
+    uint32 entry6, entry7, entry8;
+    
+    uint32 entry9 align 2;
+    
+    uint32 entry10, entry11, entry12 tuple 16 align 2;
+};
+struct struct_name11 {
+    uint32 entry1;;
+    enum_name entry2;
+    string entry3;
+    
+    uint32 entry4 tuple 16;
+    uint32 entry5 list;
+    
+    uint32 entry6, entry7, entry8;
+    
+    uint32 entry9 align 2;
+    
+    uint32 entry10, entry11, entry12 tuple 16 align 2;
+}
+
+// unexpected ,
+struct struct_name3 {
+    uint32 entry1,
+    enum_name entry2,
+    string entry3,
+    
+    uint32 entry4 tuple 16,
+    uint32 entry5 list,
+    
+    uint32 entry6, entry7, entry8;
+    
+    uint32 entry9 align 2,
+    
+    uint32 entry10, entry11, entry12 tuple 16 align 2;
+}
+
+// lost tuple number
+struct struct_name4 {
+    uint32 entry1;
+    enum_name entry2;
+    string entry3;
+    
+    uint32 entry4 tuple;
+    uint32 entry5 list;
+    
+    uint32 entry6, entry7, entry8;
+    
+    uint32 entry9 align 2;
+    
+    uint32 entry10, entry11, entry12 tuple 16 align 2;
+}
+
+// minus align
+struct struct_name5 {
+    uint32 entry1;
+    enum_name entry2;
+    string entry3;
+    
+    uint32 entry4 tuple 16;
+    uint32 entry5 list;
+    
+    uint32 entry6, entry7, entry8;
+    
+    uint32 entry9 align -2;
+    
+    uint32 entry10, entry11, entry12 tuple 16 align 2;
+}
+
+// wrong name
+struct _struct_name6 {
+    uint32 entry1;
+    enum_name entry2;
+    string entry3;
+    
+    uint32 entry4 tuple 16;
+    uint32 entry5 list;
+    
+    uint32 entry6, entry7, entry8;
+    
+    uint32 entry9 align 2;
+    
+    uint32 entry10, entry11, entry12 tuple 16 align 2;
+}
+struct 1struct_name7 {
+    uint32 entry1;
+    enum_name entry2;
+    string entry3;
+    
+    uint32 entry4 tuple 16;
+    uint32 entry5 list;
+    
+    uint32 entry6, entry7, entry8;
+    
+    uint32 entry9 align 2;
+    
+    uint32 entry10, entry11, entry12 tuple 16 align 2;
+}
+
+// duplicated member
+struct struct_name8 {
+    uint32 entry1;
+    enum_name entry1;
+    string entry1;
+    
+    uint32 entry1 tuple 16;
+    uint32 entry1 list;
+    
+    uint32 entry1, entry1, entry1;
+    
+    uint32 entry1 align 2;
+    
+    uint32 entry1, entry1, entry1 tuple 16 align 2;
+}
+
+// reversed array prop and align prop
+struct struct_name9 {
+    uint32 entry1;
+    enum_name entry2;
+    string entry3;
+    
+    uint32 entry4 tuple 16;
+    uint32 entry5 list;
+    
+    uint32 entry6, entry7, entry8;
+    
+    uint32 entry9 align 2;
+    
+    uint32 entry10, entry11, entry12 align 2 tuple 16;
+}
+
+// wrong place of align&array prop
+struct struct_name10 {
+    uint32 entry1;
+    enum_name entry2;
+    string entry3;
+    
+    uint32 entry4 tuple 16;
+    uint32 entry5 list;
+    
+    uint32 entry6, entry7, entry8;
+    
+    uint32 entry9 align 2;
+    
+    uint32 entry10, entry11 tuple 16 align 2, entry12;
+}
+
+// ============= msg test
+msg msg_name1 : reliable {
+    uint32 entry1;
+    enum_name entry2;
+    string entry3;
+    
+    uint32 entry4 tuple 16;
+    uint32 entry5 list;
+    
+    uint32 entry6, entry7, entry8;
+    
+    uint32 entry9 align 2;
+    
+    uint32 entry10, entry11, entry12 tuple 16 align 2;
+}
+
+// duplicated name
+msg msg_name1 : reliable {
+    uint32 entry1;
+    enum_name entry2;
+    string entry3;
+    
+    uint32 entry4 tuple 16;
+    uint32 entry5 list;
+    
+    uint32 entry6, entry7, entry8;
+    
+    uint32 entry9 align 2;
+    
+    uint32 entry10, entry11, entry12 tuple 16 align 2;
+}
+
+// protobuf like error
+msg msg_name2 : reliable {
+    uint32 entry1 = 0;
+    enum_name entry2 = 1;
+    string entry3 = 2;
+    
+    uint32 entry4 tuple 16 = 3;
+    uint32 entry5 list = 4;
+    
+    uint32 entry6, entry7, entry8;
+    
+    uint32 entry9 align 2;
+    
+    uint32 entry10, entry11, entry12 tuple 16 align 2;
+}
+
+// c-like array error
+msg msg_name3 : reliable {
+    uint32 entry1;
+    enum_name entry2;
+    string entry3;
+    
+    uint32 entry4[16];
+    uint32 entry5 list;
+    
+    uint32 entry6, entry7, entry8;
+    
+    uint32 entry9 align 2;
+    
+    uint32 entry10, entry11, entry12 tuple 16 align 2;
+}
+
+// spell error
+msg msg_name4 : relable {
+    uint32 entry1;
+    enum_name entry2;
+    string entry3;
+    
+    uint32 entry4 tuple 16;
+    uint32 entry5 list;
+    
+    uint32 entry6, entry7, entry8;
+    
+    uint32 entry9 align 2;
+    
+    uint32 entry10, entry11, entry12 tuple 16 align 2;
+}
+msg msg_name5 : reliable {
+    uint32 entry1;
+    enum_name entry2;
+    sting entry3;
+    
+    uint32 entry4 tuple 16;
+    uint32 entry5 list;
+    
+    uint32 entry6, entry7, entry8;
+    
+    uint32 entry9 align 2;
+    
+    uint32 entry10, entry11, entry12 tuple 16 align 2;
+}
+
+// lost reliable
+msg msg_name6 {
+    uint32 entry1;
+    enum_name entry2;
+    string entry3;
+    
+    uint32 entry4 tuple 16;
+    uint32 entry5 list;
+    
+    uint32 entry6, entry7, entry8;
+    
+    uint32 entry9 align 2;
+    
+    uint32 entry10, entry11, entry12 tuple 16 align 2;
+}

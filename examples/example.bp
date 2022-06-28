@@ -72,7 +72,8 @@ even if this alias point to a basic type accepted by enum.
 enum weather : uint8 {
     Sunday,
     Cloudy,
-    Raining
+    Raining,
+    Unknow = 255 // you also can specific value for enum entry just like C-like language
 }
 
 /*
