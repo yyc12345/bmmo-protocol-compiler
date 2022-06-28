@@ -101,3 +101,6 @@ void bpc_destructor_string_slist(GSList* list);
 
 void bpc_lambda_semantic_member_copy_array_prop(gpointer raw_item, gpointer raw_data);
 void bpc_lambda_semantic_member_copy_align_prop(gpointer raw_item, gpointer raw_data);
+
+void bpc_semantic_check_duplication_reset();
+bool bpc_semantic_check_duplication(char* name);

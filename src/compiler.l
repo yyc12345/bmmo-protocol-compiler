@@ -119,5 +119,11 @@ TOKEN_NAME		[a-zA-Z][a-zA-Z0-9_]*
 
 [ \t\n]+ /* ignore whitespace */;
 
+.|\n {
+	/* eat up any unmatched character */
+	// and report error
+	bpc_yyerror("invalid text. %s", yytext);
+}
+
 %%
 

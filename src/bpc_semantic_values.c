@@ -17,6 +17,7 @@ static const char* basic_type_dict[] = {
 };
 static const size_t basic_type_dict_len = sizeof(basic_type_dict) / sizeof(char*);
 
+static GSList* token_entry_register = NULL;
 
 BPC_SEMANTIC_BASIC_TYPE bpc_parse_basic_type_string(const char* strl) {
 	for (size_t i = 0; i < basic_type_dict_len; ++i) {
@@ -34,7 +35,7 @@ BPC_SEMANTIC_MEMBER* bpc_constructor_member() {
 void bpc_destructor_member(gpointer rawptr) {
 	if (rawptr == NULL) return;
 	BPC_SEMANTIC_MEMBER* ptr = (BPC_SEMANTIC_MEMBER*)rawptr;
-	
+
 	if (ptr->vname != NULL) g_free(ptr->vname);
 	if (ptr->v_struct_type != NULL) g_free(ptr->v_struct_type);
 	g_free(ptr);
@@ -91,4 +92,21 @@ void bpc_lambda_semantic_member_copy_align_prop(gpointer raw_item, gpointer raw_
 
 	ptr->align_prop.use_align = data->use_align;
 	ptr->align_prop.padding_size = data->padding_size;
+}
+
+void bpc_semantic_check_duplication_reset() {
+	if (token_entry_register != NULL)
+		bpc_destructor_string_slist(token_entry_register);
+}
+
+bool bpc_semantic_check_duplication(char* name) {
+	GSList* cursor;
+	for (cursor = token_entry_register; cursor != NULL; cursor = cursor->next) {
+		if (g_str_equal(cursor->data, name)) return true;
+	}
+
+	// no match
+	// add into list and return false
+	g_slist_append(token_entry_register, name);
+	return false;
 }
