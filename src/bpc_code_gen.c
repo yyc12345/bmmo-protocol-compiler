@@ -1,6 +1,11 @@
 #include "bpc_code_gen.h"
 #include <stdio.h>
 #include <inttypes.h>
+#include "bpc_encoding.h"
+
+#ifdef G_OS_WIN32
+#include <Windows.h>
+#endif
 
 //const uint32_t bpc_codegen_basic_type_size[] = {
 //	4, 8, 1, 2, 4, 8, 1, 2, 4, 8
@@ -34,7 +39,7 @@ static uint32_t msg_index_distributor = 0;
 #define BPC_CODEGEN_INDENT_DEC --_indent_level;
 #define BPC_CODEGEN_INDENT_PRINT fputc('\n', _indent_fs); for(_indent_loop=0;_indent_loop<_indent_level;++_indent_loop) fputc('\t', _indent_fs);
 
-bool bpc_codegen_init_code_file(BPC_CMD_PARSED_ARGS * bpc_args) {
+bool bpc_codegen_init_code_file(BPC_CMD_PARSED_ARGS* bpc_args) {
 	fs_python = bpc_args->out_python_file;
 	fs_csharp = bpc_args->out_csharp_file;
 	fs_cpp_hdr = bpc_args->out_cpp_header_file;
@@ -44,7 +49,7 @@ bool bpc_codegen_init_code_file(BPC_CMD_PARSED_ARGS * bpc_args) {
 	// setup template
 	// original bpc_codegen_init_language(BPC_SEMANTIC_LANGUAGE lang)
 	if (BPC_CODEGEN_OUTPUT_PYTHON) {
-		_bpc_codegen_copy_template("snippets/header.py");
+		_bpc_codegen_copy_template(fs_python, u8"snippets/header.py");
 	}
 	if (BPC_CODEGEN_OUTPUT_CSHARP) {
 		printf("[Warning] Csharp code gen is unsupported now. It will come soon.\n");
@@ -553,22 +558,102 @@ void _bpc_codegen_get_underlaying_type(BPC_SEMANTIC_MEMBER* token, bool* pout_pr
 	}
 }
 
-void _bpc_codegen_copy_template(const char* template_code_file_path) {
-	FILE* template_fs = fopen(template_code_file_path, "r+");
-	if (template_fs == NULL) {
-		printf("[Warning] Fail to open code template file: %s\n", template_code_file_path);
-		printf("[Warning] Parse will continue, but generated code may not work.\n");
-		return;
+void _bpc_codegen_copy_template(FILE* target, const char* u8_template_code_file_path) {
+	// first, we need get where our program locate
+
+	// store program location with glib fs format
+	// use static for pernament storage
+	static gchar* prgloc = NULL;
+	// store the path combine dir name and specific file
+	// stored as glib fs format
+	gchar* combined_path = NULL;
+
+	// first run, get it
+	if (prgloc == NULL) {
+		int bytes;
+		size_t len = 1024;
+		gchar* utf8_prgloc = NULL;
+#ifdef G_OS_WIN32
+		wchar_t pBuf[1024];
+		bytes = GetModuleFileNameW(NULL, pBuf, len);
+		if (bytes)
+			prgloc = bpcenc_wchar_to_glibfs(pBuf);
+#else
+		char pBuf[1024];
+		bytes = MIN(readlink("/proc/self/exe", pBuf, len), len - 1);
+		if (bytes >= 0)
+			pBuf[bytes] = '\0';
+
+		// read from linux is utf8 string, use it directly
+		prgloc = bpcenc_utf8_to_glibfs(pBuf);
+#endif
 	}
 
+	// combine user specific path with program path
+	if (prgloc != NULL) {
+		gchar* dir_name = NULL;
+		gchar* file_name = NULL;
+
+		dir_name = g_path_get_dirname(prgloc);
+		file_name = bpcenc_utf8_to_glibfs(u8_template_code_file_path);
+		if (dir_name != NULL && file_name != NULL) {
+			combined_path = g_build_filename(dir_name, file_name, NULL);
+		}
+
+		g_free(dir_name);
+		g_free(file_name);
+	} else {
+		// failed. raise warning
+		goto template_warning;
+	}
+
+	// open file and copy it
+	if (combined_path != NULL) {
+		FILE* template_fs = NULL;
+#ifdef G_OS_WIN32
+		// in windows, we need convert it into wstring to open file
+		wchar_t* wfilename = NULL;
+		wfilename = bpcenc_glibfs_to_wchar(combined_path);
+		if (wfilename != NULL)
+			template_fs = _wfopen(wfilename, L"r+");
+		g_free(wfilename);
+#else
+		// in linux, just open it directly
+		gchar* u8filename = NULL;
+		u8filename = bpcenc_glibfs_to_utf8(combined_path);
+		if (u8filename != NULL)
+			template_fs = fopen(u8filename, "r+");
+		g_free(u8filename);
+#endif
+
+		// check validation
+		if (template_fs == NULL) 
+			goto template_warning;
+
+		_bpc_codegen_copy_file_stream(target, template_fs);
+		fclose(template_fs);
+	} else {
+		// failed. raise warning
+		goto template_warning;
+	}
+
+	g_free(combined_path);
+	return;
+
+template_warning:
+	g_free(combined_path);
+	printf("[Warning] Fail to open code template file: %s\n", u8_template_code_file_path);
+	printf("          Parse will continue, but generated code may not work.\n");
+	return;
+}
+
+void _bpc_codegen_copy_file_stream(FILE* target, FILE* fs) {
 	char* buffer = g_new0(char, 1024);
 	size_t read_counter;
 
-	while ((read_counter = fread(buffer, sizeof(char), 1024, template_fs)) != 0) {
-		fwrite(buffer, sizeof(char), read_counter, fs_python);
+	while ((read_counter = fread(buffer, sizeof(char), 1024, fs)) != 0) {
+		fwrite(buffer, sizeof(char), read_counter, target);
 	}
-
-	fclose(template_fs);
 }
 
 void _bpc_codegen_free_token_entry(gpointer rawptr) {
