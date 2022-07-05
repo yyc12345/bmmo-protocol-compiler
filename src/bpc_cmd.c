@@ -26,8 +26,8 @@ static GOptionEntry opt_entries[] = {
 	G_OPTION_ENTRY_NULL
 };
 
-BPC_CMD_PARSED_ARGS* bpccmd_get_parsed_args(int argc, char* _argv[]) {
-	BPC_CMD_PARSED_ARGS* args = NULL;
+BPCCMD_PARSED_ARGS* bpccmd_get_parsed_args(int argc, char* _argv[]) {
+	BPCCMD_PARSED_ARGS* args = NULL;
 	GOptionContext* context = NULL;
 	gchar** argv;
 	GError* error = NULL;
@@ -73,7 +73,7 @@ BPC_CMD_PARSED_ARGS* bpccmd_get_parsed_args(int argc, char* _argv[]) {
 	return args;
 }
 
-void bpccmd_free_parsed_args(BPC_CMD_PARSED_ARGS* struct_args) {
+void bpccmd_free_parsed_args(BPCCMD_PARSED_ARGS* struct_args) {
 #define SAFE_CLOSE_FS(fs) if((fs)!=NULL)fclose(fs);
 	SAFE_CLOSE_FS(struct_args->input_file);
 	SAFE_CLOSE_FS(struct_args->out_python_file);
@@ -86,8 +86,8 @@ void bpccmd_free_parsed_args(BPC_CMD_PARSED_ARGS* struct_args) {
 	g_free(struct_args);
 }
 
-BPC_CMD_PARSED_ARGS* _bpccmd_alloc_parsed_args() {
-	BPC_CMD_PARSED_ARGS* st = g_new0(BPC_CMD_PARSED_ARGS, 1);
+BPCCMD_PARSED_ARGS* _bpccmd_alloc_parsed_args() {
+	BPCCMD_PARSED_ARGS* st = g_new0(BPCCMD_PARSED_ARGS, 1);
 
 	st->input_file = _bpccmd_open_glib_filename(opt_input, true);
 	st->out_python_file = _bpccmd_open_glib_filename(opt_python, false);

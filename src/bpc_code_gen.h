@@ -5,18 +5,11 @@
 #include <stdbool.h>
 #include "bpc_cmd.h"
 
-typedef enum _BPC_CODEGEN_TOKEN_TYPE {
-	BPC_CODEGEN_TOKEN_TYPE_ENUM,
-	BPC_CODEGEN_TOKEN_TYPE_STRUCT,
-	BPC_CODEGEN_TOKEN_TYPE_MSG,
-	BPC_CODEGEN_TOKEN_TYPE_ALIAS
-}BPC_CODEGEN_TOKEN_TYPE;
-
 /// <summary>
 /// the struct recording the properties of each token 
 /// including alias, enum, struct and msg
 /// </summary>
-typedef struct _BPC_CODEGEN_TOKEN_ENTRY {
+typedef struct _BPCGEN_TOKEN_REGISTERY_ENTRY {
 	/// <summary>
 	/// the name of this token
 	/// </summary>
@@ -24,7 +17,7 @@ typedef struct _BPC_CODEGEN_TOKEN_ENTRY {
 	/// <summary>
 	/// the type of this token: alias, enum, struct and msg
 	/// </summary>
-	BPC_CODEGEN_TOKEN_TYPE token_type;
+	BPCSMTV_DEFINED_TOKEN_TYPE token_type;
 
 	/// <summary>
 	/// the distributed ordered index of `msg` type. 
@@ -35,36 +28,33 @@ typedef struct _BPC_CODEGEN_TOKEN_ENTRY {
 	/// underlaying basic type. 
 	/// only valid in enum and alias type. 
 	/// </summary>
-	BPC_SEMANTIC_BASIC_TYPE token_basic_type;
-}BPC_CODEGEN_TOKEN_ENTRY;
+	BPCSMTV_BASIC_TYPE token_basic_type;
+}BPCGEN_TOKEN_REGISTERY_ENTRY;
 
-typedef struct _BPC_CODEGEN_MSG_EXTRA_PROPS {
+typedef struct _BPCGEN_MSG_EXTRA_PROPS {
 	bool is_reliable;
-}BPC_CODEGEN_MSG_EXTRA_PROPS;
+}BPCGEN_MSG_EXTRA_PROPS;
 
 
+void bpcgen_init_code_file(BPCCMD_PARSED_ARGS* bpc_args);
+void bpcgen_write_document(BPCSMTV_DOCUMENT* document);
+void bpcgen_free_code_file();
 
-// call in order
-bool bpc_codegen_init_code_file(BPC_CMD_PARSED_ARGS* bpc_args);
-void bpc_codegen_init_namespace(GSList* namespace_chain);
-// end call in order
+void _bpcgen_token_registery_reset();
+BPCGEN_TOKEN_REGISTERY_ENTRY* _bpcgen_token_registery_get(const char* token_name);
 
-BPC_CODEGEN_TOKEN_ENTRY* bpc_codegen_get_token_entry(const char* token_name);
+void _bpcgen_write_alias(BPCSMTV_ALIAS* token_data);
+void _bpcgen_write_enum(BPCSMTV_ENUM* token_data);
+void _bpcgen_write_struct(BPCSMTV_STRUCT* token_data);
+void _bpcgen_write_msg(BPCSMTV_MSG* token_data);
 
-void bpc_codegen_write_alias(const char* alias_name, BPC_SEMANTIC_BASIC_TYPE basic_t);
-void bpc_codegen_write_enum(const char* enum_name, BPC_SEMANTIC_BASIC_TYPE basic_type, GSList* member_list);
-void bpc_codegen_write_struct(const char* struct_name, GSList* member_list);
-void bpc_codegen_write_msg(const char* msg_name, GSList* member_list, bool is_reliable);
+void _bpcgen_write_preset_code(GSList* namespace_list);
+void _bpcgen_write_opcode();
 
-// call in order
-void bpc_codegen_write_opcode();
-void bpc_codegen_free_code_file();
-// end call in order
+//uint32_t _bpc_codegen_get_align_padding_size(BPCSMTV_MEMBER* token);
+char* _bpcgen_get_dot_style_namespace(GSList* namespace_list);
+void _bpcgen_get_underlaying_type(BPCSMTV_MEMBER* token, bool* pout_proc_like_basic_type, BPCSMTV_BASIC_TYPE* pout_underlaying_basic_type);
+void _bpcgen_gen_struct_msg_body(const char* token_name, GSList* member_list, BPCGEN_MSG_EXTRA_PROPS* msg_prop);
+void _bpcgen_copy_template(FILE* target, const char* u8_template_code_file_path);
+void _bpcgen_copy_file_stream(FILE* target, FILE* fs);
 
-
-//uint32_t _bpc_codegen_get_align_padding_size(BPC_SEMANTIC_MEMBER* token);
-void _bpc_codegen_get_underlaying_type(BPC_SEMANTIC_MEMBER* token, bool* pout_proc_like_basic_type, BPC_SEMANTIC_BASIC_TYPE* pout_underlaying_basic_type);
-void _bpc_codegen_gen_struct_msg_body(const char* token_name, GSList* member_list, BPC_CODEGEN_MSG_EXTRA_PROPS* msg_prop);
-void _bpc_codegen_copy_template(FILE* target, const char* u8_template_code_file_path);
-void _bpc_codegen_copy_file_stream(FILE* target, FILE* fs);
-void _bpc_codegen_free_token_entry(gpointer rawptr);

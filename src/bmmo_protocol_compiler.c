@@ -3,7 +3,7 @@
 #include "bpc_cmd.h"
 
 int main(int argc, char* argv[]) {
-	BPC_CMD_PARSED_ARGS* args = bpccmd_get_parsed_args(argc, argv);
+	BPCCMD_PARSED_ARGS* args = bpccmd_get_parsed_args(argc, argv);
 	if (args == NULL) return 0;
 
 	int result = 0;

@@ -3,6 +3,7 @@
 #include <io.h>
 #include "y.tab.h"
 #include "bpc_semantic_values.h"
+#include "bpc_error.h"
 #include <stdbool.h>
 
 // https://www.techtalk7.com/how-does-flex-support-bison-location-exactly/
@@ -122,7 +123,7 @@ TOKEN_NAME		[a-zA-Z][a-zA-Z0-9_]*
 .|\n {
 	/* eat up any unmatched character */
 	// and report error
-	bpc_yyerror("invalid text. %s", yytext);
+	bpcerr_error(BPCERR_ERROR_SOURCE_LEX, "invalid text. %s", yytext);
 }
 
 %%

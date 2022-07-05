@@ -4,29 +4,23 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define BPC_COMPILER_VERSION 1
+// SMTV stands for `semantic_value`
 
-typedef enum _BPC_SEMANTIC_BASIC_TYPE {
-	BPC_SEMANTIC_BASIC_TYPE_FLOAT,
-	BPC_SEMANTIC_BASIC_TYPE_DOUBLE,
-	BPC_SEMANTIC_BASIC_TYPE_INT8,
-	BPC_SEMANTIC_BASIC_TYPE_INT16,
-	BPC_SEMANTIC_BASIC_TYPE_INT32,
-	BPC_SEMANTIC_BASIC_TYPE_INT64,
-	BPC_SEMANTIC_BASIC_TYPE_UINT8,
-	BPC_SEMANTIC_BASIC_TYPE_UINT16,
-	BPC_SEMANTIC_BASIC_TYPE_UINT32,
-	BPC_SEMANTIC_BASIC_TYPE_UINT64,
-	BPC_SEMANTIC_BASIC_TYPE_STRING
-}BPC_SEMANTIC_BASIC_TYPE;
+typedef enum _BPCSMTV_BASIC_TYPE {
+	BPCSMTV_BASIC_TYPE_FLOAT,
+	BPCSMTV_BASIC_TYPE_DOUBLE,
+	BPCSMTV_BASIC_TYPE_INT8,
+	BPCSMTV_BASIC_TYPE_INT16,
+	BPCSMTV_BASIC_TYPE_INT32,
+	BPCSMTV_BASIC_TYPE_INT64,
+	BPCSMTV_BASIC_TYPE_UINT8,
+	BPCSMTV_BASIC_TYPE_UINT16,
+	BPCSMTV_BASIC_TYPE_UINT32,
+	BPCSMTV_BASIC_TYPE_UINT64,
+	BPCSMTV_BASIC_TYPE_STRING
+}BPCSMTV_BASIC_TYPE;
 
-//typedef enum _BPC_SEMANTIC_LANGUAGE {
-//	BPC_SEMANTIC_LANGUAGE_CSHARP,
-//	BPC_SEMANTIC_LANGUAGE_PYTHON,
-//	BPC_SEMANTIC_LANGUAGE_CPP
-//}BPC_SEMANTIC_LANGUAGE;
-
-typedef struct _BPC_SEMANTIC_ENUM_BODY {
+typedef struct _BPCSMTV_ENUM_BODY {
 	/// <summary>
 	/// the name of current enum entry
 	/// </summary>
@@ -40,19 +34,19 @@ typedef struct _BPC_SEMANTIC_ENUM_BODY {
 	/// store user specificed value if it has.
 	/// </summary>
 	int64_t specific_value;
-}BPC_SEMANTIC_ENUM_BODY;
+}BPCSMTV_ENUM_BODY;
 
 typedef struct _BPC_SEMANTIC_MEMBER_ARRAY_PROP {
 	bool is_array;
 	bool is_static_array;
 	uint32_t array_len;
-}BPC_SEMANTIC_MEMBER_ARRAY_PROP;
+}BPCSMTV_MEMBER_ARRAY_PROP;
 typedef struct _BPC_SEMANTIC_MEMBER_ALIGN_PROP {
 	bool use_align;
 	uint32_t padding_size;
-}BPC_SEMANTIC_MEMBER_ALIGN_PROP;
+}BPCSMTV_MEMBER_ALIGN_PROP;
 
-typedef struct _BPC_SEMANTIC_MEMBER {
+typedef struct _BPCSMTV_MEMBER {
 	/// <summary>
 	/// whether this member is belong to basic type.
 	/// this basic type do not include enum
@@ -63,7 +57,7 @@ typedef struct _BPC_SEMANTIC_MEMBER {
 	/// <summary>
 	/// if member is basic type, this value store its basic type
 	/// </summary>
-	BPC_SEMANTIC_BASIC_TYPE v_basic_type;
+	BPCSMTV_BASIC_TYPE v_basic_type;
 	/// <summary>
 	/// if member is struct type, this value store the token name of its struct type
 	/// </summary>
@@ -77,30 +71,124 @@ typedef struct _BPC_SEMANTIC_MEMBER {
 	/// <summary>
 	/// the array props of member
 	/// </summary>
-	BPC_SEMANTIC_MEMBER_ARRAY_PROP array_prop;
+	BPCSMTV_MEMBER_ARRAY_PROP array_prop;
 	/// <summary>
 	/// the align props of member
 	/// </summary>
-	BPC_SEMANTIC_MEMBER_ALIGN_PROP align_prop;
-}BPC_SEMANTIC_MEMBER;
+	BPCSMTV_MEMBER_ALIGN_PROP align_prop;
+}BPCSMTV_MEMBER;
 
+typedef struct _BPCSMTV_ALIAS {
+	char* user_type;
+	BPCSMTV_BASIC_TYPE basic_type;
+}BPCSMTV_ALIAS;
+typedef struct _BPCSMTV_ENUM {
+	char* enum_name;
+	BPCSMTV_BASIC_TYPE enum_basic_type;
+	/// <summary>
+	/// item is `BPCSMTV_ENUM_BODY*`
+	/// </summary>
+	GSList* enum_body;
+}BPCSMTV_ENUM;
+typedef struct _BPCSMTV_STRUCT {
+	char* struct_name;
+	/// <summary>
+	/// item is `BPCSMTV_MEMBER*`
+	/// </summary>
+	GSList* struct_member;
+}BPCSMTV_STRUCT;
+typedef struct _BPCSMTV_MSG {
+	char* msg_name;
+	bool is_reliable;
+	/// <summary>
+	/// item is `BPCSMTV_MEMBER*`
+	/// </summary>
+	GSList* msg_member;
+}BPCSMTV_MSG;
 
+typedef enum _BPCSMTV_DEFINED_TOKEN_TYPE {
+	BPCSMTV_DEFINED_TOKEN_TYPE_ALIAS,
+	BPCSMTV_DEFINED_TOKEN_TYPE_ENUM,
+	BPCSMTV_DEFINED_TOKEN_TYPE_STRUCT,
+	BPCSMTV_DEFINED_TOKEN_TYPE_MSG
+}BPCSMTV_DEFINED_TOKEN_TYPE;
 
-BPC_SEMANTIC_BASIC_TYPE bpc_parse_basic_type_string(const char*);
+typedef struct _BPCSMTV_DEFINE_GROUP {
+	BPCSMTV_DEFINED_TOKEN_TYPE node_type;
+	union _BPCSMTV_DEFINE_GROUP_NODE_DATA {
+		BPCSMTV_ALIAS* alias_data;
+		BPCSMTV_ENUM* enum_data;
+		BPCSMTV_STRUCT* struct_data;
+		BPCSMTV_MSG* msg_data
+	}node_data;
+}BPCSMTV_DEFINE_GROUP;
 
-BPC_SEMANTIC_MEMBER* bpc_constructor_member();
+typedef struct _BPCSMTV_DOCUMENT {
+	/// <summary>
+	/// item is the same as the semantic value of bpc_namespace_chain and bpc_namespace, char*
+	/// </summary>
+	GSList* namespace_data;
+	BPCSMTV_DEFINE_GROUP* define_group_data;
+}BPCSMTV_DOCUMENT;
+
+BPCSMTV_BASIC_TYPE bpc_parse_basic_type(const char*);
+
+BPCSMTV_MEMBER* bpc_constructor_member();
 void bpc_destructor_member(gpointer rawptr);
 void bpc_destructor_member_slist(GSList* list);
 
-BPC_SEMANTIC_ENUM_BODY* bpc_constructor_enum_body();
+BPCSMTV_ENUM_BODY* bpc_constructor_enum_body();
 void bpc_destructor_enum_body(gpointer rawptr);
 void bpc_destructor_enum_body_slist(GSList* list);
 
 void bpc_destructor_string(gpointer rawptr);
 void bpc_destructor_string_slist(GSList* list);
 
-void bpc_lambda_semantic_member_copy_array_prop(gpointer raw_item, gpointer raw_data);
-void bpc_lambda_semantic_member_copy_align_prop(gpointer raw_item, gpointer raw_data);
+BPCSMTV_ALIAS* bpc_constructor_alias();
+void bpc_destructor_alias(BPCSMTV_ALIAS* ptr);
+BPCSMTV_ENUM* bpc_constructor_enum();
+void bpc_destructor_enum(BPCSMTV_ENUM* ptr);
+BPCSMTV_STRUCT* bpc_constructor_struct();
+void bpc_destructor_struct(BPCSMTV_STRUCT* ptr);
+BPCSMTV_MSG* bpc_constructor_msg();
+void bpc_destructor_msg(BPCSMTV_MSG* ptr);
 
-void bpc_semantic_check_duplication_reset();
-bool bpc_semantic_check_duplication(char* name);
+BPCSMTV_DEFINE_GROUP* bpc_constructor_define_group();
+void bpc_destructor_define_group(BPCSMTV_DEFINE_GROUP* ptr);
+void bpc_destructor_define_group_slist(GSList* list);
+
+BPCSMTV_DOCUMENT* bpc_constructor_document();
+void bpc_destructor_document(BPCSMTV_DOCUMENT* ptr);
+
+void bpcsmtv_member_copy_array_prop(GSList* ls, BPCSMTV_MEMBER_ARRAY_PROP* data);
+void bpcsmtv_member_copy_align_prop(GSList* ls, BPCSMTV_MEMBER_ALIGN_PROP* data);
+
+/*
+We call `entry` as:
+
+- The field of struct and msg.
+- The enum item in enum.
+- The user defined alias name in alias.
+
+We call `token` as:
+
+- The name of struct, msg and enum self.
+
+*/
+void bpcsmtv_entry_registery_reset();
+/// <summary>
+/// test specific `entry` and try to add it.
+/// </summary>
+/// <param name="name"></param>
+/// <returns>return true if exist, otherwise return false</returns>
+bool bpcsmtv_entry_registery_test(char* name);
+void bpcsmtv_token_registery_reset();
+/// <summary>
+/// test specific `token` and try to add it.
+/// </summary>
+/// <param name="name"></param>
+/// <returns>return true if exist, otherwise return false</returns>
+bool bpcsmtv_token_registery_test(char* name);
+
+bool bpcsmtv_basic_type_is_suit_for_enum(BPCSMTV_BASIC_TYPE bt);
+

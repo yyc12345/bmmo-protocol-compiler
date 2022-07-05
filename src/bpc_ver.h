@@ -1,9 +1,9 @@
 #pragma once
+#define BPCVER_COMPILER_VERSION 1
+
 #define BPCVER_MAJOR 0
 #define BPCVER_MINOR 1
 #define BPCVER_BUILD 0
-
-#define BPCVER_NUM 1
 
 #define BPCVER_TOSTRING2(arg) #arg
 #define BPCVER_TOSTRING(arg) BPCVER_TOSTRING2(arg)
