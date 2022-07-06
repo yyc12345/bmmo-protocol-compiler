@@ -115,11 +115,11 @@ typedef enum _BPCSMTV_DEFINED_TOKEN_TYPE {
 
 typedef struct _BPCSMTV_DEFINE_GROUP {
 	BPCSMTV_DEFINED_TOKEN_TYPE node_type;
-	union _BPCSMTV_DEFINE_GROUP_NODE_DATA {
+	union {
 		BPCSMTV_ALIAS* alias_data;
 		BPCSMTV_ENUM* enum_data;
 		BPCSMTV_STRUCT* struct_data;
-		BPCSMTV_MSG* msg_data
+		BPCSMTV_MSG* msg_data;
 	}node_data;
 }BPCSMTV_DEFINE_GROUP;
 
@@ -128,8 +128,45 @@ typedef struct _BPCSMTV_DOCUMENT {
 	/// item is the same as the semantic value of bpc_namespace_chain and bpc_namespace, char*
 	/// </summary>
 	GSList* namespace_data;
-	BPCSMTV_DEFINE_GROUP* define_group_data;
+	/// <summary>
+	/// storage define group data.
+	/// item is `BPCSMTV_DEFINE_GROUP*`
+	/// </summary>
+	GSList* define_group_data;
 }BPCSMTV_DOCUMENT;
+
+/// <summary>
+/// the struct recording the properties of each token 
+/// including alias, enum, struct and msg
+/// </summary>
+typedef struct _BPCSMTV_TOKEN_REGISTERY_ITEM {
+	/// <summary>
+	/// the name of this token
+	/// </summary>
+	char* token_name;
+	/// <summary>
+	/// the type of this token: alias, enum, struct and msg
+	/// </summary>
+	BPCSMTV_DEFINED_TOKEN_TYPE token_type;
+
+	/// <summary>
+	/// some extra props of token
+	/// </summary>
+	union {
+		/// <summary>
+		/// the distributed ordered index of `msg` type. 
+		/// only valid in msg type
+		/// </summary>
+		uint32_t token_arranged_index;
+		/// <summary>
+		/// underlaying basic type. 
+		/// only valid in enum and alias type. 
+		/// </summary>
+		BPCSMTV_BASIC_TYPE token_basic_type;
+	}token_extra_props;
+
+}BPCSMTV_TOKEN_REGISTERY_ITEM;
+
 
 BPCSMTV_BASIC_TYPE bpc_parse_basic_type(const char*);
 
@@ -160,6 +197,7 @@ void bpc_destructor_define_group_slist(GSList* list);
 BPCSMTV_DOCUMENT* bpc_constructor_document();
 void bpc_destructor_document(BPCSMTV_DOCUMENT* ptr);
 
+GSList* bpcsmtv_member_duplicate(GSList* refls, const char* new_name);
 void bpcsmtv_member_copy_array_prop(GSList* ls, BPCSMTV_MEMBER_ARRAY_PROP* data);
 void bpcsmtv_member_copy_align_prop(GSList* ls, BPCSMTV_MEMBER_ALIGN_PROP* data);
 
@@ -175,20 +213,33 @@ We call `token` as:
 - The name of struct, msg and enum self.
 
 */
+
+/// <summary>
+/// reset entry registery. 
+/// only should be reset when a block(enum, msg, struct) has been parsed.
+/// </summary>
 void bpcsmtv_entry_registery_reset();
 /// <summary>
-/// test specific `entry` and try to add it.
+/// test specific `entry`
 /// </summary>
 /// <param name="name"></param>
 /// <returns>return true if exist, otherwise return false</returns>
-bool bpcsmtv_entry_registery_test(char* name);
+bool bpcsmtv_entry_registery_test(const char* name);
+void bpcsmtv_entry_registery_add(const char* name);
+
 void bpcsmtv_token_registery_reset();
 /// <summary>
-/// test specific `token` and try to add it.
+/// test specific `token`
 /// </summary>
 /// <param name="name"></param>
 /// <returns>return true if exist, otherwise return false</returns>
-bool bpcsmtv_token_registery_test(char* name);
+bool bpcsmtv_token_registery_test(const char* name);
+BPCSMTV_TOKEN_REGISTERY_ITEM* bpcsmtv_token_registery_get(const char* name);
+void bpcsmtv_token_registery_add_alias(BPCSMTV_ALIAS* data);
+void bpcsmtv_token_registery_add_enum(BPCSMTV_ENUM* data);
+void bpcsmtv_token_registery_add_struct(BPCSMTV_STRUCT* data);
+void bpcsmtv_token_registery_add_msg(BPCSMTV_MSG* data);
+GSList* bpcsmtv_token_registery_get_slist();
 
 bool bpcsmtv_basic_type_is_suit_for_enum(BPCSMTV_BASIC_TYPE bt);
 

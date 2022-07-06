@@ -2,6 +2,10 @@
 #include <glib.h>
 #include <stdbool.h>
 
+#ifdef G_OS_WIN32
+#include <Windows.h>
+#endif
+
 void bpcerr_info(BPCERR_ERROR_SOURCE src, const char* format, ...) {
 	va_list ap;
 	va_start(ap, format);
@@ -70,7 +74,7 @@ void _bpcerr_printf(BPCERR_ERROR_SOURCE src, BPCERR_ERROR_TYPE err_type, const c
 			break;
 	}
 
-	g_print("%-10s% %-20s %s\n", str_type, str_src, disp->str);
+	g_print("%-10s %-20s %s\n", str_type, str_src, disp->str);
 
 	g_string_free(disp, true);
 }

@@ -20,4 +20,3 @@ void bpccmd_free_parsed_args(BPCCMD_PARSED_ARGS* struct_args);
 BPCCMD_PARSED_ARGS* _bpccmd_alloc_parsed_args();
 void _bpccmd_print_help(GOptionContext* ctx);
 void _bpccmd_clean_static_value();
-FILE* _bpccmd_open_glib_filename(gchar* glib_filename, bool is_open);

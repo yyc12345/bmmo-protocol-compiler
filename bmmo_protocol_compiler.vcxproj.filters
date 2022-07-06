@@ -45,6 +45,9 @@
     <ClCompile Include="src\bpc_error.c">
       <Filter>Sources</Filter>
     </ClCompile>
+    <ClCompile Include="src\bpc_fs.c">
+      <Filter>Sources</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="src\compiler.l">
@@ -74,6 +77,9 @@
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="src\bpc_error.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\bpc_fs.h">
       <Filter>Headers</Filter>
     </ClInclude>
   </ItemGroup>

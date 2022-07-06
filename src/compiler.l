@@ -70,7 +70,7 @@ TOKEN_NAME		[a-zA-Z][a-zA-Z0-9_]*
 	return BPC_MSG;
 }
 "float"|"double"|"int8"|"int16"|"int32"|"int64"|"uint8"|"uint16"|"uint32"|"uint64"|"string" {
-	yylval.token_basic_type = bpc_parse_basic_type_string(yytext);
+	yylval.token_basic_type = bpc_parse_basic_type(yytext);
 	return BPC_BASIC_TYPE;
 }
 "tuple" {

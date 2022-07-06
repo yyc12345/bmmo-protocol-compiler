@@ -10,10 +10,11 @@
 #include "bpc_cmd.h"
 #include "bpc_error.h"
 #include "bpc_ver.h"
+#include "bpc_fs.h"
 }
 
 %code provides {
-int run_compiler(BPC_CMD_PARSED_ARGS* bpc_args);
+int run_compiler(BPCCMD_PARSED_ARGS* bpc_args);
 void bpc_yyerror(const char* format, ...);
 }
 
@@ -27,13 +28,20 @@ extern FILE* yyin;
 extern FILE* yyout;
 extern int yylex(void); 
 
+/*
+NOTE:
+some actions have check operation and a exception will throw out if check failed.
+so, we MUST setup semantic value before any checks, otherwise destructor will work perfectly and
+result in memmory leak.
+*/
+
 }
 
 %define parse.error detailed
 %locations
 
 %union {
-	BPC_SEMANTIC_BASIC_TYPE token_basic_type;
+	BPCSMTV_BASIC_TYPE token_basic_type;
 	char* token_name;
 	int64_t token_num;
 	bool token_bool;
@@ -47,9 +55,9 @@ extern int yylex(void);
 	BPCSMTV_STRUCT* nterm_struct;
 	BPCSMTV_MSG* nterm_msg;
 
-	GSList* nterm_enum_body;		// item is BPC_SEMANTIC_ENUM_BODY*
+	GSList* nterm_enum_body;		// item is BPCSMTV_ENUM_BODY*
 	BPCSMTV_ENUM_BODY* nterm_enum_body_entry;
-	GSList* nterm_members;			// item is BPC_SEMANTIC_MEMBER*
+	GSList* nterm_members;			// item is BPCSMTV_MEMBER*
 }
 %token <token_num> BPC_TOKEN_NUM			"dec_number"
 %token <token_name> BPC_TOKEN_NAME			"token_name"
@@ -109,7 +117,11 @@ bpc_version bpc_namespace bpc_define_group
 	bpcgen_write_document($$);
 
 	// free doc
-	bpc_destructor_document(BPCSMTV_DOCUMENT* doc);
+	// WARNING: because bpc_document is a start symbol
+	// if we get this symbol, a YYACCEPT will be raised
+	// and the destructor declaration will be called automatically
+	// so we do not need call it in there now.
+	//bpc_destructor_document($$);
 
 	// reset registery
 	bpcsmtv_entry_registery_reset();
@@ -146,10 +158,7 @@ bpc_namespace_chain[sdd_old_chain] BPC_DOT BPC_TOKEN_NAME[sdd_name]
 bpc_define_group:
 %empty
 {
-	// we need reset entry duplication check status
-	// because a block(alias, enum, struct, msg) is over
 	$$ = NULL;
-	bpcsmtv_entry_registery_reset();
 }
 |
 bpc_define_group[old_define_group] bpc_enum
@@ -184,16 +193,20 @@ bpc_define_group[old_define_group] bpc_alias
 	$$ = g_slist_append($old_define_group, gp);
 }
 |
-bpc_define_group error BPC_RIGHT_BRACKET
+bpc_define_group[old_define_group] error BPC_RIGHT_BRACKET
 {
+	$$ = $old_define_group;
+
 	// enum, struct, msg recover
 	// we need reset duplication check status
 	bpcsmtv_entry_registery_reset();
 	yyerrok;	// recover after detecting a BPC_RIGHT_BRACKET
 }
 |
-bpc_define_group error BPC_SEMICOLON
+bpc_define_group[old_define_group] error BPC_SEMICOLON
 {
+	$$ = $old_define_group;
+
 	// alias recover
 	yyerrok;	// recover after detecting a BPC_RIGHT_BRACKET
 };
@@ -210,6 +223,7 @@ BPC_ALIAS BPC_TOKEN_NAME[sdd_user_type] BPC_BASIC_TYPE[sdd_basic_type] BPC_SEMIC
 		bpc_yyerror("token %s has been defined.", $sdd_user_type);
 		YYERROR;
 	}
+	bpcsmtv_token_registery_add_alias($$);
 };
 
 bpc_enum:
@@ -222,11 +236,6 @@ BPC_RIGHT_BRACKET
 	$$->enum_basic_type = $sdd_enum_type;
 	$$->enum_body = $bpc_enum_body;
 
-	// check token duplication
-	if (bpcsmtv_token_registery_test($sdd_enum_name)) {
-		bpc_yyerror("token %s has been defined.", $sdd_enum_name);
-		YYERROR;
-	}
 	// check empty body
 	if ($bpc_enum_body == NULL) {
 		bpc_yyerror("enum %s should have at least 1 entry.", $sdd_enum_name);
@@ -237,6 +246,12 @@ BPC_RIGHT_BRACKET
 		bpc_yyerror("the basic type of enum %s is illegal.", $sdd_enum_name);
 		YYERROR;
 	}
+	// check token duplication
+	if (bpcsmtv_token_registery_test($sdd_enum_name)) {
+		bpc_yyerror("token %s has been defined.", $sdd_enum_name);
+		YYERROR;
+	}
+	bpcsmtv_token_registery_add_enum($$);
 
 	// reset entry check
 	bpcsmtv_entry_registery_reset();
@@ -256,7 +271,7 @@ bpc_enum_body[sdd_enum_chain] BPC_COMMA bpc_enum_body_entry
 bpc_enum_body_entry:
 BPC_TOKEN_NAME[sdd_name]
 {	
-	BPC_SEMANTIC_ENUM_BODY* entry = bpc_constructor_enum_body();
+	BPCSMTV_ENUM_BODY* entry = bpc_constructor_enum_body();
 	entry->enum_name = $sdd_name;
 	entry->have_specific_value = false;
 	entry->specific_value = 0;
@@ -268,11 +283,12 @@ BPC_TOKEN_NAME[sdd_name]
 		bpc_yyerror("enum entry %s is duplicated.", $sdd_name);
 		YYERROR;
 	}
+	bpcsmtv_entry_registery_add($sdd_name);
 }
 |
 BPC_TOKEN_NAME[sdd_name] BPC_EQUAL BPC_TOKEN_NUM[sdd_spec_num]
 {
-	BPC_SEMANTIC_ENUM_BODY* entry = bpc_constructor_enum_body();
+	BPCSMTV_ENUM_BODY* entry = bpc_constructor_enum_body();
 	entry->enum_name = $sdd_name;
 	entry->have_specific_value = true;
 	entry->specific_value = $sdd_spec_num;
@@ -284,6 +300,7 @@ BPC_TOKEN_NAME[sdd_name] BPC_EQUAL BPC_TOKEN_NUM[sdd_spec_num]
 		bpc_yyerror("enum entry %s is duplicated.", $sdd_name);
 		YYERROR;
 	}
+	bpcsmtv_entry_registery_add($sdd_name);
 };
 
 bpc_struct:
@@ -300,6 +317,7 @@ BPC_RIGHT_BRACKET
 		bpc_yyerror("token %s has been defined.", $sdd_struct_name);
 		YYERROR;
 	}
+	bpcsmtv_token_registery_add_struct($$);
 
 	// reset entry check
 	bpcsmtv_entry_registery_reset();
@@ -320,6 +338,7 @@ BPC_RIGHT_BRACKET
 		bpc_yyerror("token %s has been defined.", $sdd_msg_name);
 		YYERROR;
 	}
+	bpcsmtv_token_registery_add_msg($$);
 
 	// reset entry check
 	bpcsmtv_entry_registery_reset();
@@ -348,11 +367,11 @@ bpc_member_with_array BPC_SEMICOLON
 	$$ = $bpc_member_with_array;
 }
 |
-bpc_member_with_array BPC_ALIGN BPC_TOKEN_NUM[sdd_expected_size] BPC_SEMICOLON
+bpc_member_with_array BPC_ALIGN BPC_TOKEN_NUM[sdd_extra_size] BPC_SEMICOLON
 {
 	BPCSMTV_MEMBER_ALIGN_PROP data;
 	data.use_align = true;
-	data.padding_size = (uint32_t)$sdd_expected_size;
+	data.padding_size = (uint32_t)$sdd_extra_size;
 
 	// apply array prop and move list
 	bpcsmtv_member_copy_align_prop($bpc_member_with_array, &data);
@@ -398,7 +417,7 @@ bpc_member BPC_ARRAY_LIST
 	data.array_len = 0u;
 
 	// apply array prop and move list
-	g_slist_foreach($bpc_member, bpc_lambda_semantic_member_copy_array_prop, &data);
+	bpcsmtv_member_copy_array_prop($bpc_member, &data);
 	$$ = $bpc_member;
 };
 
@@ -417,6 +436,7 @@ BPC_BASIC_TYPE[sdd_basic_type] BPC_TOKEN_NAME[sdd_name]
 		bpc_yyerror("struct or msg entry %s is duplicated.", $sdd_name);
 		YYERROR;
 	}
+	bpcsmtv_entry_registery_add($sdd_name);
 
 }
 |
@@ -436,42 +456,26 @@ BPC_TOKEN_NAME[sdd_struct_type] BPC_TOKEN_NAME[sdd_name]
 	}
 
 	// check token name validation
-	BPC_CODEGEN_TOKEN_ENTRY* entry = bpc_codegen_get_token_entry($sdd_struct_type);
-	if (entry == NULL || entry->token_type == BPC_CODEGEN_TOKEN_TYPE_MSG) {
-		bpc_yyerror("token %s is not defined.", $sdd_struct_type);
+	BPCSMTV_TOKEN_REGISTERY_ITEM* entry = bpcsmtv_token_registery_get($sdd_struct_type);
+	if (entry == NULL || entry->token_type == BPCSMTV_DEFINED_TOKEN_TYPE_MSG) {
+		bpc_yyerror("token %s is not defined or it is a msg which should not be specific as a type.", $sdd_struct_type);
 		YYERROR;
 	}
+	bpcsmtv_entry_registery_add($sdd_name);
 }
 |
 bpc_member[sdd_member_chain] BPC_COMMA BPC_TOKEN_NAME[sdd_name]
 {
-	// get a references item from old chain. old chain have at least item so 
-	// this oper is safe.
-	GSList* formed_member_chain = (GSList*)$sdd_member_chain;
-	BPCSMTV_MEMBER* references_item = (BPCSMTV_MEMBER*)formed_member_chain->data;
-
-	// construct new item and apply some properties from
-	// references item
-	BPCSMTV_MEMBER* data = bpc_constructor_member();
-	data->vname = $sdd_name;
-	data->is_basic_type = references_item->is_basic_type;
-	if (data->is_basic_type) {
-		data->v_basic_type = references_item->v_basic_type;
-	} else {
-		// use strdup to ensure each item have unique string in memory
-		// for safely free memory for each item.
-		data->v_struct_type = g_strdup(references_item->v_struct_type);
-	}
-
+	// duplicate a new one accoding to $sdd_name and the props of previous item
 	// add into list
-	$$ = g_slist_append(formed_member_chain, data);
+	$$ = bpcsmtv_member_duplicate($sdd_member_chain, $sdd_name);
 
 	//check entry duplication
 	if (bpcsmtv_entry_registery_test($sdd_name)) {
 		bpc_yyerror("struct or msg entry %s is duplicated.", $sdd_name);
 		YYERROR;
 	}
-
+	bpcsmtv_entry_registery_add($sdd_name);
 };
 
 %%
@@ -489,21 +493,19 @@ void yyerror(const char *s) {
 }
 
 void bpc_yyerror(const char* format, ...) {
-	// generate format string
-	GString* buf = g_string_new(NULL);
 	va_list ap;
 	va_start(ap, format);
-	g_string_vprintf(buf, format, ap);
+	gchar* buf = bpcfs_vsprintf(format, ap);
 	va_end(ap);
 
 	// call real yyerror
-	yyerror(buf->str);
+	yyerror(buf);
 
 	// free
-	g_string_free(buf, TRUE);
+	g_free(buf);
 }
 
-int run_compiler(BPC_CMD_PARSED_ARGS* bpc_args) {
+int run_compiler(BPCCMD_PARSED_ARGS* bpc_args) {
 	// setup parameters
 	yyout = stdout;
 	yyin = bpc_args->input_file;
@@ -512,7 +514,7 @@ int run_compiler(BPC_CMD_PARSED_ARGS* bpc_args) {
 		return 1;
 	}
 	// init code file
-	bpc_codegen_init_code_file(bpc_args) 
+	bpcgen_init_code_file(bpc_args);
 
 	// do parse
 	bpcsmtv_token_registery_reset();
@@ -521,7 +523,7 @@ int run_compiler(BPC_CMD_PARSED_ARGS* bpc_args) {
 
 	// free resources
 	yyin = stdin;
-	bpc_codegen_free_code_file();
+	bpcgen_free_code_file();
 
 	return result;
 }

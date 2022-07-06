@@ -1,9 +1,6 @@
 #include "bpc_cmd.h"
 #include "bpc_ver.h"
-
-#ifdef G_OS_WIN32
-#include <Windows.h>
-#endif
+#include "bpc_fs.h"
 
 static gboolean opt_version = false;
 static gboolean opt_help = false;
@@ -89,12 +86,12 @@ void bpccmd_free_parsed_args(BPCCMD_PARSED_ARGS* struct_args) {
 BPCCMD_PARSED_ARGS* _bpccmd_alloc_parsed_args() {
 	BPCCMD_PARSED_ARGS* st = g_new0(BPCCMD_PARSED_ARGS, 1);
 
-	st->input_file = _bpccmd_open_glib_filename(opt_input, true);
-	st->out_python_file = _bpccmd_open_glib_filename(opt_python, false);
-	st->out_csharp_file = _bpccmd_open_glib_filename(opt_csharp, false);
-	st->out_cpp_header_file = _bpccmd_open_glib_filename(opt_cpp_header, false);
-	st->out_cpp_source_file = _bpccmd_open_glib_filename(opt_cpp_source, false);
-	st->out_proto_file = _bpccmd_open_glib_filename(opt_proto, false);
+	st->input_file = bpcfs_fopen_glibfs(opt_input, true);
+	st->out_python_file = bpcfs_fopen_glibfs(opt_python, false);
+	st->out_csharp_file = bpcfs_fopen_glibfs(opt_csharp, false);
+	st->out_cpp_header_file = bpcfs_fopen_glibfs(opt_cpp_header, false);
+	st->out_cpp_source_file = bpcfs_fopen_glibfs(opt_cpp_source, false);
+	st->out_proto_file = bpcfs_fopen_glibfs(opt_proto, false);
 
 	return st;
 }
@@ -117,27 +114,3 @@ void _bpccmd_clean_static_value() {
 	opt_input = opt_python = opt_csharp = opt_cpp_header = opt_cpp_source = opt_proto = NULL;
 }
 
-FILE* _bpccmd_open_glib_filename(gchar* glib_filename, bool is_open) {
-	if (glib_filename == NULL) return NULL;
-	gchar* utf8_filename = g_filename_to_utf8(glib_filename, -1, NULL, NULL, NULL);
-	if (utf8_filename == NULL) return NULL;
-
-	FILE* fs = NULL;
-#ifdef G_OS_WIN32
-	int dest_len = MultiByteToWideChar(CP_UTF8, 0, utf8_filename, -1, NULL, 0);
-	if (dest_len <= 0) return NULL;
-
-	wchar_t* buffer = g_new0(wchar_t, dest_len);
-	int w_check = MultiByteToWideChar(CP_UTF8, 0, utf8_filename, -1, buffer, dest_len);
-	if (w_check <= 0) {
-		g_free(buffer);
-		return NULL;
-	}
-
-	fs = _wfopen(buffer, is_open ? L"r" : L"w");
-	g_free(buffer);
-#else
-	fs = fopen(utf8_filename, is_open ? L"r" : L"w");
-#endif
-	return fs;
-}
