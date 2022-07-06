@@ -87,6 +87,18 @@
     <CopyFileToFolders Include="snippets\header.py">
       <Filter>Resources\snippets</Filter>
     </CopyFileToFolders>
+    <CopyFileToFolders Include="snippets\header.cs">
+      <Filter>Resources\snippets</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="snippets\functions.cs">
+      <Filter>Resources\snippets</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="snippets\header.hpp">
+      <Filter>Resources\snippets</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="snippets\functions.cpp">
+      <Filter>Resources\snippets</Filter>
+    </CopyFileToFolders>
     <CopyFileToFolders Include="examples\example.bp">
       <Filter>Resources\examples</Filter>
     </CopyFileToFolders>

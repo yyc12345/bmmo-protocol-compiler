@@ -8,11 +8,18 @@
 //	4, 8, 1, 2, 4, 8, 1, 2, 4, 8
 //};
 
-static const char* bpc_codegen_python_struct_pattern[] = {
+static const char* code_python_struct_pattern[] = {
 	"f", "d", "b", "h", "i", "q", "B", "H", "I", "Q"
 };
-static const char* bpc_codegen_python_struct_pattern_len[] = {
+static const char* code_python_struct_pattern_len[] = {
 	"4", "8", "1", "2", "4", "8", "1", "2", "4", "8"
+};
+
+static const char* code_csharp_basic_type[] = {
+	"float", "double", "sbyte", "short", "int", "long", "byte", "ushort", "uint", "ulong", "string"
+};
+static const char* code_csharp_formal_basic_type[] = {
+	"Single", "Double", "SByte", "Int16", "Int32", "Int64", "Byte", "UInt16", "UInt32", "UInt64", "String"
 };
 
 
@@ -69,6 +76,9 @@ void bpcgen_write_document(BPCSMTV_DOCUMENT* document) {
 
 	// write opcode
 	_bpcgen_write_opcode();
+
+	// write tail
+	_bpcgen_write_tail_code(document->namespace_data);
 }
 
 void bpcgen_free_code_file() {
@@ -88,6 +98,10 @@ void _bpcgen_write_alias(BPCSMTV_ALIAS* token_data) {
 	}
 	if (BPC_CODEGEN_OUTPUT_CSHARP) {
 		;
+		// do nothing
+		// although c# have syntax: using xxx = yyy;
+		// but it only can be used in new c# version(higher than c# 8.0)
+		// so i give up using this features.
 	}
 	if (BPC_CODEGEN_OUTPUT_CPP_H) {
 		;
@@ -109,6 +123,8 @@ void _bpcgen_write_enum(BPCSMTV_ENUM* token_data) {
 	// ==================== Language Output ====================
 	if (BPC_CODEGEN_OUTPUT_PYTHON) {
 		BPC_CODEGEN_INDENT_RESET(fs_python);
+		counter = 0;
+
 		BPC_CODEGEN_INDENT_PRINT;
 		fprintf(fs_python, "class %s():", token_data->enum_name); BPC_CODEGEN_INDENT_INC;
 		for (cursor = token_data->enum_body; cursor != NULL; cursor = cursor->next) {
@@ -125,7 +141,27 @@ void _bpcgen_write_enum(BPCSMTV_ENUM* token_data) {
 		BPC_CODEGEN_INDENT_DEC;
 	}
 	if (BPC_CODEGEN_OUTPUT_CSHARP) {
-		;
+		BPC_CODEGEN_INDENT_RESET(fs_csharp);
+		counter = 0;
+
+		BPC_CODEGEN_INDENT_PRINT;
+		fprintf(fs_csharp, "public enum %s : %s {", token_data->enum_name, code_csharp_basic_type[token_data->enum_basic_type]); BPC_CODEGEN_INDENT_INC;
+		for (cursor = token_data->enum_body; cursor != NULL; cursor = cursor->next) {
+			BPCSMTV_ENUM_BODY* data = (BPCSMTV_ENUM_BODY*)cursor->data;
+			if (data->have_specific_value) {
+				counter = data->specific_value;
+			}
+
+			BPC_CODEGEN_INDENT_PRINT;
+			fprintf(fs_csharp, "%s = %" PRIi64, data->enum_name, counter++);
+			if (cursor->next != NULL) {
+				fputs(",", fs_csharp);
+			}
+		}
+		// enum is over
+		BPC_CODEGEN_INDENT_DEC;
+		BPC_CODEGEN_INDENT_PRINT;
+		fputs("}", fs_csharp);
 	}
 	if (BPC_CODEGEN_OUTPUT_CPP_H) {
 		;
@@ -146,7 +182,7 @@ void _bpcgen_write_msg(BPCSMTV_MSG* token_data) {
 	props.is_reliable = token_data->is_reliable;
 	_bpcgen_gen_struct_msg_body(token_data->msg_name, token_data->msg_member, &props);
 }
-void _bpcgen_gen_struct_msg_body(const char* token_name, GSList* member_list, BPCGEN_MSG_EXTRA_PROPS* msg_prop) {
+void _bpcgen_gen_struct_msg_body(const char* token_name, GSList* smtv_member_list, BPCGEN_MSG_EXTRA_PROPS* msg_prop) {
 	bool is_msg = msg_prop != NULL;
 
 	// get msg index
@@ -156,9 +192,19 @@ void _bpcgen_gen_struct_msg_body(const char* token_name, GSList* member_list, BP
 	// define some useful variable
 	BPC_CODEGEN_INDENT_INIT;
 	GSList* cursor;
-	GString* operator_name = g_string_new(NULL);
-	bool proc_like_basic_type;
-	BPCSMTV_BASIC_TYPE underlaying_basic_type;
+	GString* declare_oper_name = g_string_new(NULL);
+	GString* reference_oper_name = g_string_new(NULL);
+
+	// we need compute underlaying type for each item
+	guint member_count = g_slist_length(smtv_member_list);
+	GSList* codegen_member_list = NULL;
+	for (cursor = smtv_member_list; cursor != NULL; cursor = cursor->next) {
+		BPCGEN_UNDERLAYING_MEMBER* member = g_new0(BPCGEN_UNDERLAYING_MEMBER, 1);
+		codegen_member_list = g_slist_append(codegen_member_list, member);
+
+		member->semantic_value = (BPCSMTV_MEMBER*)cursor->data;
+		_bpcgen_get_underlaying_type(member);
+	}
 
 	// ==================== Language Output ====================
 	if (BPC_CODEGEN_OUTPUT_PYTHON) {
@@ -171,17 +217,17 @@ void _bpcgen_gen_struct_msg_body(const char* token_name, GSList* member_list, BP
 		fprintf(fs_python, "def __init__(self):");
 
 		BPC_CODEGEN_INDENT_INC;
-		for (cursor = member_list; cursor != NULL; cursor = cursor->next) {
-			BPCSMTV_MEMBER* data = (BPCSMTV_MEMBER*)cursor->data;
+		for (cursor = codegen_member_list; cursor != NULL; cursor = cursor->next) {
+			BPCGEN_UNDERLAYING_MEMBER* data = (BPCGEN_UNDERLAYING_MEMBER*)cursor->data;
 
 			BPC_CODEGEN_INDENT_PRINT;
-			if (data->array_prop.is_array) {
-				fprintf(fs_python, "self.%s = []", data->vname);
+			if (data->semantic_value->array_prop.is_array) {
+				fprintf(fs_python, "self.%s = []", data->semantic_value->vname);
 			} else {
-				fprintf(fs_python, "self.%s = None", data->vname);
+				fprintf(fs_python, "self.%s = None", data->semantic_value->vname);
 			}
 		}
-		if (member_list == NULL) {
+		if (codegen_member_list == NULL) {
 			// if there are no member, wee need write extra `pass`
 			BPC_CODEGEN_INDENT_PRINT;
 			fprintf(fs_python, "pass");
@@ -218,20 +264,20 @@ void _bpcgen_gen_struct_msg_body(const char* token_name, GSList* member_list, BP
 			BPC_CODEGEN_INDENT_PRINT;
 			fprintf(fs_python, "raise Exception('invalid opcode!')"); BPC_CODEGEN_INDENT_DEC;
 		}
-		for (cursor = member_list; cursor != NULL; cursor = cursor->next) {
-			BPCSMTV_MEMBER* data = (BPCSMTV_MEMBER*)cursor->data;
+		for (cursor = codegen_member_list; cursor != NULL; cursor = cursor->next) {
+			BPCGEN_UNDERLAYING_MEMBER* data = (BPCGEN_UNDERLAYING_MEMBER*)cursor->data;
 
 			// annotation
 			BPC_CODEGEN_INDENT_PRINT;
-			fprintf(fs_python, "# %s", data->vname);
+			fprintf(fs_python, "# %s", data->semantic_value->vname);
 
 			// if member is array, we need construct a loop
-			if (data->array_prop.is_array) {
+			if (data->semantic_value->array_prop.is_array) {
 				BPC_CODEGEN_INDENT_PRINT;
-				fprintf(fs_python, "self.%s.clear()", data->vname);
-				if (data->array_prop.is_static_array) {
+				fprintf(fs_python, "self.%s.clear()", data->semantic_value->vname);
+				if (data->semantic_value->array_prop.is_static_array) {
 					BPC_CODEGEN_INDENT_PRINT;
-					fprintf(fs_python, "for _i in range(%d):", data->array_prop.array_len);
+					fprintf(fs_python, "for _i in range(%d):", data->semantic_value->array_prop.array_len);
 				} else {
 					BPC_CODEGEN_INDENT_PRINT;
 					fprintf(fs_python, "_count = struct.unpack('I', ss.read(4))[0]");
@@ -244,55 +290,55 @@ void _bpcgen_gen_struct_msg_body(const char* token_name, GSList* member_list, BP
 			}
 
 			// determine operator name
-			if (data->array_prop.is_array) {
-				g_string_printf(operator_name, "_cache");
+			if (data->semantic_value->array_prop.is_array) {
+				g_string_printf(declare_oper_name, "_cache");
+				g_string_printf(reference_oper_name, "_cache");
 			} else {
-				g_string_printf(operator_name, "self.%s", data->vname);
+				g_string_printf(declare_oper_name, "self.%s", data->semantic_value->vname);
+				g_string_printf(reference_oper_name, "self.%s", data->semantic_value->vname);
 			}
 
 			// resolve basic type
-			_bpcgen_get_underlaying_type(data, &proc_like_basic_type, &underlaying_basic_type);
 			// determine read method
-			if (proc_like_basic_type) {
+			if (data->like_basic_type) {
 				// basic type deserialize
-				if (underlaying_basic_type == BPCSMTV_BASIC_TYPE_STRING) {
+				if (data->underlaying_basic_type == BPCSMTV_BASIC_TYPE_STRING) {
 					// string is special
 					BPC_CODEGEN_INDENT_PRINT;
-					fprintf(fs_python, "_strlen = struct.unpack('I', ss.read(4))[0]");
-					BPC_CODEGEN_INDENT_PRINT;
-					fprintf(fs_python, "%s = ss.read(_strlen).decode(encoding='gb2312', errors='ignore')", operator_name->str);
+					fprintf(fs_python, "%s = _read_bmmo_string(ss)", declare_oper_name->str);
 				} else {
 					// other value type can use table to generate
 					BPC_CODEGEN_INDENT_PRINT;
 					fprintf(fs_python, "%s = struct.unpack('%s', ss.read(%s))[0]",
-						operator_name->str,
-						bpc_codegen_python_struct_pattern[(size_t)underlaying_basic_type],
-						bpc_codegen_python_struct_pattern_len[(size_t)underlaying_basic_type]);
+						declare_oper_name->str,
+						code_python_struct_pattern[(size_t)data->underlaying_basic_type],
+						code_python_struct_pattern_len[(size_t)data->underlaying_basic_type]);
 				}
 			} else {
 				// struct deserialize
 				// call struct.deserialize()
 				BPC_CODEGEN_INDENT_PRINT;
-				fprintf(fs_python, "%s = %s()", operator_name->str, data->v_struct_type);
+				fprintf(fs_python, "%s = %s()", declare_oper_name->str, data->semantic_value->v_struct_type);
 				BPC_CODEGEN_INDENT_PRINT;
-				fprintf(fs_python, "%s.deserialize(ss)", operator_name->str);
-			}
-			// compute align data
-			if (data->align_prop.use_align) {
-				BPC_CODEGEN_INDENT_PRINT;
-				fprintf(fs_python, "ss.read(%d)", data->align_prop.padding_size);
+				fprintf(fs_python, "%s.deserialize(ss)", reference_oper_name->str);
 			}
 
 			// array extra proc
-			if (data->array_prop.is_array) {
+			if (data->semantic_value->array_prop.is_array) {
 				BPC_CODEGEN_INDENT_PRINT;
-				fprintf(fs_python, "self.%s.append(_cache)", data->vname);
+				fprintf(fs_python, "self.%s.append(_cache)", data->semantic_value->vname);
 
 				// shink indent
 				BPC_CODEGEN_INDENT_DEC;
 			}
+
+			// compute align data
+			if (data->semantic_value->align_prop.use_align) {
+				BPC_CODEGEN_INDENT_PRINT;
+				fprintf(fs_python, "ss.read(%d)", data->semantic_value->align_prop.padding_size);
+			}
 		}
-		if (member_list == NULL && (!is_msg)) {
+		if (codegen_member_list == NULL && (!is_msg)) {
 			// if there are no member, and this struct is not msg,
 			// we need write extra `pass`
 			// because msg have at least one entry `opcode` so it doesn't need pass
@@ -309,74 +355,70 @@ void _bpcgen_gen_struct_msg_body(const char* token_name, GSList* member_list, BP
 			BPC_CODEGEN_INDENT_PRINT;
 			fprintf(fs_python, "ss.write(struct.pack('I', %d))", msg_index);
 		}
-		for (cursor = member_list; cursor != NULL; cursor = cursor->next) {
-			BPCSMTV_MEMBER* data = (BPCSMTV_MEMBER*)cursor->data;
+		for (cursor = codegen_member_list; cursor != NULL; cursor = cursor->next) {
+			BPCGEN_UNDERLAYING_MEMBER* data = (BPCGEN_UNDERLAYING_MEMBER*)cursor->data;
 
 			// annotation
 			BPC_CODEGEN_INDENT_PRINT;
-			fprintf(fs_python, "# %s", data->vname);
+			fprintf(fs_python, "# %s", data->semantic_value->vname);
 
 			// if member is array, we need construct a loop
-			if (data->array_prop.is_array) {
+			if (data->semantic_value->array_prop.is_array) {
 				// increase indent level for array
-				if (data->array_prop.is_static_array) {
+				if (data->semantic_value->array_prop.is_static_array) {
 					BPC_CODEGEN_INDENT_PRINT;
-					fprintf(fs_python, "for _i in range(%d):", data->array_prop.array_len); BPC_CODEGEN_INDENT_INC;
+					fprintf(fs_python, "for _i in range(%d):", data->semantic_value->array_prop.array_len); BPC_CODEGEN_INDENT_INC;
 					BPC_CODEGEN_INDENT_PRINT;
-					fprintf(fs_python, "_item = self.%s[_i]", data->vname);
+					fprintf(fs_python, "_item = self.%s[_i]", data->semantic_value->vname);
 				} else {
 					BPC_CODEGEN_INDENT_PRINT;
-					fprintf(fs_python, "ss.write('I', len(self.%s))", data->vname);
+					fprintf(fs_python, "ss.write('I', len(self.%s))", data->semantic_value->vname);
 					BPC_CODEGEN_INDENT_PRINT;
-					fprintf(fs_python, "for _item in self.%s:", data->vname); BPC_CODEGEN_INDENT_INC;
+					fprintf(fs_python, "for _item in self.%s:", data->semantic_value->vname); BPC_CODEGEN_INDENT_INC;
 				}
 			}
 
 			// determine operator name
-			if (data->array_prop.is_array) {
-				g_string_printf(operator_name, "_item");
+			if (data->semantic_value->array_prop.is_array) {
+				g_string_printf(reference_oper_name, "_item");
 			} else {
-				g_string_printf(operator_name, "self.%s", data->vname);
+				g_string_printf(reference_oper_name, "self.%s", data->semantic_value->vname);
 			}
 
 			// determine read method
-			_bpcgen_get_underlaying_type(data, &proc_like_basic_type, &underlaying_basic_type);
-			if (proc_like_basic_type) {
+			if (data->like_basic_type) {
 				// basic type serialize
-				if (underlaying_basic_type == BPCSMTV_BASIC_TYPE_STRING) {
+				if (data->underlaying_basic_type == BPCSMTV_BASIC_TYPE_STRING) {
 					// string is special in basic type
 					BPC_CODEGEN_INDENT_PRINT;
-					fprintf(fs_python, "_binstr = %s.encode(encoding='gb2312', errors='ignore')", operator_name->str);
-					BPC_CODEGEN_INDENT_PRINT;
-					fprintf(fs_python, "ss.write(struct.pack('I', len(_binstr)))");
-					BPC_CODEGEN_INDENT_PRINT;
-					fprintf(fs_python, "ss.write(_binstr)");
+					fprintf(fs_python, "_write_bmmo_string(ss, %s)", reference_oper_name->str);
 				} else {
 					// other value can be generated by table search
 					BPC_CODEGEN_INDENT_PRINT;
 					fprintf(fs_python, "ss.write(struct.pack('%s', %s))",
-						bpc_codegen_python_struct_pattern[(size_t)underlaying_basic_type],
-						operator_name->str);
+						code_python_struct_pattern[(size_t)data->underlaying_basic_type],
+						reference_oper_name->str);
 				}
 			} else {
 				// struct serialize
 				// call struct.serialize()
 				BPC_CODEGEN_INDENT_PRINT;
-				fprintf(fs_python, "%s.serialize(ss)", operator_name->str);
-			}
-			// compute align size
-			if (data->align_prop.use_align) {
-				BPC_CODEGEN_INDENT_PRINT;
-				fprintf(fs_python, "ss.write(b'\\0' * %d)", data->align_prop.padding_size);
+				fprintf(fs_python, "%s.serialize(ss)", reference_oper_name->str);
 			}
 
 			// array extra proc
-			if (data->array_prop.is_array) {
+			if (data->semantic_value->array_prop.is_array) {
 				// shink indent
 				BPC_CODEGEN_INDENT_DEC;
 			}
+
+			// compute align size
+			if (data->semantic_value->align_prop.use_align) {
+				BPC_CODEGEN_INDENT_PRINT;
+				fprintf(fs_python, "ss.write(b'\\0' * %d)", data->semantic_value->align_prop.padding_size);
+			}
 		}
-		if (member_list == NULL && (!is_msg)) {
+		if (codegen_member_list == NULL && (!is_msg)) {
 			// if there are no member, and this struct is not msg,
 			// we need write extra `pass`
 			// because msg have at least one entry `opcode` so it doesn't need pass
@@ -391,7 +433,251 @@ void _bpcgen_gen_struct_msg_body(const char* token_name, GSList* member_list, BP
 
 	}
 	if (BPC_CODEGEN_OUTPUT_CSHARP) {
-		;
+		BPC_CODEGEN_INDENT_RESET(fs_csharp);
+		const gchar* cs_type_str = NULL;
+
+		// class decleartion
+		BPC_CODEGEN_INDENT_PRINT;
+		if (is_msg) {
+			fprintf(fs_csharp, "public class %s : _BpcMessage {", token_name);
+		} else {
+			fprintf(fs_csharp, "public class %s {", token_name);
+		}
+		BPC_CODEGEN_INDENT_INC;
+
+		// class member & constructor
+		for (cursor = codegen_member_list; cursor != NULL; cursor = cursor->next) {
+			BPCGEN_UNDERLAYING_MEMBER* data = (BPCGEN_UNDERLAYING_MEMBER*)cursor->data;
+			if (data->is_pure_basic_type) {
+				cs_type_str = code_csharp_basic_type[data->underlaying_basic_type];
+			} else {
+				cs_type_str = data->c_style_type;
+			}
+
+			BPC_CODEGEN_INDENT_PRINT;
+			if (data->semantic_value->array_prop.is_array) {
+				if (data->semantic_value->array_prop.is_static_array) {
+					fprintf(fs_csharp, "public %s[] %s = new %s[%d];", cs_type_str, data->semantic_value->vname, cs_type_str, data->semantic_value->array_prop.array_len);
+				} else {
+					fprintf(fs_csharp, "public List<%s> %s = new List<%s>();", cs_type_str, data->semantic_value->vname, cs_type_str);
+				}
+			} else {
+				fprintf(fs_csharp, "public %s %s;", cs_type_str, data->semantic_value->vname);
+			}
+		}
+
+		// reliable and opcode
+		if (is_msg) {
+			// reliable
+			BPC_CODEGEN_INDENT_PRINT;
+			fprintf(fs_csharp, "public bool IsReliable() {"); BPC_CODEGEN_INDENT_INC;
+
+			BPC_CODEGEN_INDENT_PRINT;
+			if (msg_prop->is_reliable) fprintf(fs_csharp, "return true;");
+			else fprintf(fs_csharp, "return false;");
+			BPC_CODEGEN_INDENT_DEC;
+			BPC_CODEGEN_INDENT_PRINT;
+			fputc('}', fs_csharp);
+
+			// opcode
+			BPC_CODEGEN_INDENT_PRINT;
+			fprintf(fs_csharp, "public _OpCode GetOpCode() {");
+
+			BPC_CODEGEN_INDENT_INC;
+			BPC_CODEGEN_INDENT_PRINT;
+			fprintf(fs_csharp, "return (_OpCode)%d;", msg_index);
+			BPC_CODEGEN_INDENT_DEC;
+			BPC_CODEGEN_INDENT_PRINT;
+			fputc('}', fs_csharp);
+		}
+
+		// deserializer
+		BPC_CODEGEN_INDENT_PRINT;
+		fprintf(fs_csharp, "public void Deserialize(BinaryReader br) {"); BPC_CODEGEN_INDENT_INC;
+		if (is_msg) {
+			BPC_CODEGEN_INDENT_PRINT;
+			fprintf(fs_csharp, "if (br.ReadUInt32() != %d)", msg_index); BPC_CODEGEN_INDENT_INC;
+			BPC_CODEGEN_INDENT_PRINT;
+			fprintf(fs_csharp, "throw new Exception(\"invalid opcode!\");"); BPC_CODEGEN_INDENT_DEC;
+		}
+		for (cursor = codegen_member_list; cursor != NULL; cursor = cursor->next) {
+			BPCGEN_UNDERLAYING_MEMBER* data = (BPCGEN_UNDERLAYING_MEMBER*)cursor->data;
+
+			// annotation
+			BPC_CODEGEN_INDENT_PRINT;
+			fprintf(fs_csharp, "// %s", data->semantic_value->vname);
+
+			// process array
+			if (data->semantic_value->array_prop.is_array) {
+				if (data->semantic_value->array_prop.is_static_array) {
+					BPC_CODEGEN_INDENT_PRINT;
+					fprintf(fs_csharp, "for (UInt32 _i = 0; _i < %d; _i++) {", data->semantic_value->array_prop.array_len);
+				} else {
+					// only dynamic list need clear
+					BPC_CODEGEN_INDENT_PRINT;
+					fprintf(fs_csharp, "%s.Clear();", data->semantic_value->vname);
+					BPC_CODEGEN_INDENT_PRINT;
+					fprintf(fs_csharp, "for (UInt32 _i = br.ReadUInt32(); _i > 0; _i--) {");
+				}
+
+				// increase indent
+				BPC_CODEGEN_INDENT_INC;
+			}
+
+			// determine operator name
+			if (data->semantic_value->array_prop.is_array) {
+				g_string_printf(declare_oper_name, "var _cache");
+				g_string_printf(reference_oper_name, "_cache");
+			} else {
+				g_string_printf(declare_oper_name, "%s", data->semantic_value->vname);
+				g_string_printf(reference_oper_name, "%s", data->semantic_value->vname);
+			}
+
+			// determine read method
+			if (data->like_basic_type) {
+				// basic type deserialize
+				if (data->underlaying_basic_type == BPCSMTV_BASIC_TYPE_STRING) {
+					// string is special
+					BPC_CODEGEN_INDENT_PRINT;
+					fprintf(fs_csharp, "%s = br.BpcReadString();", declare_oper_name->str);
+				} else {
+					// other value type can use table to generate
+					BPC_CODEGEN_INDENT_PRINT;
+					if (data->is_pure_basic_type) {
+						fprintf(fs_csharp, "%s = br.Read%s();",
+							declare_oper_name->str,
+							code_csharp_formal_basic_type[(size_t)data->underlaying_basic_type]);
+					} else {
+						// non-pure value need a convertion
+						fprintf(fs_csharp, "%s = (%s)br.Read%s();",
+							declare_oper_name->str,
+							data->c_style_type,
+							code_csharp_formal_basic_type[(size_t)data->underlaying_basic_type]);
+					}
+				}
+			} else {
+				// struct deserialize
+				// call struct.deserialize()
+				BPC_CODEGEN_INDENT_PRINT;
+				fprintf(fs_csharp, "%s = new %s();", declare_oper_name->str, data->semantic_value->v_struct_type);
+				BPC_CODEGEN_INDENT_PRINT;
+				fprintf(fs_csharp, "%s.Deserialize(br);", reference_oper_name->str);
+			}
+
+			// array extra proc
+			if (data->semantic_value->array_prop.is_array) {
+				BPC_CODEGEN_INDENT_PRINT;
+				if (data->semantic_value->array_prop.is_static_array) {
+					fprintf(fs_csharp, "%s[_i] = _cache;", data->semantic_value->vname);
+				} else {
+					fprintf(fs_csharp, "%s.Add(_cache);", data->semantic_value->vname);
+				}
+
+				// shink indent
+				BPC_CODEGEN_INDENT_DEC;
+				BPC_CODEGEN_INDENT_PRINT;
+				fputs("}", fs_csharp);
+			}
+
+			// compute align data
+			if (data->semantic_value->align_prop.use_align) {
+				BPC_CODEGEN_INDENT_PRINT;
+				fprintf(fs_csharp, "br.BaseStream.Seek(%d, SeekOrigin.Current);", data->semantic_value->align_prop.padding_size);
+			}
+
+		}
+		// deserialize is over
+		BPC_CODEGEN_INDENT_DEC;
+		BPC_CODEGEN_INDENT_PRINT;
+		fputs("}", fs_csharp);
+
+		// generate serialize func
+		BPC_CODEGEN_INDENT_PRINT;
+		fprintf(fs_csharp, "public void Serialize(BinaryWriter bw) {"); BPC_CODEGEN_INDENT_INC;
+		if (is_msg) {
+			BPC_CODEGEN_INDENT_PRINT;
+			fprintf(fs_csharp, "bw.Write((UInt32)%d);", msg_index);
+		}
+		for (cursor = codegen_member_list; cursor != NULL; cursor = cursor->next) {
+			BPCGEN_UNDERLAYING_MEMBER* data = (BPCGEN_UNDERLAYING_MEMBER*)cursor->data;
+
+			// annotation
+			BPC_CODEGEN_INDENT_PRINT;
+			fprintf(fs_csharp, "// %s", data->semantic_value->vname);
+
+			// if member is array, we need construct a loop
+			if (data->semantic_value->array_prop.is_array) {
+				// increase indent level for array
+				if (data->semantic_value->array_prop.is_static_array) {
+					BPC_CODEGEN_INDENT_PRINT;
+					fprintf(fs_csharp, "for (UInt32 _i = 0; _i < %d; _i++) {", data->semantic_value->array_prop.array_len); BPC_CODEGEN_INDENT_INC;
+					BPC_CODEGEN_INDENT_PRINT;
+					fprintf(fs_csharp, "var _item = %s[_i];", data->semantic_value->vname);
+				} else {
+					BPC_CODEGEN_INDENT_PRINT;
+					fprintf(fs_csharp, "bw.Write(%s.Count);", data->semantic_value->vname);
+					BPC_CODEGEN_INDENT_PRINT;
+					fprintf(fs_csharp, "foreach (var _item in %s) {", data->semantic_value->vname); BPC_CODEGEN_INDENT_INC;
+				}
+			}
+
+			// determine operator name
+			if (data->semantic_value->array_prop.is_array) {
+				g_string_printf(reference_oper_name, "_item");
+			} else {
+				g_string_printf(reference_oper_name, "%s", data->semantic_value->vname);
+			}
+
+			// determine read method
+			if (data->like_basic_type) {
+				// basic type serialize
+				if (data->underlaying_basic_type == BPCSMTV_BASIC_TYPE_STRING) {
+					// string is special in basic type
+					BPC_CODEGEN_INDENT_PRINT;
+					fprintf(fs_csharp, "bw.BpcWriteString(%s);", reference_oper_name->str);
+				} else {
+					// other value can be generated by table search
+					BPC_CODEGEN_INDENT_PRINT;
+					if (data->is_pure_basic_type) {
+						fprintf(fs_csharp, "bw.Write(%s);", reference_oper_name->str);
+					} else {
+						// non-pure value need a convertion
+						fprintf(fs_csharp, "bw.Write((%s)%s);",
+							code_csharp_basic_type[data->underlaying_basic_type],
+							reference_oper_name->str);
+					}
+				}
+			} else {
+				// struct serialize
+				// call struct.serialize()
+				BPC_CODEGEN_INDENT_PRINT;
+				fprintf(fs_csharp, "%s.Serialize(bw);", reference_oper_name->str);
+			}
+
+			// array extra proc
+			if (data->semantic_value->array_prop.is_array) {
+				// shink indent
+				BPC_CODEGEN_INDENT_DEC;
+				BPC_CODEGEN_INDENT_PRINT;
+				fputs("}", fs_csharp);
+			}
+
+			// compute align size
+			if (data->semantic_value->align_prop.use_align) {
+				BPC_CODEGEN_INDENT_PRINT;
+				fprintf(fs_csharp, "bw.BaseStream.Seek(%d, SeekOrigin.Current);", data->semantic_value->align_prop.padding_size);
+			}
+		}
+		// serialize is over
+		BPC_CODEGEN_INDENT_DEC;
+		BPC_CODEGEN_INDENT_PRINT;
+		fputs("}", fs_csharp);
+
+		// class define is over
+		BPC_CODEGEN_INDENT_DEC;
+		BPC_CODEGEN_INDENT_PRINT;
+		fputs("}", fs_csharp);
+
 	}
 	if (BPC_CODEGEN_OUTPUT_CPP_H) {
 		;
@@ -403,7 +689,15 @@ void _bpcgen_gen_struct_msg_body(const char* token_name, GSList* member_list, BP
 		;
 	}
 
-	g_string_free(operator_name, TRUE);
+	// free operator name gstring
+	g_string_free(declare_oper_name, TRUE);
+	// free constructed underlaying data
+	// we do not need free the variables generated by semantic value
+	for (cursor = codegen_member_list; cursor != NULL; cursor = cursor->next) {
+		g_free(((BPCGEN_UNDERLAYING_MEMBER*)cursor->data)->c_style_type);
+		g_free(cursor->data);
+	}
+	g_slist_free(codegen_member_list);
 }
 
 void _bpcgen_write_preset_code(GSList* namespace_list) {
@@ -412,7 +706,30 @@ void _bpcgen_write_preset_code(GSList* namespace_list) {
 		_bpcgen_copy_template(fs_python, u8"snippets/header.py");
 	}
 	if (BPC_CODEGEN_OUTPUT_CSHARP) {
-		bpcerr_warning(BPCERR_ERROR_SOURCE_CODEGEN, "Csharp code gen is unsupported now. It will come soon.");
+		// write namespace using
+		_bpcgen_copy_template(fs_csharp, u8"snippets/header.cs");
+
+		// then write namespace and helper functions
+		// get dot style namespace str first
+		GString* strl = g_string_new(NULL);
+		GSList* cursor;
+		for (cursor = namespace_list; cursor != NULL; cursor = cursor->next) {
+			g_string_append(strl, cursor->data);
+			if (cursor->next != NULL)
+				g_string_append_c(strl, '.');
+		}
+
+		// write it
+		fprintf(fs_csharp, "namespace %s {\n", strl->str);
+
+		// write template
+		_bpcgen_copy_template(fs_csharp, u8"snippets/functions.cs");
+
+		// write breakline
+		fputs("\n", fs_csharp);
+
+		// free namespace name data
+		g_string_free(strl, true);
 	}
 	if (BPC_CODEGEN_OUTPUT_CPP_H) {
 		bpcerr_warning(BPCERR_ERROR_SOURCE_CODEGEN, "Cpp code gen is unsupported now. It will come soon.");
@@ -422,6 +739,25 @@ void _bpcgen_write_preset_code(GSList* namespace_list) {
 	}
 	if (BPC_CODEGEN_OUTPUT_PROTO) {
 		bpcerr_warning(BPCERR_ERROR_SOURCE_CODEGEN, "Proto gen is unsupported now. It will come soon.");
+	}
+}
+
+void _bpcgen_write_tail_code(GSList* namespace_list) {
+	if (BPC_CODEGEN_OUTPUT_PYTHON) {
+		;
+	}
+	if (BPC_CODEGEN_OUTPUT_CSHARP) {
+		// write namespace right bracket
+		fputs("}", fs_csharp);
+	}
+	if (BPC_CODEGEN_OUTPUT_CPP_H) {
+		;
+	}
+	if (BPC_CODEGEN_OUTPUT_CPP_C) {
+		;
+	}
+	if (BPC_CODEGEN_OUTPUT_PROTO) {
+		;
 	}
 }
 
@@ -486,7 +822,77 @@ void _bpcgen_write_opcode() {
 
 	}
 	if (BPC_CODEGEN_OUTPUT_CSHARP) {
-		;
+		BPC_CODEGEN_INDENT_RESET(fs_csharp);
+
+		// write opcode enum
+		bool is_first = true;
+		BPC_CODEGEN_INDENT_PRINT;
+		fprintf(fs_csharp, "public enum _OpCode {"); BPC_CODEGEN_INDENT_INC;
+		for (cursor = token_registery; cursor != NULL; cursor = cursor->next) {
+			BPCSMTV_TOKEN_REGISTERY_ITEM* data = (BPCSMTV_TOKEN_REGISTERY_ITEM*)cursor->data;
+
+			if (data->token_type == BPCSMTV_DEFINED_TOKEN_TYPE_MSG) {
+				if (is_first) {
+					is_first = false;
+				} else {
+					fputc(',', fs_csharp);
+				}
+
+				BPC_CODEGEN_INDENT_PRINT;
+				fprintf(fs_csharp, "%s = %d", data->token_name, data->token_extra_props.token_arranged_index);
+			}
+		}
+		// enum opcode is over
+		BPC_CODEGEN_INDENT_DEC;
+		BPC_CODEGEN_INDENT_PRINT;
+		fputc('}', fs_csharp);
+
+		// write uniformed deserialize func
+		BPC_CODEGEN_INDENT_PRINT;
+		fprintf(fs_csharp, "public static partial class _helper {"); BPC_CODEGEN_INDENT_INC;
+		BPC_CODEGEN_INDENT_PRINT;
+		fprintf(fs_csharp, "public static _BpcMessage UniformDeserialize(BinaryReader br) {"); BPC_CODEGEN_INDENT_INC;
+		BPC_CODEGEN_INDENT_PRINT;
+		fprintf(fs_csharp, "var _opcode = br.BpcPeekOpCode();");
+		BPC_CODEGEN_INDENT_PRINT;
+		fprintf(fs_csharp, "switch (_opcode) {"); BPC_CODEGEN_INDENT_INC;
+		for (cursor = token_registery; cursor != NULL; cursor = cursor->next) {
+			BPCSMTV_TOKEN_REGISTERY_ITEM* data = (BPCSMTV_TOKEN_REGISTERY_ITEM*)cursor->data;
+
+			if (data->token_type == BPCSMTV_DEFINED_TOKEN_TYPE_MSG) {
+				BPC_CODEGEN_INDENT_PRINT;
+				fprintf(fs_csharp, "case _OpCode.%s: {", data->token_name);
+
+				// write if body
+				BPC_CODEGEN_INDENT_INC;
+				BPC_CODEGEN_INDENT_PRINT;
+				fprintf(fs_csharp, "var _data = new %s();", data->token_name);
+				BPC_CODEGEN_INDENT_PRINT;
+				fprintf(fs_csharp, "_data.Deserialize(br);");
+				BPC_CODEGEN_INDENT_PRINT;
+				fprintf(fs_csharp, "return _data;");
+
+				BPC_CODEGEN_INDENT_DEC;
+				BPC_CODEGEN_INDENT_PRINT;
+				fputc('}', fs_csharp);
+			}
+		}
+		BPC_CODEGEN_INDENT_DEC;
+		BPC_CODEGEN_INDENT_PRINT;
+		fputc('}', fs_csharp);
+
+		// default return
+		BPC_CODEGEN_INDENT_PRINT;
+		fprintf(fs_csharp, "return null;");
+
+		// uniform func is over
+		BPC_CODEGEN_INDENT_DEC;
+		BPC_CODEGEN_INDENT_PRINT;
+		fputc('}', fs_csharp);
+		BPC_CODEGEN_INDENT_DEC;
+		BPC_CODEGEN_INDENT_PRINT;
+		fputc('}', fs_csharp);
+
 	}
 	if (BPC_CODEGEN_OUTPUT_CPP_H) {
 		;
@@ -499,33 +905,37 @@ void _bpcgen_write_opcode() {
 	}
 }
 
-char* _bpcgen_get_dot_style_namespace(GSList* namespace_list) {
-	GString* strl = g_string_new(NULL);
-	GSList* cursor;
-	for (cursor = namespace_list; cursor != NULL; cursor = cursor->next) {
-		g_string_append(strl, cursor->data);
-		if (cursor->next != NULL)
-			g_string_append_c(strl, '.');
-	}
-
-	return g_string_free(strl, false);
-}
-
-void _bpcgen_get_underlaying_type(BPCSMTV_MEMBER* token, bool* pout_proc_like_basic_type, BPCSMTV_BASIC_TYPE* pout_underlaying_basic_type) {
-	if (token->is_basic_type) {
-		*pout_proc_like_basic_type = true;
-		*pout_underlaying_basic_type = token->v_basic_type;
+void _bpcgen_get_underlaying_type(BPCGEN_UNDERLAYING_MEMBER* codegen_member) {
+	if (codegen_member->semantic_value->is_basic_type) {
+		codegen_member->is_pure_basic_type = true;
+		codegen_member->c_style_type = NULL;
+		codegen_member->like_basic_type = true;
+		codegen_member->underlaying_basic_type = codegen_member->semantic_value->v_basic_type;
 	} else {
 		// check user defined type
 		// token type will never be msg accoring to syntax define
-		BPCSMTV_TOKEN_REGISTERY_ITEM* entry = bpcsmtv_token_registery_get(token->v_struct_type);
-		if (entry->token_type == BPCSMTV_DEFINED_TOKEN_TYPE_STRUCT) {
-			// struct
-			*pout_proc_like_basic_type = false;
-		} else {
-			// alias and enum
-			*pout_proc_like_basic_type = true;
-			*pout_underlaying_basic_type = entry->token_extra_props.token_basic_type;
+		BPCSMTV_TOKEN_REGISTERY_ITEM* entry = bpcsmtv_token_registery_get(codegen_member->semantic_value->v_struct_type);
+		switch (entry->token_type) {
+			case BPCSMTV_DEFINED_TOKEN_TYPE_ALIAS:
+				codegen_member->is_pure_basic_type = true;
+				codegen_member->c_style_type = NULL;
+				codegen_member->like_basic_type = true;
+				codegen_member->underlaying_basic_type = entry->token_extra_props.token_basic_type;
+				break;
+			case BPCSMTV_DEFINED_TOKEN_TYPE_ENUM:
+				codegen_member->is_pure_basic_type = false;
+				codegen_member->c_style_type = g_strdup(codegen_member->semantic_value->v_struct_type);
+				codegen_member->like_basic_type = true;
+				codegen_member->underlaying_basic_type = entry->token_extra_props.token_basic_type;
+				break;
+			case BPCSMTV_DEFINED_TOKEN_TYPE_STRUCT:
+				codegen_member->is_pure_basic_type = false;
+				codegen_member->c_style_type = g_strdup(codegen_member->semantic_value->v_struct_type);
+				codegen_member->like_basic_type = false;
+				break;
+			case BPCSMTV_DEFINED_TOKEN_TYPE_MSG:
+			default:
+				break;	// skip
 		}
 	}
 }
@@ -540,6 +950,9 @@ void _bpcgen_copy_template(FILE* target, const char* u8_template_code_file_path)
 		while ((read_counter = fread(buffer, sizeof(char), 1024, fs)) != 0) {
 			fwrite(buffer, sizeof(char), read_counter, target);
 		}
+
+		g_free(buffer);
+		fclose(fs);
 	} else {
 		// raise error
 		bpcerr_warning(BPCERR_ERROR_SOURCE_CODEGEN, "Fail to open code template file: %s\n\
