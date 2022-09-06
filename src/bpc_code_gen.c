@@ -788,7 +788,7 @@ void _bpcgen_write_opcode() {
 		// write uniformed deserialize func
 		bool is_first = true;
 		BPC_CODEGEN_INDENT_PRINT;
-		fprintf(fs_python, "def uniform_deserialize(ss: io.BytesIO):"); BPC_CODEGEN_INDENT_INC;
+		fprintf(fs_python, "def _uniform_deserialize(ss: io.BytesIO):"); BPC_CODEGEN_INDENT_INC;
 		BPC_CODEGEN_INDENT_PRINT;
 		fprintf(fs_python, "_opcode = _peek_opcode(ss)");
 		for (cursor = token_registery; cursor != NULL; cursor = cursor->next) {
@@ -849,7 +849,7 @@ void _bpcgen_write_opcode() {
 
 		// write uniformed deserialize func
 		BPC_CODEGEN_INDENT_PRINT;
-		fprintf(fs_csharp, "public static partial class _helper {"); BPC_CODEGEN_INDENT_INC;
+		fprintf(fs_csharp, "public static partial class _Helper {"); BPC_CODEGEN_INDENT_INC;
 		BPC_CODEGEN_INDENT_PRINT;
 		fprintf(fs_csharp, "public static _BpcMessage UniformDeserialize(BinaryReader br) {"); BPC_CODEGEN_INDENT_INC;
 		BPC_CODEGEN_INDENT_PRINT;
