@@ -14,7 +14,7 @@ ss.seek(io.SEEK_SET, 0)
 # Call uniformed deserializer to generate data struct
 # If this function return None, it mean that parser can not understand this binary data
 # This method also can throw exceptions, usually caused by broken binary data.
-your_data = uniform_deserialize(ss)
+your_data = _uniform_deserialize(ss)
 if your_data is None:
 	throw Exception("Invalid OpCode.")
 # Clear buffer for future using. This operation is essential, 

@@ -1,5 +1,10 @@
 
 /*
+If the include syntax show error and notice you that it couldn't find correct header file, 
+please add your generaed header into the system include path of your project.
+*/
+
+/*
 READ THIS FIRST!
 READ THIS FIRST!
 READ THIS FIRST!
@@ -122,25 +127,52 @@ delete your_data;
 
 */
 
-uint32_t peekInternalType(std::stringstream* data) {
+#define SSTREAM_PRE_RD(ss) if (!(ss)->good()) \
+return false;
+
+#define SSTREAM_RD_STRUCT(ss, struct_type, variable) (ss)->read((char*)(&(variable)), sizeof(struct_type)); \
+if (!(ss)->good() || (ss)->gcount() != sizeof(struct_type)) \
+return false;
+
+#define SSTREAM_RD_STRING(ss, strl) if (!inStdstring(ss, &(strl))) \
+return false;
+
+#define SSTREAM_RD_FUNCTION(ss, func) if (!(func)) \
+return false;
+
+#define SSTREAM_END_RD(ss) return (ss)->good();
+
+#define SSTREAM_PRE_WR(ss) ;
+
+#define SSTREAM_WR_STRUCT(ss, struct_type, variable) (ss)->write((char*)(&(variable)), sizeof(struct_type));
+
+#define SSTREAM_WR_STRING(ss, strl) if (!outStdstring(ss, &(strl))) \
+return false;
+
+#define SSTREAM_WR_FUNCTION(ss, func) if (!(func)) \
+return false;
+
+#define SSTREAM_END_WR(ss) return (ss)->good();
+
+uint32_t _BpcMessage::peekInternalType(std::stringstream* data) {
     uint32_t code = 0;
     data->read((char*)&code, sizeof(uint32_t));
     data->seekg(-(int32_t)(sizeof(uint32_t)), std::ios_base::cur);
     return code;
 }
 
-bool IMessage::inOpCode(std::stringstream* data) {
+bool _BpcMessage::inOpCode(std::stringstream* data) {
     uint32_t c = 0;
     SSTREAM_RD_STRUCT(data, uint32_t, c);
     return c == mInternalType;
 }
 
-bool IMessage::outOpCode(std::stringstream* data) {
+bool _BpcMessage::outOpCode(std::stringstream* data) {
     SSTREAM_WR_STRUCT(data, uint32_t, mInternalType);
     return true;
 }
 
-bool IMessage::inStdstring(std::stringstream* data, std::string* strl) {
+bool _BpcMessage::inStdstring(std::stringstream* data, std::string* strl) {
     uint32_t length = 0;
     SSTREAM_RD_STRUCT(data, uint32_t, length);
     if (length > data->str().length()) return false;
@@ -153,10 +185,11 @@ bool IMessage::inStdstring(std::stringstream* data, std::string* strl) {
     return true;
 }
 
-bool IMessage::outStdstring(std::stringstream* data, std::string* strl) {
+bool _BpcMessage::outStdstring(std::stringstream* data, std::string* strl) {
     uint32_t length = strl->size();
     SSTREAM_WR_STRUCT(data, uint32_t, length);
     data->write(strl->c_str(), length);
 
     return true;
 }
+

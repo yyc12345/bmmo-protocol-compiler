@@ -1,5 +1,10 @@
 #include "bpc_fs.h"
 
+#define BPCFS_ITERATOR_END(s) (*s=='\0')
+#define BPCFS_DOT '.'
+#define BPCFS_DOT_PATH "."
+#define BPCFS_DOT_DOT_PATH ".."
+
 gchar* bpcfs_vsprintf(const char* format, va_list ap) {
 	GString* strl = g_string_new(NULL);
 	g_string_vprintf(strl, format, ap);
@@ -71,4 +76,32 @@ FILE* bpcfs_fopen_glibfs(const gchar* glibfs_filepath, bool is_open) {
 #endif
 
 	return fs;
+}
+
+// Reference: https://github.com/boostorg/filesystem/blob/9613ccfa4a2c47bbc7059bf61dd52aec11e53893/src/path.cpp#L312
+gchar* bpcfs_replace_ext(gchar* u8_path, const gchar* u8_ext_with_dot) {
+	// check param
+	if (u8_path == NULL || u8_ext_with_dot == NULL || u8_ext_with_dot[0] != ".") return;
+
+	// get non-dot part
+	gsize ext_size = 0;
+	if (g_str_equal(u8_path, BPCFS_DOT_PATH) || g_str_equal(u8_path, BPCFS_DOT_DOT_PATH)) {
+		// do not process
+		return;
+	}
+
+	// get dot
+	GString* gstring_path = g_string_new(u8_path);
+	gchar* ext = g_utf8_strrchr(gstring_path->str, gstring_path->len, BPCFS_DOT);
+	if (ext != NULL) {
+		ext_size = ext - gstring_path->str;
+	}
+
+	// overwrite it
+	if (ext_size != 0) {
+		g_string_truncate(gstring_path, gstring_path->len - ext_size);
+		g_string_append(gstring_path, u8_ext_with_dot);
+	}
+
+	return g_string_free(gstring_path, false);
 }

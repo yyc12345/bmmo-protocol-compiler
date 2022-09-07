@@ -28,6 +28,7 @@ static FILE* fs_csharp = NULL;
 static FILE* fs_cpp_hdr = NULL;
 static FILE* fs_cpp_src = NULL;
 static FILE* fs_proto = NULL;
+static gchar* hpp_reference = NULL;
 
 #define BPC_CODEGEN_OUTPUT_PYTHON (fs_python != NULL)
 #define BPC_CODEGEN_OUTPUT_CSHARP (fs_csharp != NULL)
@@ -47,6 +48,8 @@ void bpcgen_init_code_file(BPCCMD_PARSED_ARGS* bpc_args) {
 	fs_cpp_hdr = bpc_args->out_cpp_header_file;
 	fs_cpp_src = bpc_args->out_cpp_source_file;
 	fs_proto = bpc_args->out_proto_file;
+
+	hpp_reference = g_strdup(bpc_args->ref_cpp_relative_hdr->str);
 }
 
 void bpcgen_write_document(BPCSMTV_DOCUMENT* document) {
@@ -85,6 +88,7 @@ void bpcgen_free_code_file() {
 	// just empty file stream variables in this file.
 	// the work of file free is taken by commandline parser.
 	fs_python = fs_csharp = fs_cpp_hdr = fs_cpp_src = fs_proto = NULL;
+	g_free(hpp_reference);
 }
 
 void _bpcgen_write_alias(BPCSMTV_ALIAS* token_data) {
@@ -703,6 +707,7 @@ void _bpcgen_gen_struct_msg_body(const char* token_name, GSList* smtv_member_lis
 void _bpcgen_write_preset_code(GSList* namespace_list) {
 	// setup template
 	if (BPC_CODEGEN_OUTPUT_PYTHON) {
+		bpcerr_info(BPCERR_ERROR_SOURCE_CODEGEN, "Python code generation do not support namespace feature.");
 		_bpcgen_copy_template(fs_python, u8"snippets/header.py");
 	}
 	if (BPC_CODEGEN_OUTPUT_CSHARP) {
@@ -725,20 +730,36 @@ void _bpcgen_write_preset_code(GSList* namespace_list) {
 		// write template
 		_bpcgen_copy_template(fs_csharp, u8"snippets/functions.cs");
 
-		// write breakline
-		fputs("\n", fs_csharp);
-
 		// free namespace name data
 		g_string_free(strl, true);
 	}
 	if (BPC_CODEGEN_OUTPUT_CPP_H) {
-		bpcerr_warning(BPCERR_ERROR_SOURCE_CODEGEN, "Cpp code gen is unsupported now. It will come soon.");
+		// write include and namespace syntax
+		_bpcgen_copy_template(fs_cpp_hdr, u8"snippets/header.hpp");
+		// construct namespace bracket
+		GSList* cursor;
+		for (cursor = namespace_list; cursor != NULL; cursor = cursor->next) {
+			fprintf(fs_cpp_hdr, "namespace %s {\n", (gchar*)cursor->data);
+		}
+
+		// write template
+		_bpcgen_copy_template(fs_cpp_hdr, u8"snippets/functions.hpp");
 	}
 	if (BPC_CODEGEN_OUTPUT_CPP_C) {
-		bpcerr_warning(BPCERR_ERROR_SOURCE_CODEGEN, "Cpp code gen is unsupported now. It will come soon.");
+		if (hpp_reference != NULL)
+			fprintf(fs_cpp_src, "#include \"%s\"\n", hpp_reference);
+
+		// construct namespace bracket
+		GSList* cursor;
+		for (cursor = namespace_list; cursor != NULL; cursor = cursor->next) {
+			fprintf(fs_cpp_src, "namespace %s {\n", (gchar*)cursor->data);
+		}
+
+		// write template
+		_bpcgen_copy_template(fs_cpp_src, u8"snippets/functions.cpp");
 	}
 	if (BPC_CODEGEN_OUTPUT_PROTO) {
-		bpcerr_warning(BPCERR_ERROR_SOURCE_CODEGEN, "Proto gen is unsupported now. It will come soon.");
+		bpcerr_warning(BPCERR_ERROR_SOURCE_CODEGEN, "Proto generation do not support reliable feature. All reliable attributes will write as annotations.");
 	}
 }
 
@@ -751,10 +772,25 @@ void _bpcgen_write_tail_code(GSList* namespace_list) {
 		fputs("}", fs_csharp);
 	}
 	if (BPC_CODEGEN_OUTPUT_CPP_H) {
-		;
+		// construct namespace bracket
+		guint count = g_slist_length(namespace_list), i = 0;
+		for (i = 0; i < count; ++i) {
+			fputc('}', fs_cpp_hdr);
+		}
+		// break-line
+		fputc('\n', fs_cpp_hdr);
 	}
 	if (BPC_CODEGEN_OUTPUT_CPP_C) {
-		;
+		// construct namespace bracket
+		guint count = g_slist_length(namespace_list), i = 0;
+		for (i = 0; i < count; ++i) {
+			fputc('}', fs_cpp_src);
+		}
+		// break-line
+		fputc('\n', fs_cpp_src);
+
+		// write template
+		_bpcgen_copy_template(fs_cpp_src, u8"snippets/tail.cpp");
 	}
 	if (BPC_CODEGEN_OUTPUT_PROTO) {
 		;

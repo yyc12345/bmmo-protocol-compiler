@@ -1,6 +1,7 @@
 #include "bpc_cmd.h"
 #include "bpc_ver.h"
 #include "bpc_fs.h"
+#include "bpc_encoding.h"
 
 static gboolean opt_version = false;
 static gboolean opt_help = false;
@@ -53,7 +54,7 @@ BPCCMD_PARSED_ARGS* bpccmd_get_parsed_args(int argc, char* _argv[]) {
 			g_print("Under MIT License. Copyright (c) 2018-2022 BearKidsTeam.\n", BPCVER_VERSION);
 		} else {
 			if (opt_input == NULL) {
-				g_print("Error: you should specific 1 input file.\n\n");
+				g_print("Error: you should specific input file at least.\n\n");
 				_bpccmd_print_help(context);
 			} else {
 				// really no error
@@ -80,7 +81,41 @@ void bpccmd_free_parsed_args(BPCCMD_PARSED_ARGS* struct_args) {
 	SAFE_CLOSE_FS(struct_args->out_proto_file);
 #undef SAFE_CLOSE_FS
 
+	if (struct_args->ref_cpp_relative_hdr != NULL)
+		g_string_free(struct_args->ref_cpp_relative_hdr, true);
+
 	g_free(struct_args);
+}
+
+GString* _bpccmd_get_cpp_relative_header() {
+	// no cpp output, write a shit for placeholder
+	if (opt_cpp_source == NULL) {
+		return NULL;
+	}
+
+	GString* strl = g_string_new(NULL);
+	if (opt_cpp_header == NULL) {
+		// use self name as references header
+		gchar* cppname = g_path_get_basename(opt_cpp_source);
+		gchar* u8_cppname = bpcenc_glibfs_to_utf8(cppname);
+		gchar* u8_hppname = bpcfs_replace_ext(u8_cppname, u8".hpp");
+
+		g_string_append(strl, u8_hppname);
+		g_free(cppname);
+		g_free(u8_cppname);
+		g_free(u8_hppname);
+		return strl;
+	} else {
+		// use header name as references header
+		// user need to assign find path for this header
+		gchar* hppname = g_path_get_basename(opt_cpp_header);
+		gchar* u8_hppname = bpcenc_glibfs_to_utf8(hppname);
+
+		g_string_append(strl, u8_hppname);
+		g_free(hppname);
+		g_free(u8_hppname);
+		return strl;
+	}
 }
 
 BPCCMD_PARSED_ARGS* _bpccmd_alloc_parsed_args() {
@@ -92,6 +127,8 @@ BPCCMD_PARSED_ARGS* _bpccmd_alloc_parsed_args() {
 	st->out_cpp_header_file = bpcfs_fopen_glibfs(opt_cpp_header, false);
 	st->out_cpp_source_file = bpcfs_fopen_glibfs(opt_cpp_source, false);
 	st->out_proto_file = bpcfs_fopen_glibfs(opt_proto, false);
+
+	st->ref_cpp_relative_hdr = _bpccmd_get_cpp_relative_header();
 
 	return st;
 }

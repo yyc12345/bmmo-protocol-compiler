@@ -99,6 +99,12 @@
     <CopyFileToFolders Include="snippets\functions.cpp">
       <Filter>Resources\snippets</Filter>
     </CopyFileToFolders>
+    <CopyFileToFolders Include="snippets\functions.hpp">
+      <Filter>Resources\snippets</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="snippets\tail.cpp">
+      <Filter>Resources\snippets</Filter>
+    </CopyFileToFolders>
     <CopyFileToFolders Include="examples\example.bp">
       <Filter>Resources\examples</Filter>
     </CopyFileToFolders>
