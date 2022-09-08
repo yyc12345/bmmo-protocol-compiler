@@ -108,12 +108,16 @@ GString* _bpccmd_get_cpp_relative_header() {
 	} else {
 		// use header name as references header
 		// user need to assign find path for this header
-		gchar* hppname = g_path_get_basename(opt_cpp_header);
-		gchar* u8_hppname = bpcenc_glibfs_to_utf8(hppname);
+		gchar* u8_hppname = bpcenc_glibfs_to_utf8(opt_cpp_header);
+		gchar* cppfolder = g_path_get_dirname(opt_cpp_source);
+		gchar* u8_cppfolder = bpcenc_glibfs_to_utf8(cppfolder);
+		gchar* relative_hpp = bpcfs_simple_relative_path(u8_hppname, u8_cppfolder);
 
-		g_string_append(strl, u8_hppname);
-		g_free(hppname);
+		g_string_append(strl, relative_hpp);
 		g_free(u8_hppname);
+		g_free(cppfolder);
+		g_free(u8_cppfolder);
+		g_free(relative_hpp);
 		return strl;
 	}
 }

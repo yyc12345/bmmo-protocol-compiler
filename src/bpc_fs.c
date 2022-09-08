@@ -1,9 +1,16 @@
 #include "bpc_fs.h"
 
-#define BPCFS_ITERATOR_END(s) (*s=='\0')
+#ifdef G_OS_WIN32
+#define BPCFS_SPECTATOR u8"/\\"
+#define BPCFS_PREFERRED_SPECTATOR u8"\\"
+#else
+#define BPCFS_SPECTATOR u8"/"
+#define BPCFS_PREFERRED_SPECTATOR u8"/"
+#endif
 #define BPCFS_DOT '.'
-#define BPCFS_DOT_PATH "."
-#define BPCFS_DOT_DOT_PATH ".."
+#define BPCFS_EMPTY_PATH u8""
+#define BPCFS_DOT_PATH u8"."
+#define BPCFS_DOT_DOT_PATH u8".."
 
 gchar* bpcfs_vsprintf(const char* format, va_list ap) {
 	GString* strl = g_string_new(NULL);
@@ -104,4 +111,86 @@ gchar* bpcfs_replace_ext(gchar* u8_path, const gchar* u8_ext_with_dot) {
 	}
 
 	return g_string_free(gstring_path, false);
+}
+
+// Reference: 
+// https://github.com/boostorg/filesystem/blob/9613ccfa4a2c47bbc7059bf61dd52aec11e53893/src/path.cpp#L551
+// https://stackoverflow.com/questions/27228743/c-function-to-calculate-relative-path
+gchar* bpcfs_simple_relative_path(const gchar* u8_this, const gchar* u8_base) {
+	// check param
+	if (u8_this == NULL || u8_base == NULL) return g_strdup(u8_this);
+
+	// split it by spectator
+	gchar** splited_this = g_strsplit_set(u8_this, BPCFS_SPECTATOR, -1);
+	guint splited_this_len = g_strv_length(splited_this);
+	gchar** splited_base = g_strsplit_set(u8_base, BPCFS_SPECTATOR, -1);
+	guint splited_base_len = g_strv_length(splited_this);
+
+	// get common part
+	guint t, b;
+	for (t = b = 0u; t < splited_this_len && b < splited_base_len && g_str_equal(splited_this[t], splited_base[b]);) {
+		++t;
+		++b;
+	}
+
+	// check pre-exit requirements
+	if (t == 0 && b == 0) {
+		// free allocated splitted list
+		g_strfreev(splited_base);
+		g_strfreev(splited_this);
+		return g_strdup(u8_this);
+	}
+	if (t == splited_this_len && b == splited_base_len) {
+		// free allocated splitted list
+		g_strfreev(splited_base);
+		g_strfreev(splited_this);
+		return g_strdup(BPCFS_DOT_PATH);
+	}
+
+	// normal situation process
+	gint n = 0;
+	for (; b < splited_base_len; ++b) {
+		if (g_str_equal(splited_base[b], BPCFS_DOT_DOT_PATH)) {
+			--n;
+		} else if (!g_str_equal(splited_base[b], BPCFS_EMPTY_PATH) && !g_str_equal(splited_base[b], BPCFS_DOT_PATH)) {
+			++n;
+		}
+	}
+	if (n < 0) {
+		// free allocated splitted list
+		g_strfreev(splited_base);
+		g_strfreev(splited_this);
+		return g_strdup(u8_this);
+	}
+	if (n == 0 && (t >= splited_this_len || g_str_equal(splited_this[t], BPCFS_EMPTY_PATH))) {
+		// free allocated splitted list
+		g_strfreev(splited_base);
+		g_strfreev(splited_this);
+		return g_strdup(BPCFS_DOT_PATH);
+	}
+
+	GSList* result = NULL;
+	for (; n > 0; --n) {
+		result = g_slist_append(result, g_strdup(BPCFS_DOT_DOT_PATH));
+	}
+	for(; t < splited_this_len; ++t) {
+		result = g_slist_append(result, g_strdup(splited_this[t]));
+	}
+	GSList* cursor = NULL;
+	GString* strl = g_string_new(NULL);
+	for (cursor = result; cursor != NULL; cursor = cursor->next) {
+		if (cursor != result) {
+			g_string_append(strl, BPCFS_PREFERRED_SPECTATOR);
+		}
+		// use node's string and free it at the same time
+		g_string_append(strl, (gchar*)cursor->data);
+		g_free(cursor->data);
+	}
+	g_slist_free(result);
+
+	// free allocated splitted list
+	g_strfreev(splited_base);
+	g_strfreev(splited_this);
+	return g_string_free(strl, false);
+
 }
