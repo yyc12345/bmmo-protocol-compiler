@@ -154,10 +154,10 @@ return false;
 
 #define SSTREAM_END_WR(ss) return (ss)->good();
 
-uint32_t _BpcMessage::peekInternalType(std::stringstream* data) {
-    uint32_t code = 0;
-    data->read((char*)&code, sizeof(uint32_t));
-    data->seekg(-(int32_t)(sizeof(uint32_t)), std::ios_base::cur);
+_OpCode _BpcMessage::peekInternalType(std::stringstream* data) {
+    _OpCode code = 0;
+    data->read((char*)&code, sizeof(_OpCode));
+    data->seekg(-(int32_t)(sizeof(_OpCode)), std::ios_base::cur);
     return code;
 }
 

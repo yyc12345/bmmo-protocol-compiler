@@ -22,6 +22,10 @@ static const char* code_csharp_formal_basic_type[] = {
 	"Single", "Double", "SByte", "Int16", "Int32", "Int64", "Byte", "UInt16", "UInt32", "UInt64", "String"
 };
 
+static const char* code_cpp_basic_type[] = {
+	"float", "double", "int8_t", "int16_t", "int32_t", "int64_t", "uint8_t", "uint16_t", "uint32_t", "uint64_t", "std::string"
+};
+
 
 static FILE* fs_python = NULL;
 static FILE* fs_csharp = NULL;
@@ -77,8 +81,8 @@ void bpcgen_write_document(BPCSMTV_DOCUMENT* document) {
 		}
 	}
 
-	// write opcode
-	_bpcgen_write_opcode();
+	// write conclusion code, such as opcode and uniform deserializer
+	_bpcgen_write_conclusion_code();
 
 	// write tail
 	_bpcgen_write_tail_code(document->namespace_data);
@@ -92,6 +96,7 @@ void bpcgen_free_code_file() {
 }
 
 void _bpcgen_write_alias(BPCSMTV_ALIAS* token_data) {
+	BPC_CODEGEN_INDENT_INIT;
 
 	// ==================== Language Output ====================
 	if (BPC_CODEGEN_OUTPUT_PYTHON) {
@@ -108,13 +113,19 @@ void _bpcgen_write_alias(BPCSMTV_ALIAS* token_data) {
 		// so i give up using this features.
 	}
 	if (BPC_CODEGEN_OUTPUT_CPP_H) {
-		;
+		BPC_CODEGEN_INDENT_RESET(fs_cpp_hdr);
+		fprintf(fs_cpp_hdr, "typedef %s %s\n", code_cpp_basic_type[token_data->basic_type], token_data->user_type);
 	}
 	if (BPC_CODEGEN_OUTPUT_CPP_C) {
 		;
+		// do nothing
+		// typedef has been written in header file
+		// so source file do not need write it
 	}
 	if (BPC_CODEGEN_OUTPUT_PROTO) {
 		;
+		// do nothing
+		// proto do not have alias features
 	}
 }
 
@@ -168,10 +179,33 @@ void _bpcgen_write_enum(BPCSMTV_ENUM* token_data) {
 		fputs("}", fs_csharp);
 	}
 	if (BPC_CODEGEN_OUTPUT_CPP_H) {
-		;
+		BPC_CODEGEN_INDENT_RESET(fs_cpp_hdr);
+		counter = 0;
+
+		BPC_CODEGEN_INDENT_PRINT;
+		fprintf(fs_cpp_hdr, "enum class %s : %s {", token_data->enum_name, code_cpp_basic_type[token_data->enum_basic_type]); BPC_CODEGEN_INDENT_INC;
+		for (cursor = token_data->enum_body; cursor != NULL; cursor = cursor->next) {
+			BPCSMTV_ENUM_BODY* data = (BPCSMTV_ENUM_BODY*)cursor->data;
+			if (data->have_specific_value) {
+				counter = data->specific_value;
+			}
+
+			BPC_CODEGEN_INDENT_PRINT;
+			fprintf(fs_cpp_hdr, "%s = %" PRIi64, data->enum_name, counter++);
+			if (cursor->next != NULL) {
+				fputs(",", fs_cpp_hdr);
+			}
+		}
+		// enum is over
+		BPC_CODEGEN_INDENT_DEC;
+		BPC_CODEGEN_INDENT_PRINT;
+		fputs("};", fs_cpp_hdr);
 	}
 	if (BPC_CODEGEN_OUTPUT_CPP_C) {
 		;
+		// do nothing
+		// cpp enum define has been written in header file
+		// source file do not need declare it anymore.
 	}
 	if (BPC_CODEGEN_OUTPUT_PROTO) {
 		;
@@ -684,7 +718,75 @@ void _bpcgen_gen_struct_msg_body(const char* token_name, GSList* smtv_member_lis
 
 	}
 	if (BPC_CODEGEN_OUTPUT_CPP_H) {
-		;
+		BPC_CODEGEN_INDENT_RESET(fs_cpp_hdr);
+		const gchar* cpp_type_str = NULL;
+
+		// class decleartion
+		BPC_CODEGEN_INDENT_PRINT;
+		if (is_msg) {
+			fprintf(fs_cpp_hdr, "class %s : public _BpcMessage {", token_name);
+		} else {
+			fprintf(fs_cpp_hdr, "class %s {", token_name);
+		}
+		BPC_CODEGEN_INDENT_PRINT;
+		fprintf(fs_cpp_hdr, "public:");
+		BPC_CODEGEN_INDENT_INC;
+
+		// constructor & deconstructor declare
+		BPC_CODEGEN_INDENT_PRINT;
+		fprintf(fs_cpp_hdr, "%s();", token_name);
+		BPC_CODEGEN_INDENT_PRINT;
+		fprintf(fs_cpp_hdr, "virtual ~%s();", token_name);
+
+		// class member
+		// cpp can process alias correctly
+		// so we do not need to convert it.
+		BPC_CODEGEN_INDENT_PRINT;
+		for (cursor = codegen_member_list; cursor != NULL; cursor = cursor->next) {
+			BPCGEN_UNDERLAYING_MEMBER* data = (BPCGEN_UNDERLAYING_MEMBER*)cursor->data;
+
+			if (data->semantic_value->is_basic_type) {
+				cpp_type_str = code_cpp_basic_type[data->semantic_value->v_basic_type];
+			} else {
+				cpp_type_str = data->semantic_value->v_struct_type;
+			}
+
+			BPC_CODEGEN_INDENT_PRINT;
+			if (data->semantic_value->array_prop.is_array) {
+				if (data->semantic_value->array_prop.is_static_array) {
+					fprintf(fs_cpp_hdr, "std::array<%s*, %d> %s;",cpp_type_str, data->semantic_value->array_prop.array_len, data->semantic_value->vname);
+				} else {
+					fprintf(fs_cpp_hdr, "std::vector<%s*> %s;", cpp_type_str, data->semantic_value->vname);
+				}
+			} else {
+				fprintf(fs_cpp_hdr, "%s %s;", cpp_type_str, data->semantic_value->vname);
+			}
+		}
+
+		// reliable and opcode
+		if (is_msg) {
+			// reliable
+			BPC_CODEGEN_INDENT_PRINT;
+			fprintf(fs_cpp_hdr, "virtual bool IsReliable() override;");
+
+			// opcode
+			BPC_CODEGEN_INDENT_PRINT;
+			fprintf(fs_cpp_hdr, "virtual _OpCode GetOpCode() override;");
+		}
+
+		// deserializer
+		BPC_CODEGEN_INDENT_PRINT;
+		fprintf(fs_cpp_hdr, "virtual bool Deserialize(std::stringstream* data) override;");
+
+		// serializer
+		BPC_CODEGEN_INDENT_PRINT;
+		fprintf(fs_cpp_hdr, "virtual bool Serialize(std::stringstream* data) override;");
+
+		// class define is over
+		BPC_CODEGEN_INDENT_DEC;
+		BPC_CODEGEN_INDENT_PRINT;
+		fputs("};", fs_cpp_hdr);
+
 	}
 	if (BPC_CODEGEN_OUTPUT_CPP_C) {
 		;
@@ -705,6 +807,11 @@ void _bpcgen_gen_struct_msg_body(const char* token_name, GSList* smtv_member_lis
 }
 
 void _bpcgen_write_preset_code(GSList* namespace_list) {
+	// define useful variable
+	BPC_CODEGEN_INDENT_INIT;
+	GSList* cursor;
+	GSList* token_registery = bpcsmtv_token_registery_get_slist();
+
 	// setup template
 	if (BPC_CODEGEN_OUTPUT_PYTHON) {
 		bpcerr_info(BPCERR_ERROR_SOURCE_CODEGEN, "Python code generation do not support namespace feature.");
@@ -741,6 +848,35 @@ void _bpcgen_write_preset_code(GSList* namespace_list) {
 		for (cursor = namespace_list; cursor != NULL; cursor = cursor->next) {
 			fprintf(fs_cpp_hdr, "namespace %s {\n", (gchar*)cursor->data);
 		}
+
+		// write opcode enum
+		// opcode shoule be written first 
+		// because following code need the define 
+		// of opcode, otherwise, cpp compiler 
+		// will throw a error told it couldn't 
+		// find the define of opcode
+		bool is_first = true;
+		BPC_CODEGEN_INDENT_RESET(fs_cpp_hdr);
+		BPC_CODEGEN_INDENT_PRINT;
+		fprintf(fs_cpp_hdr, "enum class _OpCode : uint32_t {"); BPC_CODEGEN_INDENT_INC;
+		for (cursor = token_registery; cursor != NULL; cursor = cursor->next) {
+			BPCSMTV_TOKEN_REGISTERY_ITEM* data = (BPCSMTV_TOKEN_REGISTERY_ITEM*)cursor->data;
+
+			if (data->token_type == BPCSMTV_DEFINED_TOKEN_TYPE_MSG) {
+				if (is_first) {
+					is_first = false;
+				} else {
+					fputc(',', fs_cpp_hdr);
+				}
+
+				BPC_CODEGEN_INDENT_PRINT;
+				fprintf(fs_cpp_hdr, "%s = %" PRIu32, data->token_name, data->token_extra_props.token_arranged_index);
+			}
+		}
+		// enum opcode is over
+		BPC_CODEGEN_INDENT_DEC;
+		BPC_CODEGEN_INDENT_PRINT;
+		fputc('};', fs_cpp_hdr);
 
 		// write template
 		_bpcgen_copy_template(fs_cpp_hdr, u8"snippets/functions.hpp");
@@ -797,7 +933,7 @@ void _bpcgen_write_tail_code(GSList* namespace_list) {
 	}
 }
 
-void _bpcgen_write_opcode() {
+void _bpcgen_write_conclusion_code() {
 	// define useful variable
 	BPC_CODEGEN_INDENT_INIT;
 	GSList* cursor;

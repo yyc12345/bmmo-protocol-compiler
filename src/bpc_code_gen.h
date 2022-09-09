@@ -11,7 +11,7 @@ typedef struct _BPCGEN_UNDERLAYING_MEMBER {
 	/// </summary>
 	BPCSMTV_MEMBER* semantic_value;
 	/// <summary>
-	/// the detected underlaying type of this member, after resolving its type.
+	/// the status of detecting underlaying type of this member, after resolving its type.
 	/// when it is false, it mean that this member is must be a struct and 
 	/// shoule be serialized or deserialized by calling functions rather than
 	/// direct code.
@@ -50,8 +50,8 @@ void _bpcgen_write_struct(BPCSMTV_STRUCT* token_data);
 void _bpcgen_write_msg(BPCSMTV_MSG* token_data);
 
 void _bpcgen_write_preset_code(GSList* namespace_list);
+void _bpcgen_write_conclusion_code();
 void _bpcgen_write_tail_code(GSList* namespace_list);
-void _bpcgen_write_opcode();
 
 void _bpcgen_get_underlaying_type(BPCGEN_UNDERLAYING_MEMBER* codegen_member);
 void _bpcgen_gen_struct_msg_body(const char* token_name, GSList* smtv_member_list, BPCGEN_MSG_EXTRA_PROPS* msg_prop);
