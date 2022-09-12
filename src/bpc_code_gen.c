@@ -719,7 +719,6 @@ void _bpcgen_gen_struct_msg_body(const char* token_name, GSList* smtv_member_lis
 	}
 	if (BPC_CODEGEN_OUTPUT_CPP_H) {
 		BPC_CODEGEN_INDENT_RESET(fs_cpp_hdr);
-		const gchar* cpp_type_str = NULL;
 
 		// class decleartion
 		BPC_CODEGEN_INDENT_PRINT;
@@ -741,10 +740,32 @@ void _bpcgen_gen_struct_msg_body(const char* token_name, GSList* smtv_member_lis
 		// class member
 		// cpp can process alias correctly
 		// so we do not need to convert it.
+		GString* cpp_type_str = g_string_new(NULL);
 		BPC_CODEGEN_INDENT_PRINT;
 		for (cursor = codegen_member_list; cursor != NULL; cursor = cursor->next) {
 			BPCGEN_UNDERLAYING_MEMBER* data = (BPCGEN_UNDERLAYING_MEMBER*)cursor->data;
 
+			// we use full resolving flag to check
+			// but in name gen, we use original data(without resolving anything), because C++ support alias feature
+			if (data->like_basic_type) {
+				if (data->underlaying_basic_type == BPCSMTV_BASIC_TYPE_STRING) {
+					// for string value, store its pointer in array, in other cases, store directly.
+					g_string_assign(cpp_type_str, data->semantic_value->is_basic_type ? code_cpp_basic_type[data->semantic_value->v_basic_type] : data->semantic_value->v_struct_type);
+					if (data->semantic_value->array_prop.is_array) {
+						g_string_append_c(cpp_type_str, '*');
+					}
+				} else {
+					// in any case, numberic value can be stored directly
+					g_string_assign(cpp_type_str, data->semantic_value->is_basic_type ? code_cpp_basic_type[data->semantic_value->v_basic_type] : data->semantic_value->v_struct_type);
+				}
+			} else {
+				// for struct value, store its pointer in array, in other cases, store directly.
+				g_string_assign(cpp_type_str, data->semantic_value->v_struct_type);
+				if (data->semantic_value->array_prop.is_array) {
+					g_string_append_c(cpp_type_str, '*');
+				}
+			}
+			
 			if (data->semantic_value->is_basic_type) {
 				cpp_type_str = code_cpp_basic_type[data->semantic_value->v_basic_type];
 			} else {
@@ -754,14 +775,15 @@ void _bpcgen_gen_struct_msg_body(const char* token_name, GSList* smtv_member_lis
 			BPC_CODEGEN_INDENT_PRINT;
 			if (data->semantic_value->array_prop.is_array) {
 				if (data->semantic_value->array_prop.is_static_array) {
-					fprintf(fs_cpp_hdr, "std::array<%s*, %d> %s;",cpp_type_str, data->semantic_value->array_prop.array_len, data->semantic_value->vname);
+					fprintf(fs_cpp_hdr, "std::array<%s, %" PRIu32 "> %s;",cpp_type_str->str, data->semantic_value->array_prop.array_len, data->semantic_value->vname);
 				} else {
-					fprintf(fs_cpp_hdr, "std::vector<%s*> %s;", cpp_type_str, data->semantic_value->vname);
+					fprintf(fs_cpp_hdr, "std::vector<%s> %s;", cpp_type_str->str, data->semantic_value->vname);
 				}
 			} else {
-				fprintf(fs_cpp_hdr, "%s %s;", cpp_type_str, data->semantic_value->vname);
+				fprintf(fs_cpp_hdr, "%s %s;", cpp_type_str->str, data->semantic_value->vname);
 			}
 		}
+        g_string_free(cpp_type_str, true);
 
 		// reliable and opcode
 		if (is_msg) {
