@@ -1,6 +1,5 @@
 %{
 #include <stdio.h>
-#include <io.h>
 #include "y.tab.h"
 #include "bpc_semantic_values.h"
 #include "bpc_error.h"
