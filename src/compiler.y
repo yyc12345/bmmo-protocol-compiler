@@ -30,7 +30,7 @@ extern int yylex(void);
 
 /*
 NOTE:
-some actions have check operation and a exception will throw out if check failed.
+some actions have checked operation and a exception will throw out if check failed.
 so, we MUST setup semantic value before any checks, otherwise destructor will work perfectly and
 result in memmory leak.
 */
@@ -42,8 +42,8 @@ result in memmory leak.
 
 %union {
 	BPCSMTV_BASIC_TYPE token_basic_type;
-	char* token_name;
-	int64_t token_num;
+	char* token_identifier;
+	guint64 token_num;
 	bool token_bool;
 
 	BPCSMTV_DOCUMENT* nterm_document;
@@ -60,24 +60,24 @@ result in memmory leak.
 	GSList* nterm_members;			// item is BPCSMTV_MEMBER*
 }
 %token <token_num> BPC_TOKEN_NUM			"dec_number"
-%token <token_name> BPC_TOKEN_NAME			"token_name"
+%token <token_identifier> BPC_TOKEN_NAME	"token_name"
 %token <token_basic_type> BPC_BASIC_TYPE	"[[u]int[8|16|32|64] | string | double | float]"
-%token <token_bool> BPC_RELIABLE			"[reliable | unreliable]"
-%token BPC_VERSION			"version"
+%token <token_bool> BPC_RELIABILITY			"[reliable | unreliable]"
+%token <token_bool> BPC_FIELD_LAYOUT		"[narrow | nature]"
+%token <token_num> BPC_VERSION				"version xx"
 %token BPC_NAMESPACE		"namespace"
 %token BPC_ALIAS			"alias"
 %token BPC_ENUM				"enum"
 %token BPC_STRUCT			"struct"
 %token BPC_MSG				"msg"
-%token BPC_ARRAY_TUPLE		"tuple"
-%token BPC_ARRAY_LIST		"list"
-%token BPC_ALIGN			"align"
-%token BPC_COLON			":"
+%token <token_num> BPC_ARRAY_TUPLE			"[xxx]"
+%token BPC_ARRAY_LIST		"[]"
+%token BPC_ALIGN			"#xx"
 %token BPC_COMMA			","
 %token BPC_SEMICOLON		";"
+%token BPC_DOT				"."
 %token BPC_LEFT_BRACKET		"{"
 %token BPC_RIGHT_BRACKET	"}"
-%token BPC_DOT				"."
 %token BPC_EQUAL			"="
 
 %nterm <nterm_document> bpc_document
@@ -91,7 +91,7 @@ result in memmory leak.
 %nterm <nterm_enum_body_entry> bpc_enum_body_entry
 %nterm <nterm_members> bpc_member_collection bpc_member_with_align bpc_member_with_array bpc_member
 
-%destructor { bpc_destructor_string($$); } <token_name>
+%destructor { bpc_destructor_string($$); } <token_identifier>
 %destructor { bpc_destructor_document($$); } <nterm_document>
 %destructor { bpc_destructor_string_slist($$); } <nterm_namespace>
 %destructor { bpc_destructor_define_group_slist($$); } <nterm_define_group>

@@ -21,6 +21,7 @@
 
 %}
 
+LEGAL_BLANK		[ \t]+
 TOKEN_NUM		[1-9][0-9]*
 TOKEN_NAME		[a-zA-Z][a-zA-Z0-9_]*
 
@@ -50,7 +51,8 @@ TOKEN_NAME		[a-zA-Z][a-zA-Z0-9_]*
 	BEGIN(INITIAL);
 }
 
-"bpc" {
+"bpc"{LEGAL_BLANK}{TOKEN_NUM} {
+	yylval.token_num = bpcsmtv_parse_number(yytext, yyleng, 3u, 0u);
 	return BPC_VERSION;
 }
 "namespace" {
@@ -69,24 +71,27 @@ TOKEN_NAME		[a-zA-Z][a-zA-Z0-9_]*
 	return BPC_MSG;
 }
 "float"|"double"|"int8"|"int16"|"int32"|"int64"|"uint8"|"uint16"|"uint32"|"uint64"|"string" {
-	yylval.token_basic_type = bpc_parse_basic_type(yytext);
+	yylval.token_basic_type = bpcsmtv_parse_basic_type(yytext);
 	return BPC_BASIC_TYPE;
 }
-"tuple" {
-	return BPC_ARRAY_TUPLE;
-}
-"list" {
+"[]" {
 	return BPC_ARRAY_LIST;
 }
+"["{LEGAL_BLANK}{TOKEN_NUM}{LEGAL_BLANK}"]" {
+	yylval.token_num = bpcsmtv_parse_number(yytext, yyleng, 1u, 1u);
+	return BPC_ARRAY_TUPLE;
+}
 "reliable"|"unreliable" {
-	yylval.token_bool = !strcmp(yytext, "reliable");
-	return BPC_RELIABLE;
+	yylval.token_bool = bpcsmtv_parse_reliability(yytext);
+	return BPC_RELIABILITY;
 }
-"align" {
+"narrow"|"nature" {
+	yylval.token_bool = bpcsmtv_parse_field_layout(yytext);
+	return BPC_FIELD_LAYOUT;
+}
+"#"{LEGAL_BLANK}{TOKEN_NUM} {
+	yylval.token_num = bpcsmtv_parse_number(yytext, yyleng, 1u, 0u);
 	return BPC_ALIGN;
-}
-":" {
-	return BPC_COLON;
 }
 "," {
 	return BPC_COMMA;
@@ -108,12 +113,12 @@ TOKEN_NAME		[a-zA-Z][a-zA-Z0-9_]*
 }
 
 {TOKEN_NAME} {
-	yylval.token_name = g_strdup(yytext);
+	yylval.token_identifier = g_strdup(yytext);
 	return BPC_TOKEN_NAME;
 }
 
 {TOKEN_NUM} {
-	yylval.token_num = (int)g_ascii_strtoll(yytext, NULL, 10);
+	yylval.token_num = bpcsmtv_parse_number(yytext, yyleng, 0u, 0u);
 	return BPC_TOKEN_NUM;
 }
 

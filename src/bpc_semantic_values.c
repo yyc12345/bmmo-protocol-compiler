@@ -1,6 +1,6 @@
 #include "bpc_semantic_values.h"
 
-static const char* basic_type_dict[] = {
+static const char* basic_type_showcase[] = {
 	"float",
 	"double",
 
@@ -15,7 +15,61 @@ static const char* basic_type_dict[] = {
 
 	"string"
 };
-static const size_t basic_type_dict_len = sizeof(basic_type_dict) / sizeof(char*);
+static const size_t basic_type_showcase_len = sizeof(basic_type_showcase) / sizeof(char*);
+
+BPCSMTV_BASIC_TYPE bpcsmtv_parse_basic_type(const char* strl) {
+	for (size_t i = 0; i < basic_type_showcase_len; ++i) {
+		if (g_str_equal(strl, basic_type_showcase[i])) return (BPCSMTV_BASIC_TYPE)i;
+	}
+
+	// error
+	return BPCSMTV_BASIC_TYPE_INVALID;
+}
+bool bpcsmtv_parse_reliability(const char* strl) {
+	return g_str_equal(strl, "reliable");
+}
+bool bpcsmtv_parse_field_layout(const char* strl) {
+	return g_str_equal(strl, "narrow");
+}
+guint64 bpcsmtv_parse_number(const char* strl, size_t len, size_t start_margin, size_t end_margin) {
+	return g_ascii_strtoull(strl, NULL, 10);
+}
+
+BPCSMTV_FIELD_ARRAY* bpcsmtv_constructor_field_array_none() {
+	BPCSMTV_FIELD_ARRAY* data = g_new0(BPCSMTV_FIELD_ARRAY, 1);
+	data->is_array = false;
+	data->is_static_array = false;
+	data->array_len = 0u;
+	return data;
+}
+BPCSMTV_FIELD_ARRAY* bpcsmtv_constructor_field_array_tuple(uint32_t len) {
+	BPCSMTV_FIELD_ARRAY* data = g_new0(BPCSMTV_FIELD_ARRAY, 1);
+	data->is_array = true;
+	data->is_static_array = true;
+	data->array_len = len;
+	return data;
+}
+BPCSMTV_FIELD_ARRAY* bpcsmtv_constructor_field_array_list() {
+	BPCSMTV_FIELD_ARRAY* data = g_new0(BPCSMTV_FIELD_ARRAY, 1);
+	data->is_array = true;
+	data->is_static_array = false;
+	data->array_len = 0u;
+	return data;
+}
+void bpcsmtv_deconstructor_field_array(BPCSMTV_FIELD_ARRAY* data) {
+	g_free(data);
+}
+
+
+bool bpcsmtv_is_legal_number(guint64 num, uint32_t* out_num) {
+	if (num == 0ULL || num == ULLONG_MAX || num > UINT32_MAX) return false;
+
+	*out_num = (uint32_t)num;
+	return true;
+}
+
+/*
+
 
 /// <summary>
 /// item is `string` of each entry's name
@@ -27,14 +81,7 @@ static GSList* entry_registery = NULL;
 static GSList* token_registery = NULL;
 static uint32_t msg_index_distributor = 0;
 
-BPCSMTV_BASIC_TYPE bpc_parse_basic_type(const char* strl) {
-	for (size_t i = 0; i < basic_type_dict_len; ++i) {
-		if (g_str_equal(strl, basic_type_dict[i])) return (BPCSMTV_BASIC_TYPE)i;
-	}
 
-	// error
-	return -1;
-}
 
 BPCSMTV_MEMBER* bpc_constructor_member() {
 	return g_new0(BPCSMTV_MEMBER, 1);
@@ -311,3 +358,5 @@ bool bpcsmtv_basic_type_is_suit_for_enum(BPCSMTV_BASIC_TYPE bt) {
 			return false;
 	}
 }
+
+*/

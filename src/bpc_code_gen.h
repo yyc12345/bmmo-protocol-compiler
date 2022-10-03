@@ -5,6 +5,8 @@
 #include <stdbool.h>
 #include "bpc_cmd.h"
 
+
+
 /*
 `like_basic_type` and `underlaying_basic_type` is a pair. both of them usually indicating 
 whether explicit serialize/deserialize functions or calling serialize/deserialize functions should be used.
@@ -16,6 +18,8 @@ Now we need read it, however, we should first dig the basic type of `SomeEnum`, 
 
 This is the different between these 2 pairs. First pair do a full analyze. The second pair do a partial analyze, it analyze alias but do not analyze enum.
 */
+
+/*
 
 typedef struct _BPCGEN_UNDERLAYING_MEMBER {
 	/// <summary>
@@ -69,3 +73,5 @@ void _bpcgen_write_tail_code(GSList* namespace_list);
 void _bpcgen_get_underlaying_type(BPCGEN_UNDERLAYING_MEMBER* codegen_member);
 void _bpcgen_gen_struct_msg_body(const char* token_name, GSList* smtv_member_list, BPCGEN_MSG_EXTRA_PROPS* msg_prop);
 void _bpcgen_copy_template(FILE* target, const char* u8_template_code_file_path);
+
+*/

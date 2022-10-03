@@ -6,6 +6,7 @@
 
 // SMTV stands for `semantic_value`
 
+#define BPCSMTV_BASIC_TYPE_INVALID (-1);
 typedef enum _BPCSMTV_BASIC_TYPE {
 	BPCSMTV_BASIC_TYPE_FLOAT,
 	BPCSMTV_BASIC_TYPE_DOUBLE,
@@ -19,6 +20,51 @@ typedef enum _BPCSMTV_BASIC_TYPE {
 	BPCSMTV_BASIC_TYPE_UINT64,
 	BPCSMTV_BASIC_TYPE_STRING
 }BPCSMTV_BASIC_TYPE;
+
+typedef struct _BPCSMTV_FIELD_ARRAY {
+	bool is_array;
+	bool is_static_array;
+	uint32_t array_len;
+}BPCSMTV_FIELD_ARRAY;
+
+/// <summary>
+/// parse string into BPCSMTV_BASIC_TYPE.
+/// </summary>
+/// <param name="strl">the string need convertion</param>
+/// <returns>return a valid BPCSMTV_BASIC_TYPE enum entry, otherwise return BPCSMTV_BASIC_TYPE_INVALID.</returns>
+BPCSMTV_BASIC_TYPE bpcsmtv_parse_basic_type(const char* strl);
+/// <summary>
+/// parse string to is_reliable
+/// </summary>
+/// <param name="strl"></param>
+/// <returns>return true if reliability is reliable.</returns>
+bool bpcsmtv_parse_reliability(const char* strl);
+/// <summary>
+/// parse string to is_narrow
+/// </summary>
+/// <param name="strl"></param>
+/// <returns>return true if member_layout is narrow.</returns>
+bool bpcsmtv_parse_field_layout(const char* strl);
+/// <summary>
+/// parse string to uint32_t
+/// </summary>
+/// <param name="strl"></param>
+/// <returns></returns>
+guint64 bpcsmtv_parse_number(const char* strl, size_t len, size_t start_margin, size_t end_margin);
+
+BPCSMTV_FIELD_ARRAY* bpcsmtv_constructor_field_array_none();
+BPCSMTV_FIELD_ARRAY* bpcsmtv_constructor_field_array_tuple(uint32_t len);
+BPCSMTV_FIELD_ARRAY* bpcsmtv_constructor_field_array_list();
+void bpcsmtv_deconstructor_field_array(BPCSMTV_FIELD_ARRAY* data);
+
+/// <summary>
+/// check whether number is suit for compiler order
+/// </summary>
+/// <param name="num"></param>
+/// <returns>return true if number is legal</returns>
+bool bpcsmtv_is_legal_number(guint64 num, uint32_t* out_num);
+
+/*
 
 typedef struct _BPCSMTV_ENUM_BODY {
 	/// <summary>
@@ -36,11 +82,7 @@ typedef struct _BPCSMTV_ENUM_BODY {
 	int64_t specific_value;
 }BPCSMTV_ENUM_BODY;
 
-typedef struct _BPC_SEMANTIC_MEMBER_ARRAY_PROP {
-	bool is_array;
-	bool is_static_array;
-	uint32_t array_len;
-}BPCSMTV_MEMBER_ARRAY_PROP;
+
 typedef struct _BPC_SEMANTIC_MEMBER_ALIGN_PROP {
 	bool use_align;
 	uint32_t padding_size;
@@ -168,8 +210,6 @@ typedef struct _BPCSMTV_TOKEN_REGISTERY_ITEM {
 }BPCSMTV_TOKEN_REGISTERY_ITEM;
 
 
-BPCSMTV_BASIC_TYPE bpc_parse_basic_type(const char*);
-
 BPCSMTV_MEMBER* bpc_constructor_member();
 void bpc_destructor_member(gpointer rawptr);
 void bpc_destructor_member_slist(GSList* list);
@@ -201,6 +241,8 @@ GSList* bpcsmtv_member_duplicate(GSList* refls, const char* new_name);
 void bpcsmtv_member_copy_array_prop(GSList* ls, BPCSMTV_MEMBER_ARRAY_PROP* data);
 void bpcsmtv_member_copy_align_prop(GSList* ls, BPCSMTV_MEMBER_ALIGN_PROP* data);
 
+*/
+
 /*
 We call `entry` as:
 
@@ -214,6 +256,7 @@ We call `token` as:
 
 */
 
+/*
 /// <summary>
 /// reset entry registery. 
 /// only should be reset when a block(enum, msg, struct) has been parsed.
@@ -243,3 +286,4 @@ GSList* bpcsmtv_token_registery_get_slist();
 
 bool bpcsmtv_basic_type_is_suit_for_enum(BPCSMTV_BASIC_TYPE bt);
 
+*/

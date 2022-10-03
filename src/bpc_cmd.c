@@ -87,7 +87,7 @@ void bpccmd_free_parsed_args(BPCCMD_PARSED_ARGS* struct_args) {
 	g_free(struct_args);
 }
 
-GString* _bpccmd_get_cpp_relative_header() {
+gchar* _bpccmd_get_cpp_relative_header() {
 	// no cpp output, write a shit for placeholder
 	if (opt_cpp_source == NULL) {
 		return NULL;
@@ -104,7 +104,7 @@ GString* _bpccmd_get_cpp_relative_header() {
 		g_free(cppname);
 		g_free(u8_cppname);
 		g_free(u8_hppname);
-		return strl;
+		return g_string_free(strl, false);
 	} else {
 		// use header name as references header
 		// user need to assign find path for this header
@@ -118,7 +118,7 @@ GString* _bpccmd_get_cpp_relative_header() {
 		g_free(cppfolder);
 		g_free(u8_cppfolder);
 		g_free(relative_hpp);
-		return strl;
+		return g_string_free(strl, false);
 	}
 }
 

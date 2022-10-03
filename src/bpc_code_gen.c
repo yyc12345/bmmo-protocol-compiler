@@ -4,6 +4,8 @@
 #include "bpc_error.h"
 #include "bpc_fs.h"
 
+/*
+
 //const uint32_t bpc_codegen_basic_type_size[] = {
 //	4, 8, 1, 2, 4, 8, 1, 2, 4, 8
 //};
@@ -1153,3 +1155,5 @@ void _bpcgen_copy_template(FILE* target, const char* u8_template_code_file_path)
 	Code generation will continue, but generated code may not work.", u8_template_code_file_path);
 	}
 }
+
+*/
