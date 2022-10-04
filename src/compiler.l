@@ -51,8 +51,7 @@ TOKEN_NAME		[a-zA-Z][a-zA-Z0-9_]*
 	BEGIN(INITIAL);
 }
 
-"bpc"{LEGAL_BLANK}{TOKEN_NUM} {
-	yylval.token_num = bpcsmtv_parse_number(yytext, yyleng, 3u, 0u);
+"bpc" {
 	return BPC_VERSION;
 }
 "namespace" {
@@ -92,6 +91,9 @@ TOKEN_NAME		[a-zA-Z][a-zA-Z0-9_]*
 "#"{LEGAL_BLANK}{TOKEN_NUM} {
 	yylval.token_num = bpcsmtv_parse_number(yytext, yyleng, 1u, 0u);
 	return BPC_ALIGN;
+}
+":" {
+	return BPC_COLON;
 }
 "," {
 	return BPC_COMMA;

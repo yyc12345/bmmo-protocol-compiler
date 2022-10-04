@@ -15,12 +15,12 @@
 
 %code provides {
 int run_compiler(BPCCMD_PARSED_ARGS* bpc_args);
-void bpc_yyerror(const char* format, ...);
 }
 
 %code {
 int yywrap();
 void yyerror(const char *s);
+void formatted_yyerror(const char* format, ...);
 
 // yyin, yyout and yylex is comes from flex code
 // so declare them as extern here
@@ -64,7 +64,7 @@ result in memmory leak.
 %token <token_basic_type> BPC_BASIC_TYPE	"[[u]int[8|16|32|64] | string | double | float]"
 %token <token_bool> BPC_RELIABILITY			"[reliable | unreliable]"
 %token <token_bool> BPC_FIELD_LAYOUT		"[narrow | nature]"
-%token <token_num> BPC_VERSION				"version xx"
+%token BPC_VERSION			"version"
 %token BPC_NAMESPACE		"namespace"
 %token BPC_ALIAS			"alias"
 %token BPC_ENUM				"enum"
@@ -73,6 +73,7 @@ result in memmory leak.
 %token <token_num> BPC_ARRAY_TUPLE			"[xxx]"
 %token BPC_ARRAY_LIST		"[]"
 %token BPC_ALIGN			"#xx"
+%token BPC_COLON			":"
 %token BPC_COMMA			","
 %token BPC_SEMICOLON		";"
 %token BPC_DOT				"."
@@ -492,7 +493,7 @@ void yyerror(const char *s) {
 	);
 }
 
-void bpc_yyerror(const char* format, ...) {
+void formatted_yyerror(const char* format, ...) {
 	va_list ap;
 	va_start(ap, format);
 	gchar* buf = bpcfs_vsprintf(format, ap);
