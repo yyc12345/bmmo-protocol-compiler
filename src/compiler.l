@@ -92,9 +92,6 @@ TOKEN_NAME		[a-zA-Z][a-zA-Z0-9_]*
 	yylval.token_num = bpcsmtv_parse_number(yytext, yyleng, 1u, 0u);
 	return BPC_ALIGN;
 }
-":" {
-	return BPC_COLON;
-}
 "," {
 	return BPC_COMMA;
 }

@@ -17,6 +17,8 @@ static const char* basic_type_showcase[] = {
 };
 static const size_t basic_type_showcase_len = sizeof(basic_type_showcase) / sizeof(char*);
 
+// ==================== Parse Functions ====================
+
 BPCSMTV_BASIC_TYPE bpcsmtv_parse_basic_type(const char* strl) {
 	for (size_t i = 0; i < basic_type_showcase_len; ++i) {
 		if (g_str_equal(strl, basic_type_showcase[i])) return (BPCSMTV_BASIC_TYPE)i;
@@ -35,33 +37,63 @@ guint64 bpcsmtv_parse_number(const char* strl, size_t len, size_t start_margin, 
 	return g_ascii_strtoull(strl, NULL, 10);
 }
 
-BPCSMTV_FIELD_ARRAY* bpcsmtv_constructor_field_array_none() {
-	BPCSMTV_FIELD_ARRAY* data = g_new0(BPCSMTV_FIELD_ARRAY, 1);
+// ==================== Constructor/Deconstructor Functions ====================
+
+BPCSMTV_STRUCT_MODIFIER* bpcsmtv_constructor_struct_modifier() {
+	BPCSMTV_STRUCT_MODIFIER* data = g_new0(BPCSMTV_STRUCT_MODIFIER, 1);
+	data->has_set_reliability = false;
+	data->is_reliable = true;
+	data->has_set_field_layout = false;
+	data->is_narrow = true;
+	return data;
+}
+void bpcsmtv_deconstructor_struct_modifier(gpointer data) {
+	g_free(data);
+}
+
+BPCSMTV_VARIABLE_ARRAY* bpcsmtv_constructor_variable_array() {
+	BPCSMTV_VARIABLE_ARRAY* data = g_new0(BPCSMTV_VARIABLE_ARRAY, 1);
 	data->is_array = false;
 	data->is_static_array = false;
-	data->array_len = 0u;
+	data->static_array_len = 0u;
 	return data;
 }
-BPCSMTV_FIELD_ARRAY* bpcsmtv_constructor_field_array_tuple(uint32_t len) {
-	BPCSMTV_FIELD_ARRAY* data = g_new0(BPCSMTV_FIELD_ARRAY, 1);
-	data->is_array = true;
-	data->is_static_array = true;
-	data->array_len = len;
+void bpcsmtv_deconstructor_variable_array(gpointer data) {
+	g_free(data);
+}
+
+BPCSMTV_VARIABLE_TYPE* bpcsmtv_constructor_variable_type() {
+	BPCSMTV_VARIABLE_TYPE* data = g_new0(BPCSMTV_VARIABLE_TYPE, 1);
+	data->is_basic_type = false;
+	data->type_data.custom_type = NULL;
 	return data;
 }
-BPCSMTV_FIELD_ARRAY* bpcsmtv_constructor_field_array_list() {
-	BPCSMTV_FIELD_ARRAY* data = g_new0(BPCSMTV_FIELD_ARRAY, 1);
-	data->is_array = true;
-	data->is_static_array = false;
-	data->array_len = 0u;
+void bpcsmtv_deconstructor_variable_type(gpointer data) {
+	if (data == NULL) return;
+
+	BPCSMTV_VARIABLE_TYPE* rdata = (BPCSMTV_VARIABLE_TYPE*)data;
+	if (!rdata->is_basic_type) {
+		g_free(rdata->type_data.custom_type);
+	}
+
+	g_free(data);
+}
+
+BPCSMTV_VARIABLE_ALIGN* bpcsmtv_constructor_variable_align() {
+	BPCSMTV_VARIABLE_ALIGN* data = g_new0(BPCSMTV_VARIABLE_ALIGN, 1);
+	data->use_align = false;
+	data->padding_size = 0u;
 	return data;
 }
-void bpcsmtv_deconstructor_field_array(BPCSMTV_FIELD_ARRAY* data) {
+void bpcsmtv_deconstructor_variable_align(gpointer data) {
 	g_free(data);
 }
 
 
-bool bpcsmtv_is_legal_number(guint64 num, uint32_t* out_num) {
+
+// ==================== Utils Functions ====================
+
+bool bpcsmtv_is_legal_number(gint64 num, uint32_t* out_num) {
 	if (num == 0ULL || num == ULLONG_MAX || num > UINT32_MAX) return false;
 
 	*out_num = (uint32_t)num;

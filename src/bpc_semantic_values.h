@@ -6,6 +6,9 @@
 
 // SMTV stands for `semantic_value`
 
+// ==================== Struct Defination ====================
+
+// Invalid basic type const value
 #define BPCSMTV_BASIC_TYPE_INVALID (-1);
 typedef enum _BPCSMTV_BASIC_TYPE {
 	BPCSMTV_BASIC_TYPE_FLOAT,
@@ -21,11 +24,165 @@ typedef enum _BPCSMTV_BASIC_TYPE {
 	BPCSMTV_BASIC_TYPE_STRING
 }BPCSMTV_BASIC_TYPE;
 
-typedef struct _BPCSMTV_FIELD_ARRAY {
+typedef struct _BPCSMTV_STRUCT_MODIFIER {
+	bool has_set_reliability;
+	bool is_reliable;
+	bool has_set_field_layout;
+	bool is_narrow;
+}BPCSMTV_STRUCT_MODIFIER;
+
+typedef struct _BPCSMTV_VARIABLE_ARRAY {
 	bool is_array;
 	bool is_static_array;
-	uint32_t array_len;
-}BPCSMTV_FIELD_ARRAY;
+	uint32_t static_array_len;
+}BPCSMTV_VARIABLE_ARRAY;
+
+typedef struct _BPCSMTV_VARIABLE_TYPE {
+	/// <summary>
+	/// whether this member is belong to basic type.
+	/// this basic type do not include enum
+	/// enum is struct type in there
+	/// enum will only be seen as basic type in codegen.
+	/// </summary>
+	bool is_basic_type;
+
+	/// <summary>
+	/// the internal data of current variable type
+	/// </summary>
+	union {
+		/// <summary>
+		/// if member is basic type, this value store its basic type
+		/// </summary>
+		BPCSMTV_BASIC_TYPE basic_type;
+		/// <summary>
+		/// if member is custom type, this value store the token name of its custom type
+		/// </summary>
+		char* custom_type;
+	}type_data;
+}BPCSMTV_VARIABLE_TYPE;
+
+typedef struct _BPCSMTV_VARIABLE_ALIGN {
+	bool use_align;
+	uint32_t padding_size;
+}BPCSMTV_VARIABLE_ALIGN;
+
+typedef struct _BPCSMTV_VARIABLE {
+	/// <summary>
+	/// the data type of this variable
+	/// </summary>
+	BPCSMTV_VARIABLE_TYPE* variable_type;
+	/// <summary>
+	/// the array property of this variable
+	/// </summary>
+	BPCSMTV_VARIABLE_ARRAY* variable_array;
+	/// <summary>
+	/// the align property of this variable
+	/// </summary>
+	BPCSMTV_VARIABLE_ALIGN* variable_align;
+	/// <summary>
+	/// the name of this variable
+	/// </summary>
+	char* variable_name;
+}BPCSMTV_VARIABLE;
+
+typedef struct _BPCSMTV_ENUM_BODY {
+	/// <summary>
+	/// the name of current enum entry
+	/// </summary>
+	char* enum_member_name;
+	/// <summary>
+	/// whether current enum entry have user specificed value.
+	/// </summary>
+	bool have_specific_value;
+	/// <summary>
+	/// store user specificed value if it has.
+	/// </summary>
+	int64_t specific_value;
+}BPCSMTV_ENUM_BODY;
+
+typedef struct _BPCSMTV_ALIAS {
+	/// <summary>
+	/// user defined new identifier
+	/// </summary>
+	char* custom_type;
+	/// <summary>
+	/// original basic_type
+	/// </summary>
+	BPCSMTV_BASIC_TYPE basic_type;
+}BPCSMTV_ALIAS;
+typedef struct _BPCSMTV_ENUM {
+	/// <summary>
+	/// the identifier of this enum
+	/// </summary>
+	char* enum_name;
+	/// <summary>
+	/// the basic type used by this enum
+	/// </summary>
+	BPCSMTV_BASIC_TYPE enum_basic_type;
+	/// <summary>
+	/// item is `BPCSMTV_ENUM_BODY*`
+	/// </summary>
+	GSList* enum_body;
+}BPCSMTV_ENUM;
+typedef struct _BPCSMTV_STRUCT {
+	/// <summary>
+	/// modifier property
+	/// </summary>
+	BPCSMTV_STRUCT_MODIFIER* struct_modifier;
+	/// <summary>
+	/// the identifier of this struct
+	/// </summary>
+	char* struct_name;
+	/// <summary>
+	/// item is `BPCSMTV_VARIABLE*`
+	/// </summary>
+	GSList* struct_body;
+}BPCSMTV_STRUCT;
+typedef struct _BPCSMTV_MSG {
+	/// <summary>
+	/// modifier property
+	/// </summary>
+	BPCSMTV_STRUCT_MODIFIER* msg_modifier;
+	/// <summary>
+	/// the identifier of this msg
+	/// </summary>
+	char* msg_name;
+	/// <summary>
+	/// item is `BPCSMTV_VARIABLE*`
+	/// </summary>
+	GSList* msg_body;
+}BPCSMTV_MSG;
+
+typedef enum _BPCSMTV_DEFINED_IDENTIFIER_TYPE {
+	BPCSMTV_DEFINED_IDENTIFIER_TYPE_ALIAS,
+	BPCSMTV_DEFINED_IDENTIFIER_TYPE_ENUM,
+	BPCSMTV_DEFINED_IDENTIFIER_TYPE_STRUCT,
+	BPCSMTV_DEFINED_IDENTIFIER_TYPE_MSG
+}BPCSMTV_DEFINED_IDENTIFIER_TYPE;
+
+typedef struct _BPCSMTV_PROTOCOL_BODY {
+	BPCSMTV_DEFINED_IDENTIFIER_TYPE node_type;
+	union {
+		BPCSMTV_ALIAS* alias_data;
+		BPCSMTV_ENUM* enum_data;
+		BPCSMTV_STRUCT* struct_data;
+		BPCSMTV_MSG* msg_data;
+	}node_data;
+}BPCSMTV_PROTOCOL_BODY;
+
+typedef struct _BPCSMTV_DOCUMENT {
+	/// <summary>
+	/// item is the same as the semantic value of bpc_namespace_chain and bpc_namespace, char*
+	/// </summary>
+	GSList* namespace_data;
+	/// <summary>
+	/// storage define group data.
+	/// item is `BPCSMTV_PROTOCOL_BODY*`
+	/// </summary>
+	GSList* protocol_body;
+}BPCSMTV_DOCUMENT;
+
+// ==================== Parse Functions ====================
 
 /// <summary>
 /// parse string into BPCSMTV_BASIC_TYPE.
@@ -52,10 +209,23 @@ bool bpcsmtv_parse_field_layout(const char* strl);
 /// <returns></returns>
 guint64 bpcsmtv_parse_number(const char* strl, size_t len, size_t start_margin, size_t end_margin);
 
-BPCSMTV_FIELD_ARRAY* bpcsmtv_constructor_field_array_none();
-BPCSMTV_FIELD_ARRAY* bpcsmtv_constructor_field_array_tuple(uint32_t len);
-BPCSMTV_FIELD_ARRAY* bpcsmtv_constructor_field_array_list();
-void bpcsmtv_deconstructor_field_array(BPCSMTV_FIELD_ARRAY* data);
+// ==================== Constructor/Deconstructor Functions ====================
+
+BPCSMTV_STRUCT_MODIFIER* bpcsmtv_constructor_struct_modifier();
+void bpcsmtv_deconstructor_struct_modifier(gpointer data);
+
+BPCSMTV_VARIABLE_ARRAY* bpcsmtv_constructor_variable_array();
+void bpcsmtv_deconstructor_variable_array(gpointer data);
+
+BPCSMTV_VARIABLE_TYPE* bpcsmtv_constructor_variable_type();
+void bpcsmtv_deconstructor_variable_type(gpointer data);
+
+BPCSMTV_VARIABLE_ALIGN* bpcsmtv_constructor_variable_align();
+void bpcsmtv_deconstructor_variable_align(gpointer data);
+
+
+
+// ==================== Utils Functions ====================
 
 /// <summary>
 /// check whether number is suit for compiler order
