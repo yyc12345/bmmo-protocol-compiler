@@ -36,7 +36,7 @@ Considering Google Protobuf, this project is not suit for production environment
 * Version Check
 * Namespace
 
-## Usage
+## CLI sage
 
 Syntax: `bmmo_protocol_compiler [switches]`
 
@@ -58,16 +58,13 @@ Syntax: `bmmo_protocol_compiler [switches]`
 If there are no any generation switches chosen, the compiler will only check the syntax of the input file.  
 For the syntax of input file, aka `bp` file, please view `examples/example.bp` to know in detail.
 
-### Use BP and Code Files
+## Bp File Usage
 
-For the format of BP file, please view `examples/example.bp`. This file describe the whole format of BP file and it also can be accepted by compiler and output correct code file.  
-Also, you can view `examples/bmmo.bp`, this file is the description of BMMO protocol. You can gain some complex and productive techniques from this file.  
-`examples/errors.bp` is the error test for compilr, you should not read it if you are not the developer of this compiler.
+Bp file is the protocol definition file accepted by this compiler. Read [Bp File Manual](docs/BpFile.md) to learn more.
 
-The generated code have attached references manual automatically. You can view it directly. The manual will tell you how to read and write messages correctly, especially for C++ code. I write a long manual for generated C++ code usage.  
-Also, you can get original help annotations from `snippets`, however I am not suggest to do this.  
-For C++ programmer, please pay attention to this warning. Because C++ do not have a confirmed code style, so we use "C with classes" style in this project to make sure the max compatibility of generated code. If you feel uncomfortable and want to say, why not use C11, C17 or C20 syntax? I will say, "fuck off and shut up". I will not upgrade any C++ syntax because C++ is a shitty non-standard language. You can open fork freely with proper license if you think I am an idiot.
+## Generated Code Usage
 
+For how to use generated code files, please read [Generated Code Manual](docs/GenCode.md) in detail.
 
 ## Compile
 

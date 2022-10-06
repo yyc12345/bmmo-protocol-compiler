@@ -108,14 +108,14 @@ You can use this syntax give an alias for any **basic types**.
 
 ```
 //Syntax:
-enum ENUM_NAME : BASIC_TYPE {
+enum BASIC_TYPE ENUM_NAME {
     ENTRY_NAME1,
     ENTRY_NAME2 = 1
     ...
 }
 
 //Example:
-enum weather : uint8 {
+enum uint8 weather {
     Sunday,
     Cloudy,
     Raining,
@@ -125,8 +125,8 @@ enum weather : uint8 {
 
 #### Declaration
 
-The declaration of enum in bp file is very similar than C++ enum syntax. `ENUM_NAME` is your preferred identifier. Write your enum entries in bracket with comma to split them.  
-You also can specific value for some enum entry just like C language. It will perform the same behavior with C language.
+The declaration of enum in bp file is very similar than C++ enum syntax. `ENUM_NAME` is your preferred identifier. `BASIC_TYPE` indicates the underlying type of this enum and decides the size of this enum.  
+Write your enum entries in bracket with comma to split them. You also can specific value for some enum entry just like C language. It will perform the same behavior with C language.
 
 #### Basic Types Limit
 
@@ -184,7 +184,7 @@ narrow palyers {
 
 #### Declaration
 
-`STRUCT_NAME` is your preferred identifier. `(narrow | nature)` order you choose a keyword from 2 field layouts which will be introduced in next chapter. And just like C language struct syntax, we need fill our fields declarations in bracket.
+`STRUCT_NAME` is your preferred identifier. `(narrow | nature)` order you choose a keyword from 2 field layouts which will be introduced in next chapter. And just like C language struct syntax, we need fill our fields declarations in bracket. However, the field declaration body can be empty.
 
 For each field declaration, `FIELD_NAME` is your preferred entry and `1(, FILED_NAME2, ...)` mean that we can create more than 1 fields in one field declaration expression. And all of them will have the same data type. For example: `float x, y, z;`.  
 Switch `(BASIC_TYPE | IDENTIFIER)` order you to make a choice between basic types and custom types. Basic types can be specified directly, however, for the custom types, just like I said previously, if you use a custom types, such as alias, enum and even the struct, you should declare it before using it.  
@@ -223,16 +223,41 @@ If you use align syntax in a series of declaration, such as `float x, y, z #4`. 
 
 ### Msg
 
+```
+//Syntax:
+(narrow | nature) (reliable | unreliable) msg MSG_NAME {
+    fields list...
+}
 
+//Example:
+narrow reliable msg player_kicked_msg {
+    string kicked_player_name;
+    string executor_name;
+    string reason;
+    uint8 crashed;
+}
+```
 
+Msg is the final interface struct used in your final transmission protocol. Alias, Enum and Struct syntaxes are served for Msg syntax.  
+Msg is very very similar than Struct syntax. `MSG_NAME` is your preferred identifier. We do not talk msg too much due to the similarity with struct. We only talk its differences in there.
 
+#### Differences with Struct
 
+* Because Msg is the key of protocol, Bp compiler will distribute an unique index for each Msg declarations from top to bottom. This index can be used in distinguishing serialized binary Msg.
+* Msg syntax have an extra modifier called reliability which you can see it before keyword `msg`.
+
+For how to get index and reliability of Msg, please view [Generated Code Manual](GenCode.md).
+
+#### Reliability
+
+For modern game protocol, some data is essential which synchronize the context of each clients. For example, player join and quit message. However, some data is not essential, for example, player movement.  
+Also, some network libraries also provide reliability feature, such as [ValveSoftware/GameNetworkingSockets](https://github.com/ValveSoftware/GameNetworkingSockets) and [networkprotocol/yojimbo](https://github.com/networkprotocol/yojimbo).  
+So, bp file provide this feature to indicate this message's reliability.
 
 ## Examples
 
 Now you have a basic understanding of bp file. However, you may still confused about how to write a perfect bp file. Don't worry about that. This project provide some good bp file examples in folder `examples`.
 
-* `example.bp`: The beginner example.
-* `bmmo.bp`: A real productive bp example.
-* `errors.bp`: Error check example, including common errors made by beginner.
-
+* `example.bp`: This file describe the whole format of BP file and it also can be accepted by compiler and output correct code file.
+* `bmmo.bp`: This file is the description of BMMO protocol. You can gain some complex and productive techniques from this file.
+* `errors.bp`: The error test for compilr, you should not read it if you are not the developer of this compiler. However you may find some common syntax error in this file and learn from it.
