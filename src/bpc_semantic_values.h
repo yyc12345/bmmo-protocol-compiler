@@ -207,32 +207,43 @@ bool bpcsmtv_parse_field_layout(const char* strl);
 /// </summary>
 /// <param name="strl"></param>
 /// <returns></returns>
-guint64 bpcsmtv_parse_number(const char* strl, size_t len, size_t start_margin, size_t end_margin);
+gint64 bpcsmtv_parse_number(const char* strl, size_t len, size_t start_margin, size_t end_margin);
 
 // ==================== Constructor/Deconstructor Functions ====================
 
 BPCSMTV_STRUCT_MODIFIER* bpcsmtv_constructor_struct_modifier();
-void bpcsmtv_deconstructor_struct_modifier(gpointer data);
+void bpcsmtv_deconstructor_struct_modifier(BPCSMTV_STRUCT_MODIFIER* data);
 
 BPCSMTV_VARIABLE_ARRAY* bpcsmtv_constructor_variable_array();
-void bpcsmtv_deconstructor_variable_array(gpointer data);
+void bpcsmtv_deconstructor_variable_array(BPCSMTV_VARIABLE_ARRAY* data);
 
 BPCSMTV_VARIABLE_TYPE* bpcsmtv_constructor_variable_type();
-void bpcsmtv_deconstructor_variable_type(gpointer data);
+void bpcsmtv_deconstructor_variable_type(BPCSMTV_VARIABLE_TYPE* data);
 
 BPCSMTV_VARIABLE_ALIGN* bpcsmtv_constructor_variable_align();
-void bpcsmtv_deconstructor_variable_align(gpointer data);
+void bpcsmtv_deconstructor_variable_align(BPCSMTV_VARIABLE_ALIGN* data);
 
+void bpcsmtv_destructor_alias(BPCSMTV_ALIAS* data);
+void bpcsmtv_destructor_enum(BPCSMTV_ENUM* data);
+void bpcsmtv_destructor_struct(BPCSMTV_STRUCT* data);
+void bpcsmtv_destructor_msg(BPCSMTV_MSG* data);
 
+void bpcsmtv_destructor_document(BPCSMTV_DOCUMENT* data);
+
+void bpcsmtv_destructor_string(gpointer data);
+void bpcsmtv_destructor_slist_string(GSList* data);
+void bpcsmtv_destructor_slist_protocol_body(GSList* data);
+void bpcsmtv_destructor_slist_enum_body(GSList* data);
+void bpcsmtv_destructor_slist_variable(GSList* data);
 
 // ==================== Utils Functions ====================
 
 /// <summary>
-/// check whether number is suit for compiler order
+/// check whether current number is suit for offset.
 /// </summary>
 /// <param name="num"></param>
-/// <returns>return true if number is legal</returns>
-bool bpcsmtv_is_legal_number(guint64 num, uint32_t* out_num);
+/// <returns>if number is lower than max(uint32_t) and not equal with 0, return true.</returns>
+bool bpcsmtv_is_offset_number(gint64 num);
 
 /*
 
