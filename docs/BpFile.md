@@ -2,19 +2,19 @@
 
 ## Layout
 
-Bp file consists of 2 parts. Config head and protocol body. There is a example. Each parts will be introduced in following chapter.
+Bp file consists of 2 parts, config head and protocol body. There is a example. Each parts will be introduced in following chapter.
 
 ```
 bpc 1;
-namespace my.protocol
+namespace my.protocol;
 
-alias uuid uint64
-enum ball_type : uint32 {
+alias uuid uint64;
+enum uint32 ball_type {
     wood,
     stone,
     paper
 }
-nature struct pos {
+natural struct pos {
     float x, y, z;
 }
 narrow unreliable ball_state {
@@ -43,13 +43,13 @@ I'm a block annotation.
 
 Example: `bpc 1;`
 
-Specific bmmo_protocol_compiler version.   
+Specific compiler version.   
 Mismatched version will abort the process of parsing. For current compiler, version is 1.  
 This syntax must be place at the head of bp file.
 
 ### Namespace
 
-Example: `namespace aaa.bbb.blablabla`
+Example: `namespace aaa.bbb.blablabla;`
 
 Namespace is a common feature for the most of programming language. Bp file also support namespace feature to ensure the generated code will not be post in global scope and prevent any name pollution at the same time.  
 Namespace is a essential syntax and should be written after Version syntax immediately.  
@@ -155,7 +155,7 @@ Alias syntax can not give any alias for enum type, even if enum is inherit from 
 
 ```
 //Syntax:
-(narrow | nature) struct STRUCT_NAME {
+(narrow | natural) struct STRUCT_NAME {
     fields list...
 }
 
@@ -163,10 +163,10 @@ Alias syntax can not give any alias for enum type, even if enum is inherit from 
 (BASIC_TYPE | IDENTIFIER)([] | [TUPLE_LEN) FIELD_NAME1(, FILED_NAME2, ...) (#ALIGN);
 
 //Example:
-nature struct vx_pos {
+natural struct vx_pos {
     float x,y,z;
 }
-nature struct vx_quat {
+natural struct vx_quat {
     float x,y,z,w;
 }
 struct ball_state {
@@ -184,7 +184,7 @@ narrow palyers {
 
 #### Declaration
 
-`STRUCT_NAME` is your preferred identifier. `(narrow | nature)` order you choose a keyword from 2 field layouts which will be introduced in next chapter. And just like C language struct syntax, we need fill our fields declarations in bracket. However, the field declaration body can be empty.
+`STRUCT_NAME` is your preferred identifier. `(narrow | natural)` order you choose a keyword from 2 field layouts which will be introduced in next chapter. And just like C language struct syntax, we need fill our fields declarations in bracket. However, the field declaration body can be empty.
 
 For each field declaration, `FIELD_NAME` is your preferred entry and `1(, FILED_NAME2, ...)` mean that we can create more than 1 fields in one field declaration expression. And all of them will have the same data type. For example: `float x, y, z;`.  
 Switch `(BASIC_TYPE | IDENTIFIER)` order you to make a choice between basic types and custom types. Basic types can be specified directly, however, for the custom types, just like I said previously, if you use a custom types, such as alias, enum and even the struct, you should declare it before using it.  
@@ -194,17 +194,17 @@ Switch `(BASIC_TYPE | IDENTIFIER)` order you to make a choice between basic type
 
 If you have experience with C++ language, you may know about align feature. Compiler will pad some bytes after some fields to make the whole struct can be visited fluently.
 
-Bp file support this feature, we provide 2 field layout. `nature` is nature align layout, if you choose this layout, bp compiler will do the same things as C compiler. `narrow` is a narrow layout. It should be called *no align* actually, because it will place field in order without any useless bytes.  
+Bp file support this feature, we provide 2 field layout. `natural` is natural align layout, if you choose this layout, bp compiler will do the same things as C compiler. `narrow` is a narrow layout. It should be called *no align* actually, because it will place field in order without any useless bytes.  
 
-A struct or msg which can use `nature` should fulfill follow requirements:
+A struct or msg which can use `natural` should fulfill follow requirements:
 
 * All fields are not `string`.
 * All fields do not have list modifier.
-* All structs referred by fields are `nature` struct.
+* All structs referred by fields are `natural` struct.
 
 If you do not specify layout, compiler will check struct and msg and choose a proper one.
 
-If you have specify a struct or msg as nature layout, any align syntax in fields declarations will be omitted and throw a warning.
+If you have specify a struct or msg as natural layout, any align syntax in fields declarations will be omitted and throw a warning.
 
 #### Array Field
 
@@ -221,11 +221,13 @@ You can add `#NUM` to the tail of any fields declarations to notice compiler add
 
 If you use align syntax in a series of declaration, such as `float x, y, z #4`. It mean that every fields should be padding with 4 bytes blank.
 
+We highly recommend **preventing** using this feature. This feature is a outdated feature and its successor is field layout feature. This feature only should be used when field layout feature can not fulfill your demands.
+
 ### Msg
 
 ```
 //Syntax:
-(narrow | nature) (reliable | unreliable) msg MSG_NAME {
+(narrow | natural) (reliable | unreliable) msg MSG_NAME {
     fields list...
 }
 

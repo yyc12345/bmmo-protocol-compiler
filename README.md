@@ -36,7 +36,7 @@ Considering Google Protobuf, this project is not suit for production environment
 * Version Check
 * Namespace
 
-## CLI sage
+## CLI Usage
 
 Syntax: `bmmo_protocol_compiler [switches]`
 
@@ -56,7 +56,6 @@ Syntax: `bmmo_protocol_compiler [switches]`
 
 `-d` and `-s` both are usually used together to generate full C++ code file.  
 If there are no any generation switches chosen, the compiler will only check the syntax of the input file.  
-For the syntax of input file, aka `bp` file, please view `examples/example.bp` to know in detail.
 
 ## Bp File Usage
 
