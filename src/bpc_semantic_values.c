@@ -1,6 +1,17 @@
 #include "bpc_semantic_values.h"
 #include <inttypes.h>
 
+/// <summary>
+/// item is `char*` of each variables name
+/// </summary>
+static GHashTable* hashtable_variables = NULL;
+/// <summary>
+/// item is `BPCSMTV_REGISTERY_IDENTIFIER_ITEM*` of each identifier
+/// </summary>
+static GHashTable* hashtable_identifier = NULL;
+static GSList* registery_identifier = NULL;
+static uint32_t msg_index_distributor = 0;
+
 static const char* basic_type_showcase[] = {
 	"float",
 	"double",
@@ -48,7 +59,7 @@ BPCSMTV_STRUCT_MODIFIER* bpcsmtv_constructor_struct_modifier() {
 	data->is_narrow = true;
 	return data;
 }
-void bpcsmtv_deconstructor_struct_modifier(BPCSMTV_STRUCT_MODIFIER* data) {
+void bpcsmtv_destructor_struct_modifier(BPCSMTV_STRUCT_MODIFIER* data) {
 	g_free(data);
 }
 
@@ -59,7 +70,7 @@ BPCSMTV_VARIABLE_ARRAY* bpcsmtv_constructor_variable_array() {
 	data->static_array_len = 0u;
 	return data;
 }
-void bpcsmtv_deconstructor_variable_array(BPCSMTV_VARIABLE_ARRAY* data) {
+void bpcsmtv_destructor_variable_array(BPCSMTV_VARIABLE_ARRAY* data) {
 	g_free(data);
 }
 
@@ -69,7 +80,7 @@ BPCSMTV_VARIABLE_TYPE* bpcsmtv_constructor_variable_type() {
 	data->type_data.custom_type = NULL;
 	return data;
 }
-void bpcsmtv_deconstructor_variable_type(BPCSMTV_VARIABLE_TYPE* data) {
+void bpcsmtv_destructor_variable_type(BPCSMTV_VARIABLE_TYPE* data) {
 	if (data == NULL) return;
 
 	if (!data->is_basic_type) {
@@ -85,16 +96,145 @@ BPCSMTV_VARIABLE_ALIGN* bpcsmtv_constructor_variable_align() {
 	data->padding_size = 0u;
 	return data;
 }
-void bpcsmtv_deconstructor_variable_align(BPCSMTV_VARIABLE_ALIGN* data) {
+void bpcsmtv_destructor_variable_align(BPCSMTV_VARIABLE_ALIGN* data) {
 	g_free(data);
 }
 
+
+void bpcsmtv_destructor_string(gpointer data) {
+	g_free(data);
+}
+
+BPCSMTV_REGISTERY_IDENTIFIER_ITEM* bpcsmtv_constructor_registery_identifier_item() {
+	BPCSMTV_REGISTERY_IDENTIFIER_ITEM* data = g_new0(BPCSMTV_REGISTERY_IDENTIFIER_ITEM, 1);
+	data->identifier_name = NULL;
+
+	return data;
+}
+void bpcsmtv_destructor_registery_identifier_item(gpointer data) {
+	BPCSMTV_REGISTERY_IDENTIFIER_ITEM* rdata = (BPCSMTV_REGISTERY_IDENTIFIER_ITEM*)data;
+	g_free(rdata->identifier_name);
+}
+
+// ==================== Registery Functions ====================
+void bpcsmtv_registery_variables_reset() {
+	// init hashtable when necessary
+	if (hashtable_variables == NULL) {
+		// we use it as Set, so we only need to free key, otherwise, string will be freed twice.
+		hashtable_variables = g_hash_table_new_full(g_str_hash, g_str_equal, bpcsmtv_destructor_string, NULL);
+	} else {
+		// clear hashtable
+		g_hash_table_remove_all(hashtable_variables);
+	}
+}
+
+bool bpcsmtv_registery_variables_test(const char* name) {
+	return g_hash_table_lookup_extended(hashtable_variables, name, NULL, NULL);
+}
+
+void bpcsmtv_registery_variables_add(const char* name) {
+	g_hash_table_add(hashtable_variables, g_strdup(name));
+}
+
+
+
+void bpcsmtv_registery_identifier_reset() {
+	// init hashtable when necessary
+	if (hashtable_identifier == NULL) {
+		// hashtable is just a search method, so we do not need free keys and values
+		// key is ref of value->identifier_name
+		hashtable_identifier = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, NULL);
+	} else {
+		// clear hashtable
+		g_hash_table_remove_all(hashtable_identifier);
+	}
+
+	// clear slist data
+	// add data are stored in slist, hashtable is just a quick search index
+	if (registery_identifier != NULL) {
+		g_slist_free_full(registery_identifier, bpcsmtv_destructor_registery_identifier_item);
+		registery_identifier = NULL;
+	}
+
+	// reset message index distributor
+	msg_index_distributor = 0u;
+}
+
+bool bpcsmtv_registery_identifier_test(const char* name) {
+	return g_hash_table_lookup_extended(hashtable_identifier, name, NULL, NULL);
+}
+
+BPCSMTV_REGISTERY_IDENTIFIER_ITEM* bpcsmtv_registery_identifier_get(const char* name) {
+	return g_hash_table_lookup(hashtable_identifier, name);
+}
+
+void bpcsmtv_registery_identifier_add(BPCSMTV_REGISTERY_IDENTIFIER_ITEM* data) {
+	g_hash_table_replace(hashtable_identifier, data->identifier_name, data);
+}
+
+void bpcsmtv_registery_identifier_add_alias(BPCSMTV_ALIAS* data) {
+	BPCSMTV_REGISTERY_IDENTIFIER_ITEM* item = bpcsmtv_constructor_registery_identifier_item();
+	item->identifier_name = g_strdup(data->custom_type);
+	item->identifier_type = BPCSMTV_DEFINED_IDENTIFIER_TYPE_ALIAS;
+	item->identifier_extra_props.alias_basic_type = data->basic_type;
+
+	bpcsmtv_registery_identifier_add(item);
+}
+
+void bpcsmtv_registery_identifier_add_enum(BPCSMTV_ENUM* data) {
+	BPCSMTV_REGISTERY_IDENTIFIER_ITEM* item = bpcsmtv_constructor_registery_identifier_item();
+	item->identifier_name = g_strdup(data->enum_name);
+	item->identifier_type = BPCSMTV_DEFINED_IDENTIFIER_TYPE_ENUM;
+	item->identifier_extra_props.enum_basic_type = data->enum_basic_type;
+
+	bpcsmtv_registery_identifier_add(item);
+}
+
+void bpcsmtv_registery_identifier_add_struct(BPCSMTV_STRUCT* data) {
+	BPCSMTV_REGISTERY_IDENTIFIER_ITEM* item = bpcsmtv_constructor_registery_identifier_item();
+	item->identifier_name = g_strdup(data->struct_name);
+	item->identifier_type = BPCSMTV_DEFINED_IDENTIFIER_TYPE_STRUCT;
+
+	bpcsmtv_registery_identifier_add(item);
+}
+
+void bpcsmtv_registery_identifier_add_msg(BPCSMTV_MSG* data) {
+	BPCSMTV_REGISTERY_IDENTIFIER_ITEM* item = bpcsmtv_constructor_registery_identifier_item();
+	item->identifier_name = g_strdup(data->msg_name);
+	item->identifier_type = BPCSMTV_DEFINED_IDENTIFIER_TYPE_MSG;
+	item->identifier_extra_props.msg_arranged_index = msg_index_distributor++;
+
+	bpcsmtv_registery_identifier_add(item);
+}
+
+GSList* bpcsmtv_registery_identifier_get_slist() {
+	return registery_identifier;
+}
 
 
 // ==================== Utils Functions ====================
 
 bool bpcsmtv_is_offset_number(gint64 num) {
 	return (num > 0LL && num <= UINT32_MAX);
+}
+
+bool bpcsmtv_is_basic_type_suit_for_enum(BPCSMTV_BASIC_TYPE bt) {
+	switch (bt) {
+		case BPCSMTV_BASIC_TYPE_INT8:
+		case BPCSMTV_BASIC_TYPE_INT16:
+		case BPCSMTV_BASIC_TYPE_INT32:
+		case BPCSMTV_BASIC_TYPE_INT64:
+		case BPCSMTV_BASIC_TYPE_UINT8:
+		case BPCSMTV_BASIC_TYPE_UINT16:
+		case BPCSMTV_BASIC_TYPE_UINT32:
+		case BPCSMTV_BASIC_TYPE_UINT64:
+			return true;
+		case BPCSMTV_BASIC_TYPE_FLOAT:
+		case BPCSMTV_BASIC_TYPE_DOUBLE:
+		case BPCSMTV_BASIC_TYPE_STRING:
+		default:
+			return false;
+	}
 }
 
 
@@ -390,3 +530,4 @@ bool bpcsmtv_basic_type_is_suit_for_enum(BPCSMTV_BASIC_TYPE bt) {
 }
 
 */
+

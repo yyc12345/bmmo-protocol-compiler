@@ -182,6 +182,35 @@ typedef struct _BPCSMTV_DOCUMENT {
 	GSList* protocol_body;
 }BPCSMTV_DOCUMENT;
 
+/// <summary>
+/// the struct recording the properties of each token 
+/// including alias, enum, struct and msg
+/// </summary>
+typedef struct _BPCSMTV_REGISTERY_IDENTIFIER_ITEM {
+	/// <summary>
+	/// the name of this token
+	/// </summary>
+	char* identifier_name;
+	/// <summary>
+	/// the type of this token: alias, enum, struct and msg
+	/// </summary>
+	BPCSMTV_DEFINED_IDENTIFIER_TYPE identifier_type;
+
+	/// <summary>
+	/// some extra props of token
+	/// </summary>
+	union {
+		/// <summary>
+		/// the distributed ordered index of `msg` type. 
+		/// only valid in msg type
+		/// </summary>
+		uint32_t msg_arranged_index;
+		BPCSMTV_BASIC_TYPE enum_basic_type;
+		BPCSMTV_BASIC_TYPE alias_basic_type;
+	}identifier_extra_props;
+
+}BPCSMTV_REGISTERY_IDENTIFIER_ITEM;
+
 // ==================== Parse Functions ====================
 
 /// <summary>
@@ -212,16 +241,16 @@ gint64 bpcsmtv_parse_number(const char* strl, size_t len, size_t start_margin, s
 // ==================== Constructor/Deconstructor Functions ====================
 
 BPCSMTV_STRUCT_MODIFIER* bpcsmtv_constructor_struct_modifier();
-void bpcsmtv_deconstructor_struct_modifier(BPCSMTV_STRUCT_MODIFIER* data);
+void bpcsmtv_destructor_struct_modifier(BPCSMTV_STRUCT_MODIFIER* data);
 
 BPCSMTV_VARIABLE_ARRAY* bpcsmtv_constructor_variable_array();
-void bpcsmtv_deconstructor_variable_array(BPCSMTV_VARIABLE_ARRAY* data);
+void bpcsmtv_destructor_variable_array(BPCSMTV_VARIABLE_ARRAY* data);
 
 BPCSMTV_VARIABLE_TYPE* bpcsmtv_constructor_variable_type();
-void bpcsmtv_deconstructor_variable_type(BPCSMTV_VARIABLE_TYPE* data);
+void bpcsmtv_destructor_variable_type(BPCSMTV_VARIABLE_TYPE* data);
 
 BPCSMTV_VARIABLE_ALIGN* bpcsmtv_constructor_variable_align();
-void bpcsmtv_deconstructor_variable_align(BPCSMTV_VARIABLE_ALIGN* data);
+void bpcsmtv_destructor_variable_align(BPCSMTV_VARIABLE_ALIGN* data);
 
 void bpcsmtv_destructor_alias(BPCSMTV_ALIAS* data);
 void bpcsmtv_destructor_enum(BPCSMTV_ENUM* data);
@@ -236,6 +265,27 @@ void bpcsmtv_destructor_slist_protocol_body(GSList* data);
 void bpcsmtv_destructor_slist_enum_body(GSList* data);
 void bpcsmtv_destructor_slist_variable(GSList* data);
 
+BPCSMTV_REGISTERY_IDENTIFIER_ITEM* bpcsmtv_constructor_registery_identifier_item();
+void bpcsmtv_destructor_registery_identifier_item(gpointer data);
+
+// ==================== Registery Functions ====================
+// registery_variables is used for members of each struct.
+// registery_identifier is used for identifiers of protocol body.
+
+void bpcsmtv_registery_variables_reset();
+bool bpcsmtv_registery_variables_test(const char* name);
+void bpcsmtv_registery_variables_add(const char* name);
+
+void bpcsmtv_registery_identifier_reset();
+bool bpcsmtv_registery_identifier_test(const char* name);
+BPCSMTV_REGISTERY_IDENTIFIER_ITEM* bpcsmtv_registery_identifier_get(const char* name);
+void bpcsmtv_registery_identifier_add(BPCSMTV_REGISTERY_IDENTIFIER_ITEM* data);
+void bpcsmtv_registery_identifier_add_alias(BPCSMTV_ALIAS* data);
+void bpcsmtv_registery_identifier_add_enum(BPCSMTV_ENUM* data);
+void bpcsmtv_registery_identifier_add_struct(BPCSMTV_STRUCT* data);
+void bpcsmtv_registery_identifier_add_msg(BPCSMTV_MSG* data);
+GSList* bpcsmtv_registery_identifier_get_slist();
+
 // ==================== Utils Functions ====================
 
 /// <summary>
@@ -244,6 +294,7 @@ void bpcsmtv_destructor_slist_variable(GSList* data);
 /// <param name="num"></param>
 /// <returns>if number is lower than max(uint32_t) and not equal with 0, return true.</returns>
 bool bpcsmtv_is_offset_number(gint64 num);
+bool bpcsmtv_is_basic_type_suit_for_enum(BPCSMTV_BASIC_TYPE bt);
 
 /*
 

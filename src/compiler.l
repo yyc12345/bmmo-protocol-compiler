@@ -84,7 +84,7 @@ TOKEN_NAME		[a-zA-Z][a-zA-Z0-9_]*
 	yylval.token_bool = bpcsmtv_parse_reliability(yytext);
 	return BPC_RELIABILITY;
 }
-"narrow"|"nature" {
+"narrow"|"natural" {
 	yylval.token_bool = bpcsmtv_parse_field_layout(yytext);
 	return BPC_FIELD_LAYOUT;
 }

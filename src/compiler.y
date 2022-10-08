@@ -32,7 +32,7 @@ extern int yylex(void);
 NOTE:
 some actions have checked operation and a exception will throw out if check failed.
 so, we MUST setup semantic value NULL first.
-after essential check, we can set real data of it. at the same time, all deconstructor need do NULL check.
+after essential check, we can set real data of it. at the same time, all destructor need do NULL check.
 otherwise, a memmory leak will be raised.
 */
 
