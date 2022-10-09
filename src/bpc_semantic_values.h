@@ -125,7 +125,7 @@ typedef struct _BPCSMTV_ENUM_MEMBER {
 	/// <summary>
 	/// store user specificed value if it has.
 	/// </summary>
-	int64_t specific_value;
+	int64_t specified_value;
 }BPCSMTV_ENUM_MEMBER;
 
 typedef struct _BPCSMTV_ALIAS {
@@ -235,11 +235,15 @@ bool bpcsmtv_parse_reliability(const char* strl);
 /// <returns>return true if member_layout is narrow.</returns>
 bool bpcsmtv_parse_field_layout(const char* strl);
 /// <summary>
-/// parse string to uint32_t
+/// parse string to int64_t
 /// </summary>
-/// <param name="strl"></param>
+/// <param name="strl">the number string</param>
+/// <param name="len">the length of number string, excluding end "\0"</param>
+/// <param name="start_margin"></param>
+/// <param name="end_margin"></param>
+/// <param name="result">pointer to final result</param>
 /// <returns></returns>
-gint64 bpcsmtv_parse_number(const char* strl, size_t len, size_t start_margin, size_t end_margin);
+bool bpcsmtv_parse_number(const char* strl, size_t len, size_t start_margin, size_t end_margin, gint64* result);
 
 // ==================== Constructor/Deconstructor Functions ====================
 
@@ -321,6 +325,8 @@ bool bpcsmtv_is_modifier_suit_struct(BPCSMTV_STRUCT_MODIFIER* modifier);
 void bpcsmtv_setup_field_layout(GSList* variables, BPCSMTV_STRUCT_MODIFIER* modifier);
 void bpcsmtv_setup_reliability(BPCSMTV_STRUCT_MODIFIER* modifier);
 void bpcsmtv_analyse_underlaying_type(BPCSMTV_VARIABLE_TYPE* variables);
+void bpcsmtv_setup_enum_specified_value(GSList* parents, BPCSMTV_ENUM_MEMBER* member);
+bool bpcsmtv_check_enum_body_limit(GSList* enum_body, BPCSMTV_BASIC_TYPE bt);
 
 /*
 

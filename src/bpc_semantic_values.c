@@ -13,42 +13,33 @@ static GHashTable* hashtable_identifier = NULL;
 static uint32_t msg_index_distributor = 0;
 
 static const char* basic_type_showcase[] = {
-	"float",
-	"double",
-
-	"int8",
-	"int16",
-	"int32",
-	"int64",
-	"uint8",
-	"uint16",
-	"uint32",
-	"uint64",
-
+	"float", "double", 
+	"int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64",
 	"string"
 };
-static const size_t basic_type_showcase_len = sizeof(basic_type_showcase) / sizeof(char*);
+static const size_t basic_type_len = sizeof(basic_type_showcase) / sizeof(char*);
 static const uint32_t basic_type_sizeof[] = {
-	4,
-	8,
-
-	1,
-	2,
-	4,
-	8,
-	1,
-	2,
-	4,
-	8,
-
+	4, 8,
+	1, 2, 4, 8, 1, 2, 4, 8,
 	0
 };
-static const size_t basic_type_sizeof_len = sizeof(basic_type_sizeof) / sizeof(uint32_t);
+static const uint64_t basic_type_max_limit[] = {
+	0L, 0L,
+	INT8_MAX, INT16_MAX, INT32_MAX, 0L,
+	UINT8_MAX, UINT16_MAX, UINT32_MAX, 0L,
+	0L
+};
+static const uint64_t basic_type_min_limit[] = {
+	0L, 0L,
+	INT8_MIN, INT16_MIN, INT32_MIN, 0L,
+	0L, 0L, 0L, 0L,
+	0L
+};
 
 // ==================== Parse Functions ====================
 
 BPCSMTV_BASIC_TYPE bpcsmtv_parse_basic_type(const char* strl) {
-	for (size_t i = 0; i < basic_type_showcase_len; ++i) {
+	for (size_t i = 0; i < basic_type_len; ++i) {
 		if (g_str_equal(strl, basic_type_showcase[i])) return (BPCSMTV_BASIC_TYPE)i;
 	}
 
@@ -61,8 +52,34 @@ bool bpcsmtv_parse_reliability(const char* strl) {
 bool bpcsmtv_parse_field_layout(const char* strl) {
 	return g_str_equal(strl, "narrow");
 }
-gint64 bpcsmtv_parse_number(const char* strl, size_t len, size_t start_margin, size_t end_margin) {
-	return g_ascii_strtoll(strl, NULL, 10);
+bool bpcsmtv_parse_number(const char* strl, size_t len, size_t start_margin, size_t end_margin, gint64* result) {
+	if (len == 0u) return false;
+	
+	// setup basic value
+	// construct valid number string
+	char* copiedstr = (char*)g_memdup2(strl, len);
+	*result = 0uL;
+	char* end = copiedstr + len - 1u;
+	char* head, * tail;
+
+	// head point to string head and tail point to string tail(not '\0') first
+	// then do essential padding and whitespace detection.
+#define IS_LEGAL_BLANK(v) ((v)==' '||(v)=='\0'||(v)=='\t')
+	for (head = copiedstr + start_margin; head <= end && IS_LEGAL_BLANK(*head); ++head) *head = '\0';
+	for (tail = end - end_margin; tail >= copiedstr && IS_LEGAL_BLANK(*tail); --tail) *tail = '\0';
+#undef IS_LEGAL_BLANK
+
+	// move out of range or rail lower than head
+	if (head > end || tail < head) {
+		// invalid
+		g_free(copiedstr);
+		return false;
+	} else {
+		// try parse
+		bool r = g_ascii_string_to_signed(head, 10u, INT64_MIN, INT64_MAX, result, NULL);
+		g_free(copiedstr);
+		return r;
+	}
 }
 
 // ==================== Constructor/Deconstructor Functions ====================
@@ -356,12 +373,12 @@ bool bpcsmtv_is_basic_type_suit_for_enum(BPCSMTV_BASIC_TYPE bt) {
 		case BPCSMTV_BASIC_TYPE_INT8:
 		case BPCSMTV_BASIC_TYPE_INT16:
 		case BPCSMTV_BASIC_TYPE_INT32:
-		case BPCSMTV_BASIC_TYPE_INT64:
 		case BPCSMTV_BASIC_TYPE_UINT8:
 		case BPCSMTV_BASIC_TYPE_UINT16:
 		case BPCSMTV_BASIC_TYPE_UINT32:
-		case BPCSMTV_BASIC_TYPE_UINT64:
 			return true;
+		case BPCSMTV_BASIC_TYPE_INT64:
+		case BPCSMTV_BASIC_TYPE_UINT64:
 		case BPCSMTV_BASIC_TYPE_FLOAT:
 		case BPCSMTV_BASIC_TYPE_DOUBLE:
 		case BPCSMTV_BASIC_TYPE_STRING:
@@ -479,6 +496,40 @@ void bpcsmtv_analyse_underlaying_type(BPCSMTV_VARIABLE_TYPE* variables) {
 				break;	// skip
 		}
 	}
+}
+
+void bpcsmtv_setup_enum_specified_value(GSList* parents, BPCSMTV_ENUM_MEMBER* member) {
+	// convert all non-spec value to specified value
+	if (!member->have_specific_value) {
+		// try distribute one
+		if (parents == NULL) {
+			// no parents
+			member->specified_value = 0L;
+		} else {
+			member->specified_value = ((BPCSMTV_ENUM_MEMBER*)parents->data)->specified_value + 1L;
+		}
+
+		// sign has distributed
+		member->have_specific_value = true;
+	}
+}
+
+bool bpcsmtv_check_enum_body_limit(GSList* enum_body, BPCSMTV_BASIC_TYPE bt) {
+	// remove warning C33011
+	if (bt >= basic_type_len || bt < 0) return false;
+
+	GSList* cursor;
+	BPCSMTV_ENUM_MEMBER* member;
+	for (cursor = enum_body; cursor != NULL; cursor = cursor->next) {
+		member = (BPCSMTV_ENUM_MEMBER*)cursor->data;
+
+		if (member->specified_value > basic_type_max_limit[(int)bt] ||
+			member->specified_value < basic_type_min_limit[(int)bt]) {
+			return false;
+		}
+	}
+
+	return true;
 }
 
 

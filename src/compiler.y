@@ -281,6 +281,11 @@ BPC_RIGHT_BRACKET
 		yyerror_format("duplicated identifier: %s", $sdd_enum_name);
 		YYERROR;
 	}
+	// check body limit
+	if (!bpcsmtv_check_enum_body_limit($bpc_enum_body, $sdd_enum_type)) {
+		yyerror_format("enum value overflow: %s", $sdd_enum_name);
+		YYERROR;
+	}
 
 	// set data
 	$$ = bpcsmtv_constructor_enum();
@@ -292,11 +297,13 @@ BPC_RIGHT_BRACKET
 bpc_enum_body:
 bpc_enum_member
 {
+	bpcsmtv_setup_enum_specified_value(NULL, $bpc_enum_member);
 	$$ = g_slist_append(NULL, $bpc_enum_member);
 }
 |
 bpc_enum_body[sdd_parent_enum_body] BPC_COMMA bpc_enum_member
 {
+	bpcsmtv_setup_enum_specified_value($sdd_parent_enum_body, $bpc_enum_member);
 	$$ = g_slist_append($sdd_parent_enum_body, $bpc_enum_member);
 };
 
@@ -313,7 +320,7 @@ BPC_TOKEN_NAME[sdd_name]
 	$$ = bpcsmtv_constructor_enum_member();
 	$$->enum_member_name = $sdd_name;
 	$$->have_specific_value = false;
-	$$->specific_value = 0L;
+	$$->specified_value = 0L;
 }
 |
 BPC_TOKEN_NAME[sdd_name] BPC_EQUAL BPC_TOKEN_NUM[sdd_spec_num]
@@ -328,7 +335,7 @@ BPC_TOKEN_NAME[sdd_name] BPC_EQUAL BPC_TOKEN_NUM[sdd_spec_num]
 	$$ = bpcsmtv_constructor_enum_member();
 	$$->enum_member_name = $sdd_name;
 	$$->have_specific_value = true;
-	$$->specific_value = $sdd_spec_num;
+	$$->specified_value = $sdd_spec_num;
 };
 
 bpc_struct_modifier:
