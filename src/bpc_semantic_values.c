@@ -1,4 +1,5 @@
 #include "bpc_semantic_values.h"
+#include "bpc_error.h"
 #include <inttypes.h>
 
 /// <summary>
@@ -9,7 +10,6 @@ static GHashTable* hashtable_variables = NULL;
 /// item is `BPCSMTV_REGISTERY_IDENTIFIER_ITEM*` of each identifier
 /// </summary>
 static GHashTable* hashtable_identifier = NULL;
-static GSList* registery_identifier = NULL;
 static uint32_t msg_index_distributor = 0;
 
 static const char* basic_type_showcase[] = {
@@ -28,6 +28,22 @@ static const char* basic_type_showcase[] = {
 	"string"
 };
 static const size_t basic_type_showcase_len = sizeof(basic_type_showcase) / sizeof(char*);
+static const uint32_t basic_type_sizeof[] = {
+	4,
+	8,
+
+	1,
+	2,
+	4,
+	8,
+	1,
+	2,
+	4,
+	8,
+
+	0
+};
+static const size_t basic_type_sizeof_len = sizeof(basic_type_sizeof) / sizeof(uint32_t);
 
 // ==================== Parse Functions ====================
 
@@ -51,69 +67,213 @@ gint64 bpcsmtv_parse_number(const char* strl, size_t len, size_t start_margin, s
 
 // ==================== Constructor/Deconstructor Functions ====================
 
-BPCSMTV_STRUCT_MODIFIER* bpcsmtv_constructor_struct_modifier() {
-	BPCSMTV_STRUCT_MODIFIER* data = g_new0(BPCSMTV_STRUCT_MODIFIER, 1);
-	data->has_set_reliability = false;
-	data->is_reliable = true;
-	data->has_set_field_layout = false;
-	data->is_narrow = true;
-	return data;
-}
-void bpcsmtv_destructor_struct_modifier(BPCSMTV_STRUCT_MODIFIER* data) {
-	g_free(data);
-}
-
 BPCSMTV_VARIABLE_ARRAY* bpcsmtv_constructor_variable_array() {
-	BPCSMTV_VARIABLE_ARRAY* data = g_new0(BPCSMTV_VARIABLE_ARRAY, 1);
-	data->is_array = false;
-	data->is_static_array = false;
-	data->static_array_len = 0u;
-	return data;
+	return g_new0(BPCSMTV_VARIABLE_ARRAY, 1);
+}
+BPCSMTV_VARIABLE_ARRAY* bpcsmtv_duplicator_variable_array(BPCSMTV_VARIABLE_ARRAY* data) {
+	// all basic types, do shallow copy
+	return g_memdup2(data, sizeof(BPCSMTV_VARIABLE_ARRAY));
 }
 void bpcsmtv_destructor_variable_array(BPCSMTV_VARIABLE_ARRAY* data) {
 	g_free(data);
 }
 
 BPCSMTV_VARIABLE_TYPE* bpcsmtv_constructor_variable_type() {
-	BPCSMTV_VARIABLE_TYPE* data = g_new0(BPCSMTV_VARIABLE_TYPE, 1);
-	data->is_basic_type = false;
-	data->type_data.custom_type = NULL;
-	return data;
+	return g_new0(BPCSMTV_VARIABLE_TYPE, 1);
+}
+BPCSMTV_VARIABLE_TYPE* bpcsmtv_duplicator_variable_type(BPCSMTV_VARIABLE_TYPE* data) {
+	// do a deep copy
+	BPCSMTV_VARIABLE_TYPE* ndata = g_new0(BPCSMTV_VARIABLE_TYPE, 1);
+	// basic
+	ndata->is_basic_type = data->is_basic_type;
+	if (ndata->is_basic_type) {
+		ndata->type_data.basic_type = data->type_data.basic_type;
+	} else {
+		ndata->type_data.custom_type = g_strdup(data->type_data.custom_type);
+	}
+	// underlaying
+	ndata->full_uncover_is_basic_type = data->full_uncover_is_basic_type;
+	ndata->semi_uncover_is_basic_type = data->semi_uncover_is_basic_type;
+	ndata->full_uncover_basic_type = data->full_uncover_basic_type;
+	if (!data->semi_uncover_is_basic_type) {
+		ndata->semi_uncover_custom_type = g_strdup(data->semi_uncover_custom_type);
+	}
+
+	return ndata;
 }
 void bpcsmtv_destructor_variable_type(BPCSMTV_VARIABLE_TYPE* data) {
 	if (data == NULL) return;
 
 	if (!data->is_basic_type) {
-		g_free(data->type_data.custom_type);
+		bpcsmtv_destructor_string(data->type_data.custom_type);
+	}
+	if (!data->semi_uncover_is_basic_type) {
+		bpcsmtv_destructor_string(data->semi_uncover_custom_type);
 	}
 
 	g_free(data);
 }
 
 BPCSMTV_VARIABLE_ALIGN* bpcsmtv_constructor_variable_align() {
-	BPCSMTV_VARIABLE_ALIGN* data = g_new0(BPCSMTV_VARIABLE_ALIGN, 1);
-	data->use_align = false;
-	data->padding_size = 0u;
-	return data;
+	return g_new0(BPCSMTV_VARIABLE_ALIGN, 1);
+}
+BPCSMTV_VARIABLE_ALIGN* bpcsmtv_duplicator_variable_align(BPCSMTV_VARIABLE_ALIGN* data) {
+	// all basic types, do shallow copy
+	return g_memdup2(data, sizeof(BPCSMTV_VARIABLE_ALIGN));
 }
 void bpcsmtv_destructor_variable_align(BPCSMTV_VARIABLE_ALIGN* data) {
 	g_free(data);
 }
 
+// ====================
+
+BPCSMTV_ALIAS* bpcsmtv_constructor_alias() {
+	return g_new0(BPCSMTV_ALIAS, 1);
+}
+void bpcsmtv_destructor_alias(BPCSMTV_ALIAS* data) {
+	if (data == NULL) return;
+
+	BPCSMTV_ALIAS* rdata = (BPCSMTV_ALIAS*)data;
+	bpcsmtv_destructor_string(rdata->custom_type);
+
+	g_free(rdata);
+}
+
+BPCSMTV_ENUM* bpcsmtv_constructor_enum() {
+	return g_new0(BPCSMTV_ENUM, 1);
+}
+void bpcsmtv_destructor_enum(BPCSMTV_ENUM* data) {
+	if (data == NULL) return;
+
+	BPCSMTV_ENUM* rdata = (BPCSMTV_ENUM*)data;
+	bpcsmtv_destructor_string(rdata->enum_name);
+	bpcsmtv_destructor_slist_enum_member(rdata->enum_body);
+
+	g_free(rdata);
+}
+
+BPCSMTV_STRUCT* bpcsmtv_constructor_struct() {
+	return g_new0(BPCSMTV_STRUCT, 1);
+}
+void bpcsmtv_destructor_struct(BPCSMTV_STRUCT* data) {
+	if (data == NULL) return;
+
+	BPCSMTV_STRUCT* rdata = (BPCSMTV_STRUCT*)data;
+	bpcsmtv_destructor_string(rdata->struct_name);
+	bpcsmtv_destructor_struct_modifier(rdata->struct_modifier);
+	bpcsmtv_destructor_slist_variable(rdata->struct_body);
+
+	g_free(rdata);
+}
+
+BPCSMTV_MSG* bpcsmtv_constructor_msg() {
+	return g_new0(BPCSMTV_MSG, 1);
+}
+void bpcsmtv_destructor_msg(BPCSMTV_MSG* data) {
+	if (data == NULL) return;
+
+	BPCSMTV_MSG* rdata = (BPCSMTV_MSG*)data;
+	bpcsmtv_destructor_string(rdata->msg_name);
+	bpcsmtv_destructor_struct_modifier(rdata->msg_modifier);
+	bpcsmtv_destructor_slist_variable(rdata->msg_body);
+
+	g_free(rdata);
+}
+
+// ====================
+
+BPCSMTV_STRUCT_MODIFIER* bpcsmtv_constructor_struct_modifier() {
+	return g_new0(BPCSMTV_STRUCT_MODIFIER, 1);
+}
+void bpcsmtv_destructor_struct_modifier(BPCSMTV_STRUCT_MODIFIER* data) {
+	g_free(data);
+}
+
+BPCSMTV_VARIABLE* bpcsmtv_constructor_variable() {
+	return g_new0(BPCSMTV_VARIABLE, 1);
+}
+void bpcsmtv_destructor_variable(gpointer data) {
+	if (data == NULL) return;
+
+	BPCSMTV_VARIABLE* rdata = (BPCSMTV_VARIABLE*)data;
+	bpcsmtv_destructor_string(rdata->variable_name);
+	bpcsmtv_destructor_variable_type(rdata->variable_type);
+	bpcsmtv_destructor_variable_array(rdata->variable_array);
+	bpcsmtv_destructor_variable_align(rdata->variable_align);
+
+	g_free(rdata);
+}
+
+BPCSMTV_ENUM_MEMBER* bpcsmtv_constructor_enum_member() {
+	return g_new0(BPCSMTV_ENUM_MEMBER, 1);
+}
+void bpcsmtv_destructor_enum_member(gpointer data) {
+	if (data == NULL) return;
+
+	BPCSMTV_ENUM_MEMBER* rdata = (BPCSMTV_ENUM_MEMBER*)data;
+	bpcsmtv_destructor_string(rdata->enum_member_name);
+
+	g_free(rdata);
+}
+
+BPCSMTV_PROTOCOL_BODY* bpcsmtv_constructor_protocol_body() {
+	return g_new0(BPCSMTV_PROTOCOL_BODY, 1);
+}
+void bpcsmtv_destructor_protocol_body(gpointer data) {
+	if (data == NULL) return;
+
+	BPCSMTV_PROTOCOL_BODY* rdata = (BPCSMTV_PROTOCOL_BODY*)data;
+	switch (rdata->node_type) {
+		case BPCSMTV_DEFINED_IDENTIFIER_TYPE_ALIAS:
+			bpcsmtv_destructor_alias(rdata->node_data.alias_data);
+			break;
+		case BPCSMTV_DEFINED_IDENTIFIER_TYPE_ENUM:
+			bpcsmtv_destructor_enum(rdata->node_data.enum_data);
+			break;
+		case BPCSMTV_DEFINED_IDENTIFIER_TYPE_STRUCT:
+			bpcsmtv_destructor_struct(rdata->node_data.struct_data);
+			break;
+		case BPCSMTV_DEFINED_IDENTIFIER_TYPE_MSG:
+			bpcsmtv_destructor_msg(rdata->node_data.msg_data);
+			break;
+	}
+
+	g_free(rdata);
+}
+
+BPCSMTV_DOCUMENT* bpcsmtv_constructor_document() {
+	return g_new0(BPCSMTV_DOCUMENT, 1);
+}
+void bpcsmtv_destructor_document(BPCSMTV_DOCUMENT* data) {
+	if (data == NULL) return;
+
+	BPCSMTV_DOCUMENT* rdata = (BPCSMTV_DOCUMENT*)data;
+	bpcsmtv_destructor_slist_string(rdata->namespace_data);
+	bpcsmtv_destructor_slist_protocol_body(rdata->protocol_body);
+
+	g_free(rdata);
+}
+
+// ====================
 
 void bpcsmtv_destructor_string(gpointer data) {
 	g_free(data);
 }
-
-BPCSMTV_REGISTERY_IDENTIFIER_ITEM* bpcsmtv_constructor_registery_identifier_item() {
-	BPCSMTV_REGISTERY_IDENTIFIER_ITEM* data = g_new0(BPCSMTV_REGISTERY_IDENTIFIER_ITEM, 1);
-	data->identifier_name = NULL;
-
-	return data;
+void bpcsmtv_destructor_slist_string(GSList* data) {
+	if (data == NULL) return;
+	g_slist_free_full(data, bpcsmtv_destructor_string);
 }
-void bpcsmtv_destructor_registery_identifier_item(gpointer data) {
-	BPCSMTV_REGISTERY_IDENTIFIER_ITEM* rdata = (BPCSMTV_REGISTERY_IDENTIFIER_ITEM*)data;
-	g_free(rdata->identifier_name);
+void bpcsmtv_destructor_slist_protocol_body(GSList* data) {
+	if (data == NULL) return;
+	g_slist_free_full(data, bpcsmtv_destructor_protocol_body);
+}
+void bpcsmtv_destructor_slist_enum_member(GSList* data) {
+	if (data == NULL) return;
+	g_slist_free_full(data, bpcsmtv_destructor_enum_member);
+}
+void bpcsmtv_destructor_slist_variable(GSList* data) {
+	if (data == NULL) return;
+	g_slist_free_full(data, bpcsmtv_destructor_variable);
 }
 
 // ==================== Registery Functions ====================
@@ -141,19 +301,11 @@ void bpcsmtv_registery_variables_add(const char* name) {
 void bpcsmtv_registery_identifier_reset() {
 	// init hashtable when necessary
 	if (hashtable_identifier == NULL) {
-		// hashtable is just a search method, so we do not need free keys and values
-		// key is ref of value->identifier_name
-		hashtable_identifier = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, NULL);
+		// hashtable is just a search method, so we do not need free values
+		hashtable_identifier = g_hash_table_new_full(g_str_hash, g_str_equal, bpcsmtv_destructor_string, NULL);
 	} else {
 		// clear hashtable
 		g_hash_table_remove_all(hashtable_identifier);
-	}
-
-	// clear slist data
-	// add data are stored in slist, hashtable is just a quick search index
-	if (registery_identifier != NULL) {
-		g_slist_free_full(registery_identifier, bpcsmtv_destructor_registery_identifier_item);
-		registery_identifier = NULL;
 	}
 
 	// reset message index distributor
@@ -164,53 +316,34 @@ bool bpcsmtv_registery_identifier_test(const char* name) {
 	return g_hash_table_lookup_extended(hashtable_identifier, name, NULL, NULL);
 }
 
-BPCSMTV_REGISTERY_IDENTIFIER_ITEM* bpcsmtv_registery_identifier_get(const char* name) {
+BPCSMTV_PROTOCOL_BODY* bpcsmtv_registery_identifier_get(const char* name) {
 	return g_hash_table_lookup(hashtable_identifier, name);
 }
 
-void bpcsmtv_registery_identifier_add(BPCSMTV_REGISTERY_IDENTIFIER_ITEM* data) {
-	g_hash_table_replace(hashtable_identifier, data->identifier_name, data);
+uint32_t bpcsmtv_registery_identifier_distribute_index() {
+	return msg_index_distributor++;
 }
 
-void bpcsmtv_registery_identifier_add_alias(BPCSMTV_ALIAS* data) {
-	BPCSMTV_REGISTERY_IDENTIFIER_ITEM* item = bpcsmtv_constructor_registery_identifier_item();
-	item->identifier_name = g_strdup(data->custom_type);
-	item->identifier_type = BPCSMTV_DEFINED_IDENTIFIER_TYPE_ALIAS;
-	item->identifier_extra_props.alias_basic_type = data->basic_type;
+void bpcsmtv_registery_identifier_add(BPCSMTV_PROTOCOL_BODY* data) {
+	char* identifier_name = NULL;
+	switch (data->node_type) {
+		case BPCSMTV_DEFINED_IDENTIFIER_TYPE_ALIAS:
+			identifier_name = data->node_data.alias_data->custom_type;
+			break;
+		case BPCSMTV_DEFINED_IDENTIFIER_TYPE_ENUM:
+			identifier_name = data->node_data.enum_data->enum_name;
+			break;
+		case BPCSMTV_DEFINED_IDENTIFIER_TYPE_STRUCT:
+			identifier_name = data->node_data.struct_data->struct_name;
+			break;
+		case BPCSMTV_DEFINED_IDENTIFIER_TYPE_MSG:
+			identifier_name = data->node_data.msg_data->msg_name;
+			break;
+	}
 
-	bpcsmtv_registery_identifier_add(item);
+	// add for hashtable
+	g_hash_table_replace(hashtable_identifier, g_strdup(identifier_name), data);
 }
-
-void bpcsmtv_registery_identifier_add_enum(BPCSMTV_ENUM* data) {
-	BPCSMTV_REGISTERY_IDENTIFIER_ITEM* item = bpcsmtv_constructor_registery_identifier_item();
-	item->identifier_name = g_strdup(data->enum_name);
-	item->identifier_type = BPCSMTV_DEFINED_IDENTIFIER_TYPE_ENUM;
-	item->identifier_extra_props.enum_basic_type = data->enum_basic_type;
-
-	bpcsmtv_registery_identifier_add(item);
-}
-
-void bpcsmtv_registery_identifier_add_struct(BPCSMTV_STRUCT* data) {
-	BPCSMTV_REGISTERY_IDENTIFIER_ITEM* item = bpcsmtv_constructor_registery_identifier_item();
-	item->identifier_name = g_strdup(data->struct_name);
-	item->identifier_type = BPCSMTV_DEFINED_IDENTIFIER_TYPE_STRUCT;
-
-	bpcsmtv_registery_identifier_add(item);
-}
-
-void bpcsmtv_registery_identifier_add_msg(BPCSMTV_MSG* data) {
-	BPCSMTV_REGISTERY_IDENTIFIER_ITEM* item = bpcsmtv_constructor_registery_identifier_item();
-	item->identifier_name = g_strdup(data->msg_name);
-	item->identifier_type = BPCSMTV_DEFINED_IDENTIFIER_TYPE_MSG;
-	item->identifier_extra_props.msg_arranged_index = msg_index_distributor++;
-
-	bpcsmtv_registery_identifier_add(item);
-}
-
-GSList* bpcsmtv_registery_identifier_get_slist() {
-	return registery_identifier;
-}
-
 
 // ==================== Utils Functions ====================
 
@@ -234,6 +367,117 @@ bool bpcsmtv_is_basic_type_suit_for_enum(BPCSMTV_BASIC_TYPE bt) {
 		case BPCSMTV_BASIC_TYPE_STRING:
 		default:
 			return false;
+	}
+}
+
+bool bpcsmtv_is_modifier_suit_struct(BPCSMTV_STRUCT_MODIFIER* modifier) {
+	return (!modifier->has_set_reliability);
+}
+
+void bpcsmtv_setup_field_layout(GSList* variables, BPCSMTV_STRUCT_MODIFIER* modifier) {
+	// check data
+	bool can_be_natural = true;
+	GSList* cursor;
+	BPCSMTV_VARIABLE* variable;
+	for (cursor = variables; cursor != NULL; cursor = cursor->next) {
+		variable = (BPCSMTV_VARIABLE*)cursor->data;
+
+		if (variable->variable_array->is_array && !variable->variable_array->is_static_array) {
+			// dynamic array is not allowed
+			can_be_natural = false;
+			break;
+		}
+		if (variable->variable_type->full_uncover_is_basic_type) {
+			// struct
+			// look up whether it is natural struct
+			BPCSMTV_PROTOCOL_BODY* entry = bpcsmtv_registery_identifier_get(variable->variable_type->type_data.custom_type);
+			if (entry->node_data.struct_data->struct_modifier->is_narrow) {
+				// narrow struct is not allowed
+				can_be_natural = false;
+				break;
+			}
+		} else {
+			// enum or alias
+			if (variable->variable_type->full_uncover_basic_type == BPCSMTV_BASIC_TYPE_STRING) {
+				// string is not allowed
+				can_be_natural = false;
+				break;
+			}
+		}
+	}
+
+	// change modifier
+	if (modifier->has_set_field_layout) {
+		if (!can_be_natural && !modifier->is_narrow) {
+			bpcerr_warning(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "your speficied field layout modifier `nature` is not suit for current struct. we change it to `narrow` forcely.");
+
+			modifier->is_narrow = !can_be_natural;
+		}
+	} else {
+		bpcerr_info(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "field layout modifier not found, we assume it as %s.",
+			can_be_natural ? "`natural`" : "`narrow`");
+
+		modifier->has_set_field_layout = true;
+		modifier->is_narrow = !can_be_natural;
+	}
+
+	// set align prop
+	if (modifier->is_narrow) {
+
+
+
+		modifier->struct_size = 0u;
+	} else {
+
+		// todo: finish padding
+
+		modifier->struct_size = 1u;
+	}
+
+}
+
+void bpcsmtv_setup_reliability(BPCSMTV_STRUCT_MODIFIER* modifier) {
+	if (!modifier->has_set_reliability) {
+		bpcerr_info(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "realibility modifier not found, we assume it as `reliable`.");
+
+		modifier->has_set_reliability = true;
+		modifier->is_reliable = true;
+	}
+}
+
+void bpcsmtv_analyse_underlaying_type(BPCSMTV_VARIABLE_TYPE* variables) {
+	if (variables->is_basic_type) {
+		variables->full_uncover_is_basic_type = true;
+		variables->full_uncover_basic_type = variables->type_data.basic_type;
+		variables->semi_uncover_is_basic_type = true;
+		variables->semi_uncover_custom_type = NULL;
+	} else {
+		// check user defined type
+		// token type will never be msg accoring to syntax define
+		BPCSMTV_PROTOCOL_BODY* entry = bpcsmtv_registery_identifier_get(variables->type_data.custom_type);
+		switch (entry->node_type) {
+			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_ALIAS:
+				variables->full_uncover_is_basic_type = true;
+				variables->full_uncover_basic_type = entry->node_data.alias_data->basic_type;
+				variables->semi_uncover_is_basic_type = true;
+				variables->semi_uncover_custom_type = NULL;
+				break;
+			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_ENUM:
+				variables->full_uncover_is_basic_type = true;
+				variables->full_uncover_basic_type = entry->node_data.enum_data->enum_basic_type;
+				variables->semi_uncover_is_basic_type = false;
+				variables->semi_uncover_custom_type = g_strdup(variables->type_data.custom_type);
+				break;
+			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_STRUCT:
+				variables->full_uncover_is_basic_type = false;
+				variables->full_uncover_basic_type = BPCSMTV_BASIC_TYPE_INVALID;
+				variables->semi_uncover_is_basic_type = false;
+				variables->semi_uncover_custom_type = g_strdup(variables->type_data.custom_type);
+				break;
+			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_MSG:
+			default:
+				break;	// skip
+		}
 	}
 }
 
@@ -357,7 +601,7 @@ void bpc_destructor_define_group(BPCSMTV_DEFINE_GROUP* ptr) {
 			bpc_destructor_msg(ptr->node_data.msg_data);
 			break;
 	}
-	
+
 	g_free(ptr);
 }
 

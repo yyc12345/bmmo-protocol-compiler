@@ -29,6 +29,7 @@ typedef struct _BPCSMTV_STRUCT_MODIFIER {
 	bool is_reliable;
 	bool has_set_field_layout;
 	bool is_narrow;
+	uint32_t struct_size;
 }BPCSMTV_STRUCT_MODIFIER;
 
 typedef struct _BPCSMTV_VARIABLE_ARRAY {
@@ -59,6 +60,33 @@ typedef struct _BPCSMTV_VARIABLE_TYPE {
 		/// </summary>
 		char* custom_type;
 	}type_data;
+
+	/// <summary>
+	/// Whether field is basic type, after resolving with alias and enum.
+	/// When it is false, it mean that this member is must be a struct and 
+	/// shoule be serialized or deserialized by calling functions rather than
+	/// direct code.
+	/// </summary>
+	bool full_uncover_is_basic_type;
+	/// <summary>
+	/// The detected basic type of current member. 
+	/// Only valid when `full_uncover_is_basic_type` is true.
+	/// If you want to get custom type, please use `VARIABLE_TYPE::type_data::custom_type`.
+	/// </summary>
+	BPCSMTV_BASIC_TYPE full_uncover_basic_type;
+
+	/// <summary>
+	/// Whether field is basic type, after resolving with alias, without resolving enum.
+	/// This bool flag is do a partial resolving comparing with `full_uncover_is_basic_type`.
+	/// So if this flag is true, `full_uncover_is_basic_type` must be true.
+	/// </summary>
+	bool semi_uncover_is_basic_type;
+	/// <summary>
+	/// The c style type of member for convenient code gen. 
+	/// Only valid when `semi_uncover_is_basic_type` is false. 
+	/// If you want to get basic type, use `full_uncover_basic_type` instead.
+	/// </summary>
+	char* semi_uncover_custom_type;
 }BPCSMTV_VARIABLE_TYPE;
 
 typedef struct _BPCSMTV_VARIABLE_ALIGN {
@@ -85,7 +113,7 @@ typedef struct _BPCSMTV_VARIABLE {
 	char* variable_name;
 }BPCSMTV_VARIABLE;
 
-typedef struct _BPCSMTV_ENUM_BODY {
+typedef struct _BPCSMTV_ENUM_MEMBER {
 	/// <summary>
 	/// the name of current enum entry
 	/// </summary>
@@ -98,7 +126,7 @@ typedef struct _BPCSMTV_ENUM_BODY {
 	/// store user specificed value if it has.
 	/// </summary>
 	int64_t specific_value;
-}BPCSMTV_ENUM_BODY;
+}BPCSMTV_ENUM_MEMBER;
 
 typedef struct _BPCSMTV_ALIAS {
 	/// <summary>
@@ -151,6 +179,10 @@ typedef struct _BPCSMTV_MSG {
 	/// item is `BPCSMTV_VARIABLE*`
 	/// </summary>
 	GSList* msg_body;
+	/// <summary>
+	/// the msg index distributed by compiler
+	/// </summary>
+	uint32_t msg_index;
 }BPCSMTV_MSG;
 
 typedef enum _BPCSMTV_DEFINED_IDENTIFIER_TYPE {
@@ -182,35 +214,6 @@ typedef struct _BPCSMTV_DOCUMENT {
 	GSList* protocol_body;
 }BPCSMTV_DOCUMENT;
 
-/// <summary>
-/// the struct recording the properties of each token 
-/// including alias, enum, struct and msg
-/// </summary>
-typedef struct _BPCSMTV_REGISTERY_IDENTIFIER_ITEM {
-	/// <summary>
-	/// the name of this token
-	/// </summary>
-	char* identifier_name;
-	/// <summary>
-	/// the type of this token: alias, enum, struct and msg
-	/// </summary>
-	BPCSMTV_DEFINED_IDENTIFIER_TYPE identifier_type;
-
-	/// <summary>
-	/// some extra props of token
-	/// </summary>
-	union {
-		/// <summary>
-		/// the distributed ordered index of `msg` type. 
-		/// only valid in msg type
-		/// </summary>
-		uint32_t msg_arranged_index;
-		BPCSMTV_BASIC_TYPE enum_basic_type;
-		BPCSMTV_BASIC_TYPE alias_basic_type;
-	}identifier_extra_props;
-
-}BPCSMTV_REGISTERY_IDENTIFIER_ITEM;
-
 // ==================== Parse Functions ====================
 
 /// <summary>
@@ -240,51 +243,65 @@ gint64 bpcsmtv_parse_number(const char* strl, size_t len, size_t start_margin, s
 
 // ==================== Constructor/Deconstructor Functions ====================
 
-BPCSMTV_STRUCT_MODIFIER* bpcsmtv_constructor_struct_modifier();
-void bpcsmtv_destructor_struct_modifier(BPCSMTV_STRUCT_MODIFIER* data);
-
 BPCSMTV_VARIABLE_ARRAY* bpcsmtv_constructor_variable_array();
+BPCSMTV_VARIABLE_ARRAY* bpcsmtv_duplicator_variable_array(BPCSMTV_VARIABLE_ARRAY* data);
 void bpcsmtv_destructor_variable_array(BPCSMTV_VARIABLE_ARRAY* data);
-
 BPCSMTV_VARIABLE_TYPE* bpcsmtv_constructor_variable_type();
+BPCSMTV_VARIABLE_TYPE* bpcsmtv_duplicator_variable_type(BPCSMTV_VARIABLE_TYPE* data);
 void bpcsmtv_destructor_variable_type(BPCSMTV_VARIABLE_TYPE* data);
-
 BPCSMTV_VARIABLE_ALIGN* bpcsmtv_constructor_variable_align();
+BPCSMTV_VARIABLE_ALIGN* bpcsmtv_duplicator_variable_align(BPCSMTV_VARIABLE_ALIGN* data);
 void bpcsmtv_destructor_variable_align(BPCSMTV_VARIABLE_ALIGN* data);
 
+BPCSMTV_ALIAS* bpcsmtv_constructor_alias();
 void bpcsmtv_destructor_alias(BPCSMTV_ALIAS* data);
+BPCSMTV_ENUM* bpcsmtv_constructor_enum();
 void bpcsmtv_destructor_enum(BPCSMTV_ENUM* data);
+BPCSMTV_STRUCT* bpcsmtv_constructor_struct();
 void bpcsmtv_destructor_struct(BPCSMTV_STRUCT* data);
+BPCSMTV_MSG* bpcsmtv_constructor_msg();
 void bpcsmtv_destructor_msg(BPCSMTV_MSG* data);
 
+BPCSMTV_STRUCT_MODIFIER* bpcsmtv_constructor_struct_modifier();
+void bpcsmtv_destructor_struct_modifier(BPCSMTV_STRUCT_MODIFIER* data);
+BPCSMTV_VARIABLE* bpcsmtv_constructor_variable();
+void bpcsmtv_destructor_variable(gpointer data);
+BPCSMTV_ENUM_MEMBER* bpcsmtv_constructor_enum_member();
+void bpcsmtv_destructor_enum_member(gpointer data);
+BPCSMTV_PROTOCOL_BODY* bpcsmtv_constructor_protocol_body();
+void bpcsmtv_destructor_protocol_body(gpointer data);
+BPCSMTV_DOCUMENT* bpcsmtv_constructor_document();
 void bpcsmtv_destructor_document(BPCSMTV_DOCUMENT* data);
 
 void bpcsmtv_destructor_string(gpointer data);
 void bpcsmtv_destructor_slist_string(GSList* data);
 void bpcsmtv_destructor_slist_protocol_body(GSList* data);
-void bpcsmtv_destructor_slist_enum_body(GSList* data);
+void bpcsmtv_destructor_slist_enum_member(GSList* data);
 void bpcsmtv_destructor_slist_variable(GSList* data);
-
-BPCSMTV_REGISTERY_IDENTIFIER_ITEM* bpcsmtv_constructor_registery_identifier_item();
-void bpcsmtv_destructor_registery_identifier_item(gpointer data);
 
 // ==================== Registery Functions ====================
 // registery_variables is used for members of each struct.
 // registery_identifier is used for identifiers of protocol body.
 
 void bpcsmtv_registery_variables_reset();
+/// <summary>
+/// 
+/// </summary>
+/// <param name="name"></param>
+/// <returns>return true if variable name is existed.</returns>
 bool bpcsmtv_registery_variables_test(const char* name);
 void bpcsmtv_registery_variables_add(const char* name);
 
 void bpcsmtv_registery_identifier_reset();
+/// <summary>
+/// 
+/// </summary>
+/// <param name="name"></param>
+/// <returns>return true if identifier is existed.</returns>
 bool bpcsmtv_registery_identifier_test(const char* name);
-BPCSMTV_REGISTERY_IDENTIFIER_ITEM* bpcsmtv_registery_identifier_get(const char* name);
-void bpcsmtv_registery_identifier_add(BPCSMTV_REGISTERY_IDENTIFIER_ITEM* data);
-void bpcsmtv_registery_identifier_add_alias(BPCSMTV_ALIAS* data);
-void bpcsmtv_registery_identifier_add_enum(BPCSMTV_ENUM* data);
-void bpcsmtv_registery_identifier_add_struct(BPCSMTV_STRUCT* data);
-void bpcsmtv_registery_identifier_add_msg(BPCSMTV_MSG* data);
-GSList* bpcsmtv_registery_identifier_get_slist();
+BPCSMTV_PROTOCOL_BODY* bpcsmtv_registery_identifier_get(const char* name);
+uint32_t bpcsmtv_registery_identifier_distribute_index();
+void bpcsmtv_registery_identifier_add(BPCSMTV_PROTOCOL_BODY* data);
 
 // ==================== Utils Functions ====================
 
@@ -295,6 +312,15 @@ GSList* bpcsmtv_registery_identifier_get_slist();
 /// <returns>if number is lower than max(uint32_t) and not equal with 0, return true.</returns>
 bool bpcsmtv_is_offset_number(gint64 num);
 bool bpcsmtv_is_basic_type_suit_for_enum(BPCSMTV_BASIC_TYPE bt);
+bool bpcsmtv_is_modifier_suit_struct(BPCSMTV_STRUCT_MODIFIER* modifier);
+/// <summary>
+/// called when preparing struct/msg body to fulfill field layout data.
+/// </summary>
+/// <param name="variables"></param>
+/// <param name="modifier"></param>
+void bpcsmtv_setup_field_layout(GSList* variables, BPCSMTV_STRUCT_MODIFIER* modifier);
+void bpcsmtv_setup_reliability(BPCSMTV_STRUCT_MODIFIER* modifier);
+void bpcsmtv_analyse_underlaying_type(BPCSMTV_VARIABLE_TYPE* variables);
 
 /*
 

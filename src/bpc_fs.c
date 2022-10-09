@@ -88,13 +88,13 @@ FILE* bpcfs_fopen_glibfs(const gchar* glibfs_filepath, bool is_open) {
 // Reference: https://github.com/boostorg/filesystem/blob/9613ccfa4a2c47bbc7059bf61dd52aec11e53893/src/path.cpp#L312
 gchar* bpcfs_replace_ext(gchar* u8_path, const gchar* u8_ext_with_dot) {
 	// check param
-	if (u8_path == NULL || u8_ext_with_dot == NULL || u8_ext_with_dot[0] != ".") return;
+	if (u8_path == NULL || u8_ext_with_dot == NULL || u8_ext_with_dot[0] != '.') return g_strdup(u8_path);
 
 	// get non-dot part
 	gsize ext_size = 0;
 	if (g_str_equal(u8_path, BPCFS_DOT_PATH) || g_str_equal(u8_path, BPCFS_DOT_DOT_PATH)) {
 		// do not process
-		return;
+		return g_strdup(u8_path);
 	}
 
 	// get dot

@@ -4,6 +4,16 @@
 #include "bpc_error.h"
 #include "bpc_fs.h"
 
+void bpcgen_init_code_file(BPCCMD_PARSED_ARGS* bpc_args) {
+}
+
+void bpcgen_write_document(BPCSMTV_DOCUMENT* document) {
+}
+
+void bpcgen_free_code_file() {
+}
+
+
 /*
 
 //const uint32_t bpc_codegen_basic_type_size[] = {

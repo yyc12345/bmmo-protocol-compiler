@@ -80,9 +80,7 @@ void bpccmd_free_parsed_args(BPCCMD_PARSED_ARGS* struct_args) {
 	SAFE_CLOSE_FS(struct_args->out_cpp_source_file);
 	SAFE_CLOSE_FS(struct_args->out_proto_file);
 #undef SAFE_CLOSE_FS
-
-	if (struct_args->ref_cpp_relative_hdr != NULL)
-		g_string_free(struct_args->ref_cpp_relative_hdr, true);
+	g_free(struct_args->ref_cpp_relative_hdr);
 
 	g_free(struct_args);
 }

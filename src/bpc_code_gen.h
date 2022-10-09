@@ -5,7 +5,9 @@
 #include <stdbool.h>
 #include "bpc_cmd.h"
 
-
+void bpcgen_init_code_file(BPCCMD_PARSED_ARGS* bpc_args);
+void bpcgen_write_document(BPCSMTV_DOCUMENT* document);
+void bpcgen_free_code_file();
 
 /*
 `like_basic_type` and `underlaying_basic_type` is a pair. both of them usually indicating 

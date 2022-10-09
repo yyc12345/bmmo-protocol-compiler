@@ -1,5 +1,5 @@
 #pragma once
-#define BPCVER_COMPILER_VERSION 1
+#define BPCVER_COMPILER_VERSION 1u
 
 #define BPCVER_MAJOR 0
 #define BPCVER_MINOR 1
