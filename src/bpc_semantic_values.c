@@ -23,13 +23,13 @@ static const uint32_t basic_type_sizeof[] = {
 	1, 2, 4, 8, 1, 2, 4, 8,
 	0
 };
-static const uint64_t basic_type_max_limit[] = {
+static const int64_t basic_type_max_limit[] = {
 	0L, 0L,
 	INT8_MAX, INT16_MAX, INT32_MAX, 0L,
 	UINT8_MAX, UINT16_MAX, UINT32_MAX, 0L,
 	0L
 };
-static const uint64_t basic_type_min_limit[] = {
+static const int64_t basic_type_min_limit[] = {
 	0L, 0L,
 	INT8_MIN, INT16_MIN, INT32_MIN, 0L,
 	0L, 0L, 0L, 0L,
@@ -57,11 +57,13 @@ bool bpcsmtv_parse_number(const char* strl, size_t len, size_t start_margin, siz
 	
 	// setup basic value
 	// construct valid number string
-	char* copiedstr = (char*)g_memdup2(strl, len);
+	char* copiedstr = (char*)g_memdup2(strl, len + 1);
 	*result = 0uL;
 	char* end = copiedstr + len - 1u;
 	char* head, * tail;
 
+	// fill padding area with blank
+	for (head = copiedstr; head <= end && head < copiedstr + start_margin)
 	// head point to string head and tail point to string tail(not '\0') first
 	// then do essential padding and whitespace detection.
 #define IS_LEGAL_BLANK(v) ((v)==' '||(v)=='\0'||(v)=='\t')
@@ -516,7 +518,7 @@ void bpcsmtv_setup_enum_specified_value(GSList* parents, BPCSMTV_ENUM_MEMBER* me
 
 bool bpcsmtv_check_enum_body_limit(GSList* enum_body, BPCSMTV_BASIC_TYPE bt) {
 	// remove warning C33011
-	if (bt >= basic_type_len || bt < 0) return false;
+	if (bt >= (int)basic_type_len || bt < 0) return false;
 
 	GSList* cursor;
 	BPCSMTV_ENUM_MEMBER* member;
