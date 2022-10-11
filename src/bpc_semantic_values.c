@@ -58,27 +58,28 @@ bool bpcsmtv_parse_number(const char* strl, size_t len, size_t start_margin, siz
 	// setup basic value
 	// construct valid number string
 	char* copiedstr = (char*)g_memdup2(strl, len + 1);
-	*result = 0uL;
-	char* end = copiedstr + len - 1u;
-	char* head, * tail;
+	char *start=copiedstr, *end=copiedstr + len -1u;
+	char *start_border=start+start_margin, end_border=end-end_margin;
+	char *start_cursor=start, *end_cursor=end;
 
 	// fill padding area with blank
-	for (head = copiedstr; head <= end && head < copiedstr + start_margin)
-	// head point to string head and tail point to string tail(not '\0') first
+	for (start_cursor=start; start_cursor<=end && start_cursor<start_border;++start_cursor) *start_cursor='\0';
+	for (end_cursor=end; end_cursor>=start && end_cursor > end_border;--end_cursor) *end_cursor='\0';
+	// move to border
 	// then do essential padding and whitespace detection.
 #define IS_LEGAL_BLANK(v) ((v)==' '||(v)=='\0'||(v)=='\t')
-	for (head = copiedstr + start_margin; head <= end && IS_LEGAL_BLANK(*head); ++head) *head = '\0';
-	for (tail = end - end_margin; tail >= copiedstr && IS_LEGAL_BLANK(*tail); --tail) *tail = '\0';
+	for (start_cursor=start_border; start_cursor<=end && IS_LEGAL_BLANK(*start_cursor); ++start_cursor) *start_cursor='\0';
+	for (end_cursor=end_border; end_cursor>=start && IS_LEGAL_BLANK(*end_cursor); --end_cursor) *end_cursor='\0';
 #undef IS_LEGAL_BLANK
 
-	// move out of range or rail lower than head
-	if (head > end || tail < head) {
+	// move out of range or tail lower than head
+	if (start_cursor>end || end_cursor < start_cursor) {
 		// invalid
 		g_free(copiedstr);
 		return false;
 	} else {
 		// try parse
-		bool r = g_ascii_string_to_signed(head, 10u, INT64_MIN, INT64_MAX, result, NULL);
+		bool r = g_ascii_string_to_signed(start_cursor, 10u, INT64_MIN, INT64_MAX, result, NULL);
 		g_free(copiedstr);
 		return r;
 	}
