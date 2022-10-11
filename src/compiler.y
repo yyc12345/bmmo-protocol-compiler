@@ -45,7 +45,7 @@ otherwise, a memmory leak will be raised.
 %union {
 	BPCSMTV_BASIC_TYPE token_basic_type;
 	char* token_identifier;
-	gint64 token_num;
+	BPCSMTV_COMPOUND_NUMBER token_num;
 	bool token_bool;
 
 	BPCSMTV_DOCUMENT* nterm_document;
@@ -150,12 +150,12 @@ bpc_version:
 BPC_VERSION BPC_TOKEN_NUM[sdd_version_num] BPC_SEMICOLON
 {
 	// check number first
-	if (!bpcsmtv_is_offset_number($sdd_version_num)) {
+	uint32_t parsed = 0ui32;
+	if (!bpcsmtv_get_offset_number(&($sdd_version_num), &parsed)) {
 		yyerror_format("invalid number for bpc version.");
 		YYABORT;
 	}
 	// check version
-	uint32_t parsed = (uint32_t)$sdd_version_num;
 	if (parsed != BPCVER_COMPILER_VERSION) {
 		yyerror_format("unsupported version: %" PRIu32 ". expecting: %" PRIu32 ".", 
 			parsed, BPCVER_COMPILER_VERSION);
@@ -287,6 +287,8 @@ BPC_RIGHT_BRACKET
 		YYERROR;
 	}
 
+	// set enum member value sign type.
+	bpcsmtv_setup_enum_body_value_sign($bpc_enum_body, $sdd_enum_type);
 	// set data
 	$$ = bpcsmtv_constructor_enum();
 	$$->enum_name = $sdd_enum_name;
@@ -297,13 +299,13 @@ BPC_RIGHT_BRACKET
 bpc_enum_body:
 bpc_enum_member
 {
-	bpcsmtv_setup_enum_specified_value(NULL, $bpc_enum_member);
+	bpcsmtv_ensure_enum_member_value(NULL, $bpc_enum_member);
 	$$ = g_slist_append(NULL, $bpc_enum_member);
 }
 |
 bpc_enum_body[sdd_parent_enum_body] BPC_COMMA bpc_enum_member
 {
-	bpcsmtv_setup_enum_specified_value($sdd_parent_enum_body, $bpc_enum_member);
+	bpcsmtv_ensure_enum_member_value($sdd_parent_enum_body, $bpc_enum_member);
 	$$ = g_slist_append($sdd_parent_enum_body, $bpc_enum_member);
 };
 
@@ -319,8 +321,8 @@ BPC_TOKEN_NAME[sdd_name]
 
 	$$ = bpcsmtv_constructor_enum_member();
 	$$->enum_member_name = $sdd_name;
-	$$->have_specific_value = false;
-	$$->specified_value = 0L;
+	// assign number
+	bpcsmtv_assign_enum_member_value($$, NULL);
 }
 |
 BPC_TOKEN_NAME[sdd_name] BPC_EQUAL BPC_TOKEN_NUM[sdd_spec_num]
@@ -334,8 +336,8 @@ BPC_TOKEN_NAME[sdd_name] BPC_EQUAL BPC_TOKEN_NUM[sdd_spec_num]
 
 	$$ = bpcsmtv_constructor_enum_member();
 	$$->enum_member_name = $sdd_name;
-	$$->have_specific_value = true;
-	$$->specified_value = $sdd_spec_num;
+	// assign number
+	bpcsmtv_assign_enum_member_value($$, &($sdd_spec_num));
 };
 
 bpc_struct_modifier:
@@ -465,8 +467,9 @@ bpc_variable_array[sdd_parent_array] BPC_ARRAY_TUPLE[sdd_tuple]
 		YYERROR;
 	}
 	// check tuple size
-	if (!bpcsmtv_is_offset_number($sdd_tuple)) {
-		yyerror_format("assign an invalid size %" PRIi64 " for static array modifier.", $sdd_tuple);
+	uint32_t parsed_size = 0ui32;
+	if (!bpcsmtv_get_offset_number(&($sdd_tuple), &parsed_size)) {
+		yyerror_format("assign an invalid size for static array modifier.");
 		YYERROR;
 	}
 
@@ -474,7 +477,7 @@ bpc_variable_array[sdd_parent_array] BPC_ARRAY_TUPLE[sdd_tuple]
 	$$ = $sdd_parent_array;
 	$$->is_array = true;
 	$$->is_static_array = true;
-	$$->static_array_len = (uint32_t)$sdd_tuple;
+	$$->static_array_len = parsed_size;
 };
 
 bpc_variable_type:
@@ -523,7 +526,8 @@ BPC_ALIGN[sdd_align]
 {
 	$$ = NULL;
 	// check align size
-	if (!bpcsmtv_is_offset_number($sdd_align)) {
+	uint32_t parsed_align = 0ui32;
+	if (!bpcsmtv_get_offset_number(&($sdd_align), &parsed_align)) {
 		yyerror_format("assign an invalid size %" PRIu64 " for align modifier.", $sdd_align);
 		YYERROR;
 	}
@@ -531,7 +535,7 @@ BPC_ALIGN[sdd_align]
 	// set data
 	$$ = bpcsmtv_constructor_variable_align();
 	$$->use_align = true;
-	$$->padding_size = (uint32_t)$sdd_align;
+	$$->padding_size = parsed_align;
 };
 
 bpc_variable_declarators:

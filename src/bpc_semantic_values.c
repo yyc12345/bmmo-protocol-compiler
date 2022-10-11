@@ -13,7 +13,7 @@ static GHashTable* hashtable_identifier = NULL;
 static uint32_t msg_index_distributor = 0;
 
 static const char* basic_type_showcase[] = {
-	"float", "double", 
+	"float", "double",
 	"int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64",
 	"string"
 };
@@ -23,18 +23,10 @@ static const uint32_t basic_type_sizeof[] = {
 	1, 2, 4, 8, 1, 2, 4, 8,
 	0
 };
-static const int64_t basic_type_max_limit[] = {
-	0L, 0L,
-	INT8_MAX, INT16_MAX, INT32_MAX, 0L,
-	UINT8_MAX, UINT16_MAX, UINT32_MAX, 0L,
-	0L
-};
-static const int64_t basic_type_min_limit[] = {
-	0L, 0L,
-	INT8_MIN, INT16_MIN, INT32_MIN, 0L,
-	0L, 0L, 0L, 0L,
-	0L
-};
+
+static const uint64_t uint_max_limit[] = { UINT8_MAX, UINT16_MAX, UINT32_MAX, UINT64_MAX };
+static const int64_t int_max_limit[] = { INT8_MAX, INT16_MAX, INT32_MAX, INT64_MAX };
+static const int64_t int_min_limit[] = { INT8_MIN, INT16_MIN, INT32_MIN, INT64_MIN };
 
 // ==================== Parse Functions ====================
 
@@ -52,36 +44,44 @@ bool bpcsmtv_parse_reliability(const char* strl) {
 bool bpcsmtv_parse_field_layout(const char* strl) {
 	return g_str_equal(strl, "narrow");
 }
-bool bpcsmtv_parse_number(const char* strl, size_t len, size_t start_margin, size_t end_margin, gint64* result) {
+bool bpcsmtv_parse_number(const char* strl, size_t len, size_t start_margin, size_t end_margin, BPCSMTV_COMPOUND_NUMBER* result) {
+	// setup result first
+	result->num_int = 0i64;
+	result->num_uint = 0ui64;
+	result->success_int = false;
+	result->success_uint = false;
+
+	// check length
 	if (len == 0u) return false;
-	
+
 	// setup basic value
 	// construct valid number string
 	char* copiedstr = (char*)g_memdup2(strl, len + 1);
-	char *start=copiedstr, *end=copiedstr + len -1u;
-	char *start_border=start+start_margin, end_border=end-end_margin;
-	char *start_cursor=start, *end_cursor=end;
+	char* start = copiedstr, * end = copiedstr + len - 1u;
+	char* start_border = start + start_margin, * end_border = end - end_margin;
+	char* start_cursor = start, * end_cursor = end;
 
 	// fill padding area with blank
-	for (start_cursor=start; start_cursor<=end && start_cursor<start_border;++start_cursor) *start_cursor='\0';
-	for (end_cursor=end; end_cursor>=start && end_cursor > end_border;--end_cursor) *end_cursor='\0';
+	for (start_cursor = start; start_cursor <= end && start_cursor < start_border; ++start_cursor) *start_cursor = '\0';
+	for (end_cursor = end; end_cursor >= start && end_cursor > end_border; --end_cursor) *end_cursor = '\0';
 	// move to border
 	// then do essential padding and whitespace detection.
 #define IS_LEGAL_BLANK(v) ((v)==' '||(v)=='\0'||(v)=='\t')
-	for (start_cursor=start_border; start_cursor<=end && IS_LEGAL_BLANK(*start_cursor); ++start_cursor) *start_cursor='\0';
-	for (end_cursor=end_border; end_cursor>=start && IS_LEGAL_BLANK(*end_cursor); --end_cursor) *end_cursor='\0';
+	for (start_cursor = start_border; start_cursor <= end && IS_LEGAL_BLANK(*start_cursor); ++start_cursor) *start_cursor = '\0';
+	for (end_cursor = end_border; end_cursor >= start && IS_LEGAL_BLANK(*end_cursor); --end_cursor) *end_cursor = '\0';
 #undef IS_LEGAL_BLANK
 
 	// move out of range or tail lower than head
-	if (start_cursor>end || end_cursor < start_cursor) {
+	if (start_cursor > end || end_cursor < start_cursor) {
 		// invalid
 		g_free(copiedstr);
 		return false;
 	} else {
 		// try parse
-		bool r = g_ascii_string_to_signed(start_cursor, 10u, INT64_MIN, INT64_MAX, result, NULL);
+		result->success_int = g_ascii_string_to_signed(start_cursor, 10u, INT64_MIN, INT64_MAX, &(result->num_int), NULL);
+		result->success_uint = g_ascii_string_to_unsigned(start_cursor, 10u, 0ui64, UINT64_MAX, &(result->num_uint), NULL);
 		g_free(copiedstr);
-		return r;
+		return result->success_int || result->success_uint;
 	}
 }
 
@@ -367,8 +367,14 @@ void bpcsmtv_registery_identifier_add(BPCSMTV_PROTOCOL_BODY* data) {
 
 // ==================== Utils Functions ====================
 
-bool bpcsmtv_is_offset_number(gint64 num) {
-	return (num > 0LL && num <= UINT32_MAX);
+bool bpcsmtv_get_offset_number(BPCSMTV_COMPOUND_NUMBER* num, uint32_t* outnum) {
+	if (outnum != NULL) *outnum = 0ui32;
+
+	if (!num->success_uint) return false;
+	if (num->num_uint > UINT32_MAX) return false;
+
+	if (outnum != NULL) *outnum = (uint32_t)outnum;
+	return true;
 }
 
 bool bpcsmtv_is_basic_type_suit_for_enum(BPCSMTV_BASIC_TYPE bt) {
@@ -501,331 +507,121 @@ void bpcsmtv_analyse_underlaying_type(BPCSMTV_VARIABLE_TYPE* variables) {
 	}
 }
 
-void bpcsmtv_setup_enum_specified_value(GSList* parents, BPCSMTV_ENUM_MEMBER* member) {
+void bpcsmtv_assign_enum_member_value(BPCSMTV_ENUM_MEMBER* member, BPCSMTV_COMPOUND_NUMBER* number) {
+	if (number == NULL) {
+		member->have_specific_value = false;
+	} else {
+		member->have_specific_value = true;
+		// copy data when data is valid
+		member->specified_value.value_uint = number->success_uint ? number->num_uint : 0ui64;
+		member->specified_value.value_int = number->success_int ? number->num_int : 0i64;
+	}
+}
+
+void bpcsmtv_ensure_enum_member_value(GSList* parents, BPCSMTV_ENUM_MEMBER* member) {
 	// convert all non-spec value to specified value
 	if (!member->have_specific_value) {
 		// try distribute one
 		if (parents == NULL) {
 			// no parents
-			member->specified_value = 0L;
+			member->specified_value.value_uint = 0ui64;
+			member->specified_value.value_int = 0i64;
 		} else {
-			member->specified_value = ((BPCSMTV_ENUM_MEMBER*)parents->data)->specified_value + 1L;
+			member->specified_value.value_uint = ((BPCSMTV_ENUM_MEMBER*)parents->data)->specified_value.value_uint + 1ui64;
+			member->specified_value.value_int = ((BPCSMTV_ENUM_MEMBER*)parents->data)->specified_value.value_int + 1i64;
 		}
 
 		// sign has distributed
 		member->have_specific_value = true;
 	}
+
+}
+
+void bpcsmtv_setup_enum_body_value_sign(GSList* enum_body, BPCSMTV_BASIC_TYPE bt) {
+	// check sign
+	bool is_positive = true;
+	switch (bt) {
+		case BPCSMTV_BASIC_TYPE_INT64:
+		case BPCSMTV_BASIC_TYPE_INT32:
+		case BPCSMTV_BASIC_TYPE_INT16:
+		case BPCSMTV_BASIC_TYPE_INT8:
+			is_positive = false;
+			break;
+		case BPCSMTV_BASIC_TYPE_UINT64:
+		case BPCSMTV_BASIC_TYPE_UINT32:
+		case BPCSMTV_BASIC_TYPE_UINT16:
+		case BPCSMTV_BASIC_TYPE_UINT8:
+			is_positive = true;
+			break;
+		case BPCSMTV_BASIC_TYPE_FLOAT:
+		case BPCSMTV_BASIC_TYPE_DOUBLE:
+		case BPCSMTV_BASIC_TYPE_STRING:
+		default:
+			is_positive = true;
+			break;
+	}
+
+	GSList* cursor;
+	BPCSMTV_ENUM_MEMBER* member;
+	for (cursor = enum_body; cursor != NULL; cursor = cursor->next) {
+		// assign spec value sign type in there
+		member = (BPCSMTV_ENUM_MEMBER*)cursor->data;
+		member->specified_value_is_uint = is_positive;
+	}
 }
 
 bool bpcsmtv_check_enum_body_limit(GSList* enum_body, BPCSMTV_BASIC_TYPE bt) {
-	// remove warning C33011
-	if (bt >= (int)basic_type_len || bt < 0) return false;
+	// check sign
+	bool is_positive = true;
+	size_t offset = 0u;
+	switch (bt) {
+		case BPCSMTV_BASIC_TYPE_INT64:
+			++offset;
+		case BPCSMTV_BASIC_TYPE_INT32:
+			++offset;
+		case BPCSMTV_BASIC_TYPE_INT16:
+			++offset;
+		case BPCSMTV_BASIC_TYPE_INT8:
+			++offset;
+			is_positive = false;
+			break;
+		case BPCSMTV_BASIC_TYPE_UINT64:
+			++offset;
+		case BPCSMTV_BASIC_TYPE_UINT32:
+			++offset;
+		case BPCSMTV_BASIC_TYPE_UINT16:
+			++offset;
+		case BPCSMTV_BASIC_TYPE_UINT8:
+			++offset;
+			is_positive = true;
+			break;
+		case BPCSMTV_BASIC_TYPE_FLOAT:
+		case BPCSMTV_BASIC_TYPE_DOUBLE:
+		case BPCSMTV_BASIC_TYPE_STRING:
+		default:
+			is_positive = true;
+			break;
+	}
+	offset = offset == 0u ? 0u : offset - 1u;
 
 	GSList* cursor;
 	BPCSMTV_ENUM_MEMBER* member;
 	for (cursor = enum_body; cursor != NULL; cursor = cursor->next) {
 		member = (BPCSMTV_ENUM_MEMBER*)cursor->data;
 
-		if (member->specified_value > basic_type_max_limit[(int)bt] ||
-			member->specified_value < basic_type_min_limit[(int)bt]) {
-			return false;
+		// check limit
+		if (is_positive) {
+			if (member->specified_value.value_uint <= uint_max_limit[offset]) {
+				return false;
+			}
+		} else {
+			if (member->specified_value.value_int >= int_max_limit[offset] ||
+				member->specified_value.value_int <= int_min_limit[offset]) {
+				return false;
+			}
 		}
 	}
 
 	return true;
 }
-
-
-/*
-
-
-/// <summary>
-/// item is `string` of each entry's name
-/// </summary>
-static GSList* entry_registery = NULL;
-/// <summary>
-/// item is `BPCSMTV_TOKEN_REGISTERY_ITEM`
-/// </summary>
-static GSList* token_registery = NULL;
-static uint32_t msg_index_distributor = 0;
-
-
-
-BPCSMTV_MEMBER* bpc_constructor_member() {
-	return g_new0(BPCSMTV_MEMBER, 1);
-}
-
-void bpc_destructor_member(gpointer rawptr) {
-	if (rawptr == NULL) return;
-	BPCSMTV_MEMBER* ptr = (BPCSMTV_MEMBER*)rawptr;
-
-	if (ptr->vname != NULL) g_free(ptr->vname);
-	if (ptr->v_struct_type != NULL) g_free(ptr->v_struct_type);
-	g_free(ptr);
-}
-
-void bpc_destructor_member_slist(GSList* list) {
-	if (list == NULL) return;
-	g_slist_free_full(list, bpc_destructor_member);
-}
-
-BPCSMTV_ENUM_BODY* bpc_constructor_enum_body() {
-	return g_new0(BPCSMTV_ENUM_BODY, 1);
-}
-
-void bpc_destructor_enum_body(gpointer rawptr) {
-	if (rawptr == NULL) return;
-	BPCSMTV_ENUM_BODY* ptr = (BPCSMTV_ENUM_BODY*)rawptr;
-
-	if (ptr->enum_name != NULL) g_free(ptr->enum_name);
-}
-
-void bpc_destructor_enum_body_slist(GSList* list) {
-	if (list == NULL) return;
-	g_slist_free_full(list, bpc_destructor_enum_body);
-}
-
-void bpc_destructor_string(gpointer rawptr) {
-	if (rawptr == NULL) return;
-	// free string from g_strdup
-	g_free(rawptr);
-}
-
-void bpc_destructor_string_slist(GSList* list) {
-	if (list == NULL) return;
-	g_slist_free_full(list, bpc_destructor_string);
-}
-
-BPCSMTV_ALIAS* bpc_constructor_alias() {
-	return g_new0(BPCSMTV_ALIAS, 1);
-}
-void bpc_destructor_alias(BPCSMTV_ALIAS* ptr) {
-	if (ptr == NULL) return;
-	g_free(ptr->user_type);
-
-	g_free(ptr);
-}
-BPCSMTV_ENUM* bpc_constructor_enum() {
-	return g_new0(BPCSMTV_ENUM, 1);
-}
-void bpc_destructor_enum(BPCSMTV_ENUM* ptr) {
-	if (ptr == NULL) return;
-	g_free(ptr->enum_name);
-	bpc_destructor_enum_body_slist(ptr->enum_body);
-
-	g_free(ptr);
-}
-BPCSMTV_STRUCT* bpc_constructor_struct() {
-	return g_new0(BPCSMTV_STRUCT, 1);
-}
-void bpc_destructor_struct(BPCSMTV_STRUCT* ptr) {
-	if (ptr == NULL) return;
-	g_free(ptr->struct_name);
-	bpc_destructor_member_slist(ptr->struct_member);
-
-	g_free(ptr);
-}
-BPCSMTV_MSG* bpc_constructor_msg() {
-	return g_new0(BPCSMTV_MSG, 1);
-}
-void bpc_destructor_msg(BPCSMTV_MSG* ptr) {
-	if (ptr == NULL) return;
-	g_free(ptr->msg_name);
-	bpc_destructor_member_slist(ptr->msg_member);
-
-	g_free(ptr);
-}
-
-BPCSMTV_DEFINE_GROUP* bpc_constructor_define_group() {
-	return g_new0(BPCSMTV_DEFINE_GROUP, 1);
-}
-void bpc_destructor_define_group(BPCSMTV_DEFINE_GROUP* ptr) {
-	if (ptr == NULL) return;
-	switch (ptr->node_type) {
-		case BPCSMTV_DEFINED_TOKEN_TYPE_ALIAS:
-			bpc_destructor_alias(ptr->node_data.alias_data);
-			break;
-		case BPCSMTV_DEFINED_TOKEN_TYPE_ENUM:
-			bpc_destructor_enum(ptr->node_data.enum_data);
-			break;
-		case BPCSMTV_DEFINED_TOKEN_TYPE_STRUCT:
-			bpc_destructor_struct(ptr->node_data.struct_data);
-			break;
-		case BPCSMTV_DEFINED_TOKEN_TYPE_MSG:
-			bpc_destructor_msg(ptr->node_data.msg_data);
-			break;
-	}
-
-	g_free(ptr);
-}
-
-void bpc_destructor_define_group_slist(GSList* list) {
-	if (list == NULL) return;
-	g_slist_free_full(list, bpc_destructor_define_group);
-}
-
-BPCSMTV_DOCUMENT* bpc_constructor_document() {
-	return g_new0(BPCSMTV_DOCUMENT, 1);
-}
-void bpc_destructor_document(BPCSMTV_DOCUMENT* ptr) {
-	if (ptr == NULL) return;
-	bpc_destructor_string_slist(ptr->namespace_data);
-	bpc_destructor_define_group_slist(ptr->define_group_data);
-
-	g_free(ptr);
-}
-
-GSList* bpcsmtv_member_duplicate(GSList* refls, const char* new_name) {
-	BPCSMTV_MEMBER* references_item = (BPCSMTV_MEMBER*)refls->data;
-
-	// construct new item and apply some properties from
-	// references item
-	BPCSMTV_MEMBER* data = bpc_constructor_member();
-	data->vname = (char*)new_name;
-	data->is_basic_type = references_item->is_basic_type;
-	if (data->is_basic_type) {
-		data->v_basic_type = references_item->v_basic_type;
-	} else {
-		// use strdup to ensure each item have unique string in memory
-		// for safely free memory for each item.
-		data->v_struct_type = g_strdup(references_item->v_struct_type);
-	}
-
-	return g_slist_append(refls, data);
-}
-
-void bpcsmtv_member_copy_array_prop(GSList* ls, BPCSMTV_MEMBER_ARRAY_PROP* data) {
-	if (ls == NULL || data == NULL) return;
-
-	GSList* cursor;
-	BPCSMTV_MEMBER* ptr;
-	for (cursor = ls; cursor != NULL; cursor = cursor->next) {
-		ptr = (BPCSMTV_MEMBER*)cursor->data;
-
-		ptr->array_prop.is_array = data->is_array;
-		ptr->array_prop.is_static_array = data->is_static_array;
-		ptr->array_prop.array_len = data->array_len;
-	}
-}
-
-void bpcsmtv_member_copy_align_prop(GSList* ls, BPCSMTV_MEMBER_ALIGN_PROP* data) {
-	if (ls == NULL || data == NULL) return;
-
-	GSList* cursor;
-	BPCSMTV_MEMBER* ptr;
-	for (cursor = ls; cursor != NULL; cursor = cursor->next) {
-		ptr = (BPCSMTV_MEMBER*)cursor->data;
-
-		ptr->align_prop.use_align = data->use_align;
-		ptr->align_prop.padding_size = data->padding_size;
-	}
-}
-
-
-void bpcsmtv_entry_registery_reset() {
-	if (entry_registery != NULL) {
-		bpc_destructor_string_slist(entry_registery);
-		entry_registery = NULL;
-	}
-}
-
-bool bpcsmtv_entry_registery_test(const char* name) {
-	GSList* cursor;
-	for (cursor = entry_registery; cursor != NULL; cursor = cursor->next) {
-		if (g_str_equal(cursor->data, name)) return true;
-	}
-
-	// no match
-	return false;
-}
-
-void bpcsmtv_entry_registery_add(const char* name) {
-	g_slist_append(entry_registery, (gpointer)name);
-}
-
-
-void bpcsmtv_token_registery_reset() {
-	if (token_registery != NULL) {
-		GSList* cursor;
-		BPCSMTV_TOKEN_REGISTERY_ITEM* data;
-		for (cursor = token_registery; cursor != NULL; cursor = cursor->next) {
-			data = (BPCSMTV_TOKEN_REGISTERY_ITEM*)cursor->data;
-			g_free(data->token_name);
-			g_free(data);
-		}
-		token_registery = NULL;
-	}
-	msg_index_distributor = 0;
-}
-
-bool bpcsmtv_token_registery_test(const char* name) {
-	return bpcsmtv_token_registery_get(name) != NULL;
-}
-
-BPCSMTV_TOKEN_REGISTERY_ITEM* bpcsmtv_token_registery_get(const char* name) {
-	GSList* cursor;
-	for (cursor = token_registery; cursor != NULL; cursor = cursor->next) {
-		BPCSMTV_TOKEN_REGISTERY_ITEM* data = (BPCSMTV_TOKEN_REGISTERY_ITEM*)cursor->data;
-		if (g_str_equal(data->token_name, name)) return data;
-	}
-
-	// no match
-	return NULL;
-}
-
-void bpcsmtv_token_registery_add_alias(BPCSMTV_ALIAS* data) {
-	BPCSMTV_TOKEN_REGISTERY_ITEM* entry = g_new0(BPCSMTV_TOKEN_REGISTERY_ITEM, 1);
-	entry->token_name = g_strdup(data->user_type);
-	entry->token_type = BPCSMTV_DEFINED_TOKEN_TYPE_ALIAS;
-	entry->token_extra_props.token_basic_type = data->basic_type;
-	token_registery = g_slist_append(token_registery, entry);
-}
-
-void bpcsmtv_token_registery_add_enum(BPCSMTV_ENUM* data) {
-	BPCSMTV_TOKEN_REGISTERY_ITEM* entry = g_new0(BPCSMTV_TOKEN_REGISTERY_ITEM, 1);
-	entry->token_name = g_strdup(data->enum_name);
-	entry->token_type = BPCSMTV_DEFINED_TOKEN_TYPE_ENUM;
-	entry->token_extra_props.token_basic_type = data->enum_basic_type;
-	token_registery = g_slist_append(token_registery, entry);
-}
-
-void bpcsmtv_token_registery_add_struct(BPCSMTV_STRUCT* data) {
-	BPCSMTV_TOKEN_REGISTERY_ITEM* entry = g_new0(BPCSMTV_TOKEN_REGISTERY_ITEM, 1);
-	entry->token_name = g_strdup(data->struct_name);
-	entry->token_type = BPCSMTV_DEFINED_TOKEN_TYPE_STRUCT;
-	token_registery = g_slist_append(token_registery, entry);
-}
-
-void bpcsmtv_token_registery_add_msg(BPCSMTV_MSG* data) {
-	BPCSMTV_TOKEN_REGISTERY_ITEM* entry = g_new0(BPCSMTV_TOKEN_REGISTERY_ITEM, 1);
-	entry->token_name = g_strdup(data->msg_name);
-	entry->token_type = BPCSMTV_DEFINED_TOKEN_TYPE_MSG;
-	entry->token_extra_props.token_arranged_index = msg_index_distributor++;	// generate msg index
-	token_registery = g_slist_append(token_registery, entry);
-}
-
-GSList* bpcsmtv_token_registery_get_slist() {
-	return token_registery;
-}
-
-bool bpcsmtv_basic_type_is_suit_for_enum(BPCSMTV_BASIC_TYPE bt) {
-	switch (bt) {
-		case BPCSMTV_BASIC_TYPE_INT8:
-		case BPCSMTV_BASIC_TYPE_INT16:
-		case BPCSMTV_BASIC_TYPE_INT32:
-		case BPCSMTV_BASIC_TYPE_INT64:
-		case BPCSMTV_BASIC_TYPE_UINT8:
-		case BPCSMTV_BASIC_TYPE_UINT16:
-		case BPCSMTV_BASIC_TYPE_UINT32:
-		case BPCSMTV_BASIC_TYPE_UINT64:
-			return true;
-		case BPCSMTV_BASIC_TYPE_FLOAT:
-		case BPCSMTV_BASIC_TYPE_DOUBLE:
-		case BPCSMTV_BASIC_TYPE_STRING:
-		default:
-			return false;
-	}
-}
-
-*/
 
