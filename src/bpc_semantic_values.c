@@ -66,9 +66,10 @@ bool bpcsmtv_parse_number(const char* strl, size_t len, size_t start_margin, siz
 	for (end_cursor = end; end_cursor >= start && end_cursor > end_border; --end_cursor) *end_cursor = '\0';
 	// move to border
 	// then do essential padding and whitespace detection.
+	// end_cursor only need move to start_cursor because all previous chars has been set as NULL.
 #define IS_LEGAL_BLANK(v) ((v)==' '||(v)=='\0'||(v)=='\t')
 	for (start_cursor = start_border; start_cursor <= end && IS_LEGAL_BLANK(*start_cursor); ++start_cursor) *start_cursor = '\0';
-	for (end_cursor = end_border; end_cursor >= start && IS_LEGAL_BLANK(*end_cursor); --end_cursor) *end_cursor = '\0';
+	for (end_cursor = end_border; end_cursor >= start_cursor && IS_LEGAL_BLANK(*end_cursor); --end_cursor) *end_cursor = '\0';
 #undef IS_LEGAL_BLANK
 
 	// move out of range or tail lower than head
