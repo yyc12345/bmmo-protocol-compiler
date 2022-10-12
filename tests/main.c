@@ -7,8 +7,7 @@ int main(int argc, char* argv[]) {
     g_test_init(&argc, &argv, NULL);
 
     // semantic value
-    g_test_add_func("/parse/int", bpctest_smtv_parse_int);
-    g_test_add_func("/parse/uint", bpctest_smtv_parse_uint);
+    bpctets_semantic_values();
 
     return g_test_run();
 }
