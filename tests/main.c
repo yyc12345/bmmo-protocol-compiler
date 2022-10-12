@@ -7,7 +7,7 @@ int main(int argc, char* argv[]) {
     g_test_init(&argc, &argv, NULL);
 
     // semantic value
-    bpctets_semantic_values();
+    bpctest_semantic_values();
 
     return g_test_run();
 }

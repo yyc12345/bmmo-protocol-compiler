@@ -1,6 +1,4 @@
 #include "main.h"
-#include <stdint.h>
-#include <stdbool.h>
 
 typedef struct _BPCDB_SMTV_PARSE_INT {
 	char* in_string;
@@ -30,11 +28,11 @@ static const BPCDB_SMTV_PARSE_INT dbset_parse_int[] = {
 	{ "18446744073709551615", 20u, 0u, 0u, false, 0i64 },
 
 	{ "aaa", 3u, 0u, 0u, false, 0i64 },
-	{ "[[\0\t 123\0\t]]", 13u, 1u, 1u, true, 123i64 }
+	{ "[[\0\t 123\0\t]]", 13u, 2u, 2u, true, 123i64 }
 };
 static const size_t dblen_parse_int = sizeof(dbset_parse_int) / sizeof(BPCDB_SMTV_PARSE_INT);
 
-static void _bpctest_smtv_parse_int(gpointer rawdata) {
+static void _bpctest_smtv_parse_int(gconstpointer rawdata) {
 	static BPCSMTV_COMPOUND_NUMBER number;
 	const BPCDB_SMTV_PARSE_INT* data = (BPCDB_SMTV_PARSE_INT*)rawdata;
 	bpcsmtv_parse_number(data->in_string, data->in_len, data->in_start_margin, data->in_end_margin, &number);
@@ -70,7 +68,7 @@ static const BPCDB_SMTV_PARSE_INT dbset_parse_uint[] = {
 };
 static const size_t dblen_parse_uint = sizeof(dbset_parse_uint) / sizeof(BPCDB_SMTV_PARSE_UINT);
 
-static void _bpctest_smtv_parse_uint(gpointer rawdata) {
+static void _bpctest_smtv_parse_uint(gconstpointer rawdata) {
 	static BPCSMTV_COMPOUND_NUMBER number;
 	const BPCDB_SMTV_PARSE_INT* data = (BPCDB_SMTV_PARSE_INT*)rawdata;
 	bpcsmtv_parse_number(data->in_string, data->in_len, data->in_start_margin, data->in_end_margin, &number);
@@ -85,7 +83,7 @@ static void bpctest_smtv_parse_uint() {
 		_bpctest_smtv_parse_uint);
 }
 
-void bpctest_semantic_value() {
+void bpctest_semantic_values() {
 	// register all test funcs
 	bpctest_smtv_parse_int();
 	bpctest_smtv_parse_uint();
