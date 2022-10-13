@@ -113,6 +113,9 @@
       <AdditionalLibraryDirectories>$(GLIB_WIN32_LIB);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>glib-2.0.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PreBuildEvent>
+      <Command>call win_precompile.bat</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -133,6 +136,9 @@
       <AdditionalLibraryDirectories>$(GLIB_WIN32_LIB);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>glib-2.0.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PreBuildEvent>
+      <Command>call win_precompile.bat</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -149,6 +155,9 @@
       <AdditionalLibraryDirectories>$(GLIB_WIN64_LIB);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>glib-2.0.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PreBuildEvent>
+      <Command>call win_precompile.bat</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -169,6 +178,9 @@
       <AdditionalLibraryDirectories>$(GLIB_WIN64_LIB);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>glib-2.0.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PreBuildEvent>
+      <Command>call win_precompile.bat</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
 
   <ItemGroup>
@@ -178,6 +190,7 @@
     <ClCompile Include="src\bpc_error.c" />
     <ClCompile Include="src\bpc_fs.c" />
     <ClCompile Include="src\bpc_semantic_values.c" />
+    <ClCompile Include="src\snippets.c" />
     <ClCompile Include="tests\main.c" />
     <ClCompile Include="tests\tests_semantic_values.c" />
   </ItemGroup>
@@ -189,6 +202,7 @@
     <ClInclude Include="src\bpc_fs.h" />
     <ClInclude Include="src\bpc_semantic_values.h" />
     <ClInclude Include="src\bpc_ver.h" />
+    <ClInclude Include="src\snippets.h" />
     <ClInclude Include="tests\main.h" />
   </ItemGroup>
   

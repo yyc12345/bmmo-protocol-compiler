@@ -33,6 +33,9 @@
     <ClCompile Include="src\y.tab.c">
       <Filter>Sources</Filter>
     </ClCompile>
+    <ClCompile Include="src\snippets.c">
+      <Filter>Sources</Filter>
+    </ClCompile>
     <ClCompile Include="src\bpc_code_gen.c">
       <Filter>Sources</Filter>
     </ClCompile>
@@ -82,29 +85,11 @@
     <ClInclude Include="src\bpc_fs.h">
       <Filter>Headers</Filter>
     </ClInclude>
+    <ClInclude Include="src\snippets.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <CopyFileToFolders Include="snippets\header.py">
-      <Filter>Resources\snippets</Filter>
-    </CopyFileToFolders>
-    <CopyFileToFolders Include="snippets\header.cs">
-      <Filter>Resources\snippets</Filter>
-    </CopyFileToFolders>
-    <CopyFileToFolders Include="snippets\functions.cs">
-      <Filter>Resources\snippets</Filter>
-    </CopyFileToFolders>
-    <CopyFileToFolders Include="snippets\header.hpp">
-      <Filter>Resources\snippets</Filter>
-    </CopyFileToFolders>
-    <CopyFileToFolders Include="snippets\functions.cpp">
-      <Filter>Resources\snippets</Filter>
-    </CopyFileToFolders>
-    <CopyFileToFolders Include="snippets\functions.hpp">
-      <Filter>Resources\snippets</Filter>
-    </CopyFileToFolders>
-    <CopyFileToFolders Include="snippets\tail.cpp">
-      <Filter>Resources\snippets</Filter>
-    </CopyFileToFolders>
     <CopyFileToFolders Include="examples\example.bp">
       <Filter>Resources\examples</Filter>
     </CopyFileToFolders>

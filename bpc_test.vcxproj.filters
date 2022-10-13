@@ -15,6 +15,9 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\snippets.c">
+      <Filter>Sources</Filter>
+    </ClCompile>
     <ClCompile Include="src\bpc_semantic_values.c">
       <Filter>Sources</Filter>
     </ClCompile>
@@ -63,6 +66,9 @@
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="tests\main.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snippets.h">
       <Filter>Headers</Filter>
     </ClInclude>
   </ItemGroup>
