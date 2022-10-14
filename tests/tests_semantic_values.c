@@ -1,4 +1,5 @@
 #include "main.h"
+#include "../src/bpc_semantic_values.h"
 
 typedef struct _BPCDB_SMTV_PARSE_INT {
 	char* in_string;
@@ -9,26 +10,26 @@ typedef struct _BPCDB_SMTV_PARSE_INT {
 	gint64 out_num;
 }BPCDB_SMTV_PARSE_INT;
 static const BPCDB_SMTV_PARSE_INT dbset_parse_int[] = {
-	{ "123", 3u, 0u, 0u, true, 123i64 },
-	{ "#123", 4u, 1u, 0u, true, 123i64 },
-	{ "[123]", 5u, 1u, 1u, true, 123i64 },
-	{ "-123", 4u, 0u, 0u, true, -123i64 },
-	{ "#-123", 5u, 1u, 0u, true, -123i64 },
-	{ "[-123]", 6u, 1u, 1u, true, -123i64 },
+	{ "123", 3u, 0u, 0u, true, INT64_C(123) },
+	{ "#123", 4u, 1u, 0u, true, INT64_C(123) },
+	{ "[123]", 5u, 1u, 1u, true, INT64_C(123) },
+	{ "-123", 4u, 0u, 0u, true, INT64_C(-123) },
+	{ "#-123", 5u, 1u, 0u, true, INT64_C(-123) },
+	{ "[-123]", 6u, 1u, 1u, true, INT64_C(-123) },
 
-	{ "\0\t 123", 6u, 0u, 0u, true, 123i64 },
-	{ "123\0\t ", 6u, 0u, 0u, true, 123i64 },
-	{ "\0\t 123\0\t ", 9u, 0u, 0u, true, 123i64 },
+	{ "\0\t 123", 6u, 0u, 0u, true, INT64_C(123) },
+	{ "123\0\t ", 6u, 0u, 0u, true, INT64_C(123) },
+	{ "\0\t 123\0\t ", 9u, 0u, 0u, true, INT64_C(123) },
 	
-	{ "-2147483648", 11u, 0u, 0u, true, -2147483648i64 },
-	{ "2147483647", 10u, 0u, 0u, true, 2147483647i64 },
-	{ "-9223372036854775808", 20u, 0u, 0u, true, -9223372036854775808i64 },
-	{ "9223372036854775807", 19u, 0u, 0u, true, 9223372036854775807i64 },
-	{ "4294967295", 10u, 0u, 0u, true, 4294967295i64 },
-	{ "18446744073709551615", 20u, 0u, 0u, false, 0i64 },
+	{ "-2147483648", 11u, 0u, 0u, true, INT64_C(-2147483648) },
+	{ "2147483647", 10u, 0u, 0u, true, INT64_C(2147483647) },
+	{ "-9223372036854775808", 20u, 0u, 0u, true, INT64_C(-9223372036854775808) },
+	{ "9223372036854775807", 19u, 0u, 0u, true, INT64_C(9223372036854775807) },
+	{ "4294967295", 10u, 0u, 0u, true, INT64_C(4294967295) },
+	{ "18446744073709551615", 20u, 0u, 0u, false, INT64_C(0) },
 
-	{ "aaa", 3u, 0u, 0u, false, 0i64 },
-	{ "[[\0\t 123\0\t]]", 13u, 2u, 2u, true, 123i64 }
+	{ "aaa", 3u, 0u, 0u, false, INT64_C(0) },
+	{ "[[\0\t 123\0\t]]", 13u, 2u, 2u, true, INT64_C(123) }
 };
 static const size_t dblen_parse_int = sizeof(dbset_parse_int) / sizeof(BPCDB_SMTV_PARSE_INT);
 
@@ -56,15 +57,15 @@ typedef struct _BPCDB_SMTV_PARSE_UINT {
 	guint64 out_num;
 }BPCDB_SMTV_PARSE_UINT;
 static const BPCDB_SMTV_PARSE_INT dbset_parse_uint[] = {
-	{ "123", 3u, 0u, 0u, true, 123ui64 },
-	{ "-123", 4u, 0u, 0u, false, 0ui64 },
+	{ "123", 3u, 0u, 0u, true, UINT64_C(123) },
+	{ "-123", 4u, 0u, 0u, false, UINT64_C(0) },
 	
-	{ "-2147483648", 11u, 0u, 0u, false, 0ui64 },
-	{ "2147483647", 10u, 0u, 0u, true, 2147483647ui64 },
-	{ "-9223372036854775808", 20u, 0u, 0u, false, 0ui64 },
-	{ "9223372036854775807", 19u, 0u, 0u, true, 9223372036854775807ui64 },
-	{ "4294967295", 10u, 0u, 0u, true, 4294967295ui64 },
-	{ "18446744073709551615", 20u, 0u, 0u, true, 18446744073709551615ui64 }
+	{ "-2147483648", 11u, 0u, 0u, false, UINT64_C(0) },
+	{ "2147483647", 10u, 0u, 0u, true, UINT64_C(2147483647) },
+	{ "-9223372036854775808", 20u, 0u, 0u, false, UINT64_C(0) },
+	{ "9223372036854775807", 19u, 0u, 0u, true, UINT64_C(9223372036854775807) },
+	{ "4294967295", 10u, 0u, 0u, true, UINT64_C(4294967295) },
+	{ "18446744073709551615", 20u, 0u, 0u, true, UINT64_C(18446744073709551615) }
 };
 static const size_t dblen_parse_uint = sizeof(dbset_parse_uint) / sizeof(BPCDB_SMTV_PARSE_UINT);
 

@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Sources\codegen">
+      <UniqueIdentifier>{abb6107f-f629-48aa-8528-f4a59d7ae6b2}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\snippets.c">
@@ -41,6 +44,24 @@
     </ClCompile>
     <ClCompile Include="tests\tests_semantic_values.c">
       <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="tests\tests_fs.c">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\codegen\codepy.c">
+      <Filter>Sources\codegen</Filter>
+    </ClCompile>
+    <ClCompile Include="src\codegen\codecs.c">
+      <Filter>Sources\codegen</Filter>
+    </ClCompile>
+    <ClCompile Include="src\codegen\codehpp.c">
+      <Filter>Sources\codegen</Filter>
+    </ClCompile>
+    <ClCompile Include="src\codegen\codecpp.c">
+      <Filter>Sources\codegen</Filter>
+    </ClCompile>
+    <ClCompile Include="src\codegen\codeproto.c">
+      <Filter>Sources\codegen</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

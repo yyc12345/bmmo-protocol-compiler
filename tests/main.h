@@ -3,7 +3,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <inttypes.h>
-#include "../src/bpc_semantic_values.h"
 
 #define BPCTEST_TEST_DATASET(name, data, datalen, testfunc) {\
 size_t cursor;\
@@ -18,3 +17,4 @@ g_string_free(entry_name, true);\
 }
 
 void bpctest_semantic_values();
+void bpctest_fs();

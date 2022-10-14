@@ -17,7 +17,6 @@
       <Configuration>Release</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
-
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
@@ -53,11 +52,10 @@
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
-
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
-  <ImportGroup Label="Shared" >
+  <ImportGroup Label="Shared">
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -75,7 +73,6 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="LibRef.props" />
   </ImportGroup>
-
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
@@ -97,7 +94,6 @@
     <OutDir>$(SolutionDir)out\$(Platform)\$(Configuration)\$(ProjectName)\</OutDir>
     <IntDir>$(SolutionDir)temp\$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
   </PropertyGroup>
-
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -182,7 +178,6 @@
       <Command>call win_precompile.bat</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
-
   <ItemGroup>
     <ClCompile Include="src\bpc_cmd.c" />
     <ClCompile Include="src\bpc_code_gen.c" />
@@ -191,10 +186,16 @@
     <ClCompile Include="src\bpc_fs.c" />
     <ClCompile Include="src\bpc_semantic_values.c" />
     <ClCompile Include="src\snippets.c" />
+    <ClCompile Include="src\codegen\codecpp.c" />
+    <ClCompile Include="src\codegen\codecs.c" />
+    <ClCompile Include="src\codegen\codehpp.c" />
+    <ClCompile Include="src\codegen\codeproto.c" />
+    <ClCompile Include="src\codegen\codepy.c" />
     <ClCompile Include="tests\main.c" />
+    <ClCompile Include="tests\tests_fs.c" />
     <ClCompile Include="tests\tests_semantic_values.c" />
   </ItemGroup>
-    <ItemGroup>
+  <ItemGroup>
     <ClInclude Include="src\bpc_cmd.h" />
     <ClInclude Include="src\bpc_code_gen.h" />
     <ClInclude Include="src\bpc_encoding.h" />
@@ -205,7 +206,6 @@
     <ClInclude Include="src\snippets.h" />
     <ClInclude Include="tests\main.h" />
   </ItemGroup>
-  
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

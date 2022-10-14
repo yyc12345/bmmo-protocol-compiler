@@ -46,8 +46,8 @@ bool bpcsmtv_parse_field_layout(const char* strl) {
 }
 bool bpcsmtv_parse_number(const char* strl, size_t len, size_t start_margin, size_t end_margin, BPCSMTV_COMPOUND_NUMBER* result) {
 	// setup result first
-	result->num_int = 0i64;
-	result->num_uint = 0ui64;
+	result->num_int = INT64_C(0);
+	result->num_uint = UINT64_C(0);
 	result->success_int = false;
 	result->success_uint = false;
 
@@ -80,7 +80,7 @@ bool bpcsmtv_parse_number(const char* strl, size_t len, size_t start_margin, siz
 	} else {
 		// try parse
 		result->success_int = g_ascii_string_to_signed(start_cursor, 10u, INT64_MIN, INT64_MAX, &(result->num_int), NULL);
-		result->success_uint = g_ascii_string_to_unsigned(start_cursor, 10u, 0ui64, UINT64_MAX, &(result->num_uint), NULL);
+		result->success_uint = g_ascii_string_to_unsigned(start_cursor, 10u, UINT64_C(0), UINT64_MAX, &(result->num_uint), NULL);
 		g_free(copiedstr);
 		return result->success_int || result->success_uint;
 	}
@@ -369,7 +369,7 @@ void bpcsmtv_registery_identifier_add(BPCSMTV_PROTOCOL_BODY* data) {
 // ==================== Utils Functions ====================
 
 bool bpcsmtv_get_offset_number(BPCSMTV_COMPOUND_NUMBER* num, uint32_t* outnum) {
-	if (outnum != NULL) *outnum = 0ui32;
+	if (outnum != NULL) *outnum = UINT32_C(0);
 
 	if (!num->success_uint) return false;
 	if (num->num_uint > UINT32_MAX) return false;
@@ -514,8 +514,8 @@ void bpcsmtv_assign_enum_member_value(BPCSMTV_ENUM_MEMBER* member, BPCSMTV_COMPO
 	} else {
 		member->have_specific_value = true;
 		// copy data when data is valid
-		member->specified_value.value_uint = number->success_uint ? number->num_uint : 0ui64;
-		member->specified_value.value_int = number->success_int ? number->num_int : 0i64;
+		member->specified_value.value_uint = number->success_uint ? number->num_uint : UINT64_C(0);
+		member->specified_value.value_int = number->success_int ? number->num_int : INT64_C(0);
 	}
 }
 
@@ -525,11 +525,11 @@ void bpcsmtv_ensure_enum_member_value(GSList* parents, BPCSMTV_ENUM_MEMBER* memb
 		// try distribute one
 		if (parents == NULL) {
 			// no parents
-			member->specified_value.value_uint = 0ui64;
-			member->specified_value.value_int = 0i64;
+			member->specified_value.value_uint = UINT64_C(0);
+			member->specified_value.value_int = INT64_C(0);
 		} else {
-			member->specified_value.value_uint = ((BPCSMTV_ENUM_MEMBER*)parents->data)->specified_value.value_uint + 1ui64;
-			member->specified_value.value_int = ((BPCSMTV_ENUM_MEMBER*)parents->data)->specified_value.value_int + 1i64;
+			member->specified_value.value_uint = ((BPCSMTV_ENUM_MEMBER*)parents->data)->specified_value.value_uint + UINT64_C(1);
+			member->specified_value.value_int = ((BPCSMTV_ENUM_MEMBER*)parents->data)->specified_value.value_int + INT64_C(1);
 		}
 
 		// sign has distributed

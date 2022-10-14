@@ -150,7 +150,7 @@ bpc_version:
 BPC_VERSION BPC_TOKEN_NUM[sdd_version_num] BPC_SEMICOLON
 {
 	// check number first
-	uint32_t parsed = 0ui32;
+	uint32_t parsed = UINT32_C(0);
 	if (!bpcsmtv_get_offset_number(&($sdd_version_num), &parsed)) {
 		yyerror_format("invalid number for bpc version.");
 		YYABORT;
@@ -467,7 +467,7 @@ bpc_variable_array[sdd_parent_array] BPC_ARRAY_TUPLE[sdd_tuple]
 		YYERROR;
 	}
 	// check tuple size
-	uint32_t parsed_size = 0ui32;
+	uint32_t parsed_size = UINT32_C(0);
 	if (!bpcsmtv_get_offset_number(&($sdd_tuple), &parsed_size)) {
 		yyerror_format("assign an invalid size for static array modifier.");
 		YYERROR;
@@ -526,7 +526,7 @@ BPC_ALIGN[sdd_align]
 {
 	$$ = NULL;
 	// check align size
-	uint32_t parsed_align = 0ui32;
+	uint32_t parsed_align = UINT32_C(0);
 	if (!bpcsmtv_get_offset_number(&($sdd_align), &parsed_align)) {
 		yyerror_format("assign an invalid size %" PRIu64 " for align modifier.", $sdd_align);
 		YYERROR;

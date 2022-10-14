@@ -19,6 +19,9 @@
     <Filter Include="Resources\snippets">
       <UniqueIdentifier>{c2eade62-f1ca-4a3f-821d-dfdf932bb8c6}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Sources\codegen">
+      <UniqueIdentifier>{83c5e3b7-49bc-49a0-bc57-3b723ad819c4}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\bmmo_protocol_compiler.c">
@@ -50,6 +53,21 @@
     </ClCompile>
     <ClCompile Include="src\bpc_fs.c">
       <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\codegen\codepy.c">
+      <Filter>Sources\codegen</Filter>
+    </ClCompile>
+    <ClCompile Include="src\codegen\codecs.c">
+      <Filter>Sources\codegen</Filter>
+    </ClCompile>
+    <ClCompile Include="src\codegen\codehpp.c">
+      <Filter>Sources\codegen</Filter>
+    </ClCompile>
+    <ClCompile Include="src\codegen\codecpp.c">
+      <Filter>Sources\codegen</Filter>
+    </ClCompile>
+    <ClCompile Include="src\codegen\codeproto.c">
+      <Filter>Sources\codegen</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

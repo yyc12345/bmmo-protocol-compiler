@@ -8,6 +8,8 @@ int main(int argc, char* argv[]) {
 
     // semantic value
     bpctest_semantic_values();
+    // fs
+    bpctest_fs();
 
     return g_test_run();
 }
