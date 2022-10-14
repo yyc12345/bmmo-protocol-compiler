@@ -1,132 +1,154 @@
-// specific bmmo_protocol_compiler version
-// not matched version will abort the process of parsing
 bpc 1;
+namespace my.test.name;
 
-// namespace property
-// only valid for csharp and cpp
-// but this is essential field. you should fill it even if you don't need it.
-namespace bmmo.data_struct;
+// annotation test
+/* annotation test */
 
-// bp file support line-comment
+alias tests_alias_int uint32;
+alias tests_alias_float float;
+alias tests_alias_string string;
 
-/*
-bp file
-also support block-comment
-*/
-
-/*
-Bpc supported basic type:
-
-* float
-* double
-* int8
-* int16
-* int32
-* int64
-* uint8
-* uint16
-* uint32
-* uint64
-* string
-*/
-
-/*
-===============   Alias section: ===============
-You can give any alias to any *basic type* with following syntax:
-`alias YOUR_NAME BASIC_TYPE;`
-There are some examples:
-*/
-alias my_type uint32
-alias simple_string string
-
-/*
-===============   Defination section: ===============
-You can define enum, struct or msg in there now.
-Please note their order to prevent undefined token problem.
-*/
-
-/*
-===== Define a enum with following syntax: =====
-enum ENUM_NAME : BASIC_TYPE {
-    enter your enum entries in here with comma to split them...
+enum uint32 tests_enum {
+	entry
+}
+enum int32 tests_enum_negative {
+	entry1 = -114514,
+	entry2
+}
+enum uint64 tests_enum_limit_uint {
+	entry1,
+	entry2 = 18446744073709551615,
+	entry3
+}
+enum int64 tests_enum_limit_int {
+	entry1,
+	entry2 = -9223372036854775807,
+	entry3
 }
 
-Please note that `BASIC_TYPE` only can be:
-* int8
-* int16
-* int32
-* int64
-* uint8
-* uint16
-* uint32
-* uint64
-following basic couldn't be used as enum type:
-* float
-* double
-* string
-
-Alias can not be specific as enum type, 
-even if this alias point to a basic type accepted by enum.
-
-*/
-enum weather : uint8 {
-    Sunday,
-    Cloudy,
-    Raining,
-    Unknow = 255 // you also can specific value for enum entry just like C-like language
+narrow struct tests_struct_blank {}
+narrow struct tests_struct {
+	uint32 data1;
+	float data2;
+	string data3;
+	tests_alias_int data4;
+	tests_alias_float data5;
+	tests_alias_string data6;
+	tests_struct_blank data7;
+	tests_enum data8;
+}
+narrow struct tests_struct_list {
+	uint32[]data1;
+	float[] data2;
+	string[] data3;
+	tests_alias_int[] data4;
+	tests_alias_float[] data5;
+	tests_alias_string[] data6;
+	tests_struct_blank[] data7;
+	tests_enum[] data8;
+	
+	uint32 [ ] data9;
+}
+narrow struct tests_struct_tuple {
+	uint32[8]data1;
+	float[8] data2;
+	string[8] data3;
+	tests_alias_int[8] data4;
+	tests_alias_float[8] data5;
+	tests_alias_string[8] data6;
+	tests_struct_blank[8] data7;
+	tests_enum[8] data8;
+	
+	uint32 [ 8 ] data9;
+}
+narrow struct tests_struct_align {
+	uint32 data1#4;
+	float data2#4;
+	string data3#4;
+	tests_alias_int data4#4;
+	tests_alias_float data5#4;
+	tests_alias_string data6#4;
+	tests_struct_blank data7#4;
+	tests_enum data8#4;
+	
+	uint32 data9 # 4 ;
+}
+narrow struct tests_struct_hybrid {
+	uint32[8] data1#4;
+	uint32[] data2#4;
+	float[8] data3#4;
+	float[] data4#4;
+	string[8] data5#4;
+	string[] data6#4;
+}
+natural struct tests_struct_natural1 {
+	uint32 data1;
+	uint32[8] data2;
+	float data3;
+	float[8] data4;
+	tests_alias_int data5;
+	tests_alias_int[8] data6;
+	tests_alias_float data7;
+	tests_alias_float[8] data8;
+}
+natural struct tests_struct_natural2 {
+	uint32 data1;
+	uint32[8] data2;
+	float data3;
+	float[8] data4;
+	tests_alias_int data5;
+	tests_alias_int[8] data6;
+	tests_alias_float data7;
+	tests_alias_float[8] data8;
+	tests_struct_natural1 data9;
+	tests_struct_natural1[8] data10;
+}
+natural struct tests_struct_natural_align1 {
+	int8 data1;
+	int32 data2;
+	int8[5] data3;
+	int64 data4;
+}
+natural struct tests_struct_natural_align2 {
+	int8 data1;
+	int32 data2;
+	int8[5] data3;
+	int64 data4;
+	int8[3] data5;
+	tests_struct_natural_align1 data6;
+}
+struct tests_struct_nospec_natural1 {
+	int8 data1;
+	int8[2] data2;
+	tests_struct_natural1 data3;
+}
+struct tests_struct_nospec_natural2 {
+	int8 data1;
+	int8[2] data2;
+	tests_struct_nospec_natural1 data3;
+}
+struct tests_struct_nospec_narrow1 {
+	int8[] data1;
+}
+struct tests_struct_nospec_narrow2 {
+	string data1;
+}
+struct tests_struct_nospec_narrow3 {
+	tests_struct_blank data1;
+}
+struct tests_struct_nospec_narrow4 {
+	tests_struct_nospec_narrow1 data1;
+}
+natural tests_struct_natural_warning {
+	int8 data1#2;
 }
 
-/*
-===== Define a struct with following syntax: =====
-struct STRUCT_NAME {
-    enter your struct entries...
+reliable narrow msg tests_msg1 {
+	int8 data1;
 }
-
-Each struct entries following next syntax:
-BASIC_TYPE ENTRY_NAME1, ENTRY_NAME2, ENTRY_NAME3;
-
-Each entry can have array suffix:
-BASIC_TYPE ENTRY_NAME tuple 16;
-BASIC_TYPE ENTRY_NAME list;
-BASIC_TYPE ENTRY_NAME1, ENTRY_NAME2 tuple 16;
-BASIC_TYPE ENTRY_NAME1, ENTRY_NAME2 list;
-
-Just like python, `tuple` reference a static array. The number following `tuple` indicate its length.
-`list` reference a dynamic array and its length will be indicated by a uint32_t located at the head of this list.
-And please notice the 3rd and 4th statements, it mean that ENTRY_NAME1 and ENTRY_NAME2 both are array.
-
-In struct, `BASIC_TYPE` do not have any limitation, not like enum.
-
-Each entry also can use other struct, enum and alias type, just like following syntax:
-ENUM_NAME ENTRY_NAME;
-STRUCT_NAME ENTRY_NAME;
-ALIAS_NAME ENTRY_NAME;
-*/
-struct vx_position {
-    float x,y,z;
+unreliable narrow msh tests_msg2 {
+	int8 data1;
 }
-struct vx_quaternion {
-    float x,y,z,w;
-}
-struct ball_state {
-    uint32 type;
-    vx_position position;
-    vx_quaternion rotation;
-}
-
-/*
-===== Define a msg: =====
-msg is very very similar than struct.
-Everything which can be used in struct, also can be used in msg.
-The only different between msg and struct is that:
-bpc will distribute a unique index for each msg to and organize them at the end of output. 
-bpc will group these index as a enum called `opcode`.
-bpc will never distribute any index for struct.
-msg requires a extra field called reliability. The valid value of it are `reliable` or `unreliable`
-*/
-msg player_kicked_msg : reliable {
-    string kicked_player_name;
-    string executor_name;
-    string reason;
-    uint8 crashed;
+msg tests_nospec_msg {
+	int8 data1;
 }
