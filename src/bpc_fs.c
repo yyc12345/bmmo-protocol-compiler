@@ -32,7 +32,7 @@ FILE* bpcfs_fopen_glibfs(const gchar* glibfs_filepath, bool is_open) {
 	fs = _wfopen(wfilename, is_open ? L"r" : L"w");
 	g_free(wfilename);
 #else
-	gchar* utf8_filename = bpcenc_glibfs_to_utf8();
+	gchar* utf8_filename = bpcenc_glibfs_to_utf8((gchar*)glibfs_filepath);
 	if (utf8_filename == NULL) return NULL;
 	fs = fopen(utf8_filename, is_open ? "r" : "w");
 	g_free(utf8_filename);
