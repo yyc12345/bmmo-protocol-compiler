@@ -1,5 +1,9 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.19)
 project(bmmo_protocol_compiler LANGUAGES C)
+
+# check bison and flex
+find_package(FLEX REQUIRED)
+find_package(BISON 3.6 REQUIRED)
 
 # precompile some files
 execute_process(
@@ -7,7 +11,14 @@ COMMAND
 	"${PROJECT_SOURCE_DIR}/precompile.sh"
 WORKING_DIRECTORY
 	${PROJECT_SOURCE_DIR}
+COMMAND_ERROR_IS_FATAL ANY
 )
+
+# find glib and try to link it
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(Glib REQUIRED glib-2.0>=2.70 IMPORTED_TARGET)
+
+set(CMAKE_C_STANDARD 99)
 
 # set file collections
 set(shared_c 
@@ -27,6 +38,7 @@ set(shared_c
 set(compiler_c
 	src/lex.yy.c
 	src/y.tab.c
+	src/bmmo_protocol_compiler.c
 )
 set(tests_c
 	tests/main.c
@@ -39,21 +51,12 @@ add_executable(bmmo_protocol_compiler ${shared_c} ${compiler_c})
 add_executable(bpc_test ${shared_c} ${tests_c})
 
 # set include
-target_include_directories(bmmo_protocol_compiler
+target_link_libraries(bmmo_protocol_compiler
 PRIVATE
-	"src"
-)
-target_include_directories(bpc_test
-PRIVATE
-	"src"
-PRIVATE
-	"tests"
+	PkgConfig::Glib
 )
 
-# find glib and try to link it
-FIND_PACKAGE(PkgConfig)
-PKG_CHECK_MODULES(GLIB glib-2.0>=2.6)
-include_directories(${GLIB_INCLUDE_DIRS})
-link_directories(${GLIB_LIBRARY_DIRS})
-add_definitions(${GLIB_CFLAGS_OTHER})
-set(CMAKE_C_STANDARD 99)
+target_link_libraries(bpc_test
+PRIVATE
+	PkgConfig::Glib
+)

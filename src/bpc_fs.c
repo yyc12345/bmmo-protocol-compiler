@@ -1,16 +1,16 @@
 #include "bpc_fs.h"
 
 #ifdef G_OS_WIN32
-#define BPCFS_SPECTATOR u8"/\\"
-#define BPCFS_PREFERRED_SPECTATOR u8"\\"
+#define BPCFS_SPECTATOR "/\\"
+#define BPCFS_PREFERRED_SPECTATOR "\\"
 #else
-#define BPCFS_SPECTATOR u8"/"
-#define BPCFS_PREFERRED_SPECTATOR u8"/"
+#define BPCFS_SPECTATOR "/"
+#define BPCFS_PREFERRED_SPECTATOR "/"
 #endif
 #define BPCFS_DOT '.'
-#define BPCFS_EMPTY_PATH u8""
-#define BPCFS_DOT_PATH u8"."
-#define BPCFS_DOT_DOT_PATH u8".."
+#define BPCFS_EMPTY_PATH ""
+#define BPCFS_DOT_PATH "."
+#define BPCFS_DOT_DOT_PATH ".."
 
 gchar* bpcfs_vsprintf(const char* format, va_list ap) {
 	GString* strl = g_string_new(NULL);

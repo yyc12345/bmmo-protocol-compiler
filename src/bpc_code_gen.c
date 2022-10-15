@@ -849,11 +849,11 @@ void _bpcgen_write_preset_code(GSList* namespace_list) {
 	// setup template
 	if (BPC_CODEGEN_OUTPUT_PYTHON) {
 		bpcerr_info(BPCERR_ERROR_SOURCE_CODEGEN, "Python code generation do not support namespace feature.");
-		_bpcgen_copy_template(fs_python, u8"snippets/header.py");
+		_bpcgen_copy_template(fs_python, "snippets/header.py");
 	}
 	if (BPC_CODEGEN_OUTPUT_CSHARP) {
 		// write namespace using
-		_bpcgen_copy_template(fs_csharp, u8"snippets/header.cs");
+		_bpcgen_copy_template(fs_csharp, "snippets/header.cs");
 
 		// then write namespace and helper functions
 		// get dot style namespace str first
@@ -869,14 +869,14 @@ void _bpcgen_write_preset_code(GSList* namespace_list) {
 		fprintf(fs_csharp, "namespace %s {\n", strl->str);
 
 		// write template
-		_bpcgen_copy_template(fs_csharp, u8"snippets/functions.cs");
+		_bpcgen_copy_template(fs_csharp, "snippets/functions.cs");
 
 		// free namespace name data
 		g_string_free(strl, true);
 	}
 	if (BPC_CODEGEN_OUTPUT_CPP_H) {
 		// write include and namespace syntax
-		_bpcgen_copy_template(fs_cpp_hdr, u8"snippets/header.hpp");
+		_bpcgen_copy_template(fs_cpp_hdr, "snippets/header.hpp");
 		// construct namespace bracket
 		GSList* cursor;
 		for (cursor = namespace_list; cursor != NULL; cursor = cursor->next) {
@@ -913,7 +913,7 @@ void _bpcgen_write_preset_code(GSList* namespace_list) {
 		fputc('};', fs_cpp_hdr);
 
 		// write template
-		_bpcgen_copy_template(fs_cpp_hdr, u8"snippets/functions.hpp");
+		_bpcgen_copy_template(fs_cpp_hdr, "snippets/functions.hpp");
 	}
 	if (BPC_CODEGEN_OUTPUT_CPP_C) {
 		if (hpp_reference != NULL)
@@ -926,7 +926,7 @@ void _bpcgen_write_preset_code(GSList* namespace_list) {
 		}
 
 		// write template
-		_bpcgen_copy_template(fs_cpp_src, u8"snippets/functions.cpp");
+		_bpcgen_copy_template(fs_cpp_src, "snippets/functions.cpp");
 	}
 	if (BPC_CODEGEN_OUTPUT_PROTO) {
 		bpcerr_warning(BPCERR_ERROR_SOURCE_CODEGEN, "Proto generation do not support reliable feature. All reliable attributes will write as annotations.");
@@ -960,7 +960,7 @@ void _bpcgen_write_tail_code(GSList* namespace_list) {
 		fputc('\n', fs_cpp_src);
 
 		// write template
-		_bpcgen_copy_template(fs_cpp_src, u8"snippets/tail.cpp");
+		_bpcgen_copy_template(fs_cpp_src, "snippets/tail.cpp");
 	}
 	if (BPC_CODEGEN_OUTPUT_PROTO) {
 		;

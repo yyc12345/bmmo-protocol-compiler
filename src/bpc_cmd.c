@@ -51,7 +51,7 @@ BPCCMD_PARSED_ARGS* bpccmd_get_parsed_args(int argc, char* _argv[]) {
 			_bpccmd_print_help(context);
 		} else if (opt_version) {
 			g_print("bmmo-protocol-compiler %s\n", BPCVER_VERSION);
-			g_print("Under MIT License. Copyright (c) 2013-2022 BearKidsTeam.\n", BPCVER_VERSION);
+			g_print("Under MIT License. Copyright (c) 2013-2022 BearKidsTeam.\n");
 		} else {
 			if (opt_input == NULL) {
 				g_print("Error: you should specific input file at least.\n\n");
@@ -96,7 +96,7 @@ gchar* _bpccmd_get_cpp_relative_header() {
 		// use self name as references header
 		gchar* cppname = g_path_get_basename(opt_cpp_source);
 		gchar* u8_cppname = bpcenc_glibfs_to_utf8(cppname);
-		gchar* u8_hppname = bpcfs_replace_ext(u8_cppname, u8".hpp");
+		gchar* u8_hppname = bpcfs_replace_ext(u8_cppname, ".hpp");
 
 		g_string_append(strl, u8_hppname);
 		g_free(cppname);
@@ -137,7 +137,7 @@ BPCCMD_PARSED_ARGS* _bpccmd_alloc_parsed_args() {
 
 void _bpccmd_print_help(GOptionContext* ctx) {
 	char* helpstr = g_option_context_get_help(ctx, false, NULL);
-	g_print(helpstr);
+	g_print("%s", helpstr);
 	g_free(helpstr);
 }
 
