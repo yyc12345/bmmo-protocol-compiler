@@ -96,7 +96,7 @@ gchar* _bpccmd_get_cpp_relative_header() {
 		// use self name as references header
 		gchar* cppname = g_path_get_basename(opt_cpp_source);
 		gchar* u8_cppname = bpcenc_glibfs_to_utf8(cppname);
-		gchar* u8_hppname = bpcfs_replace_ext(u8_cppname, ".hpp");
+		gchar* u8_hppname = bpcfs_replace_extension(u8_cppname, ".hpp");
 
 		g_string_append(strl, u8_hppname);
 		g_free(cppname);
@@ -109,7 +109,7 @@ gchar* _bpccmd_get_cpp_relative_header() {
 		gchar* u8_hppname = bpcenc_glibfs_to_utf8(opt_cpp_header);
 		gchar* cppfolder = g_path_get_dirname(opt_cpp_source);
 		gchar* u8_cppfolder = bpcenc_glibfs_to_utf8(cppfolder);
-		gchar* relative_hpp = bpcfs_simple_relative_path(u8_hppname, u8_cppfolder);
+		gchar* relative_hpp = bpcfs_lexically_relative(u8_hppname, u8_cppfolder);
 
 		g_string_append(strl, relative_hpp);
 		g_free(u8_hppname);

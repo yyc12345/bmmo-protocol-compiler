@@ -16,6 +16,9 @@
     <Filter Include="Sources\codegen">
       <UniqueIdentifier>{abb6107f-f629-48aa-8528-f4a59d7ae6b2}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Sources\tests">
+      <UniqueIdentifier>{3501f3c0-784b-4570-bc1b-65ccf6a25cf6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\snippets.c">
@@ -42,12 +45,6 @@
     <ClCompile Include="tests\main.c">
       <Filter>Sources</Filter>
     </ClCompile>
-    <ClCompile Include="tests\tests_semantic_values.c">
-      <Filter>Sources</Filter>
-    </ClCompile>
-    <ClCompile Include="tests\tests_fs.c">
-      <Filter>Sources</Filter>
-    </ClCompile>
     <ClCompile Include="src\codegen\codepy.c">
       <Filter>Sources\codegen</Filter>
     </ClCompile>
@@ -62,6 +59,12 @@
     </ClCompile>
     <ClCompile Include="src\codegen\codeproto.c">
       <Filter>Sources\codegen</Filter>
+    </ClCompile>
+    <ClCompile Include="tests\tests_fs.c">
+      <Filter>Sources\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="tests\tests_semantic_values.c">
+      <Filter>Sources\tests</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
