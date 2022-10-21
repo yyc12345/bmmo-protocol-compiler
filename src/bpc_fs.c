@@ -29,25 +29,88 @@ FILE* bpcfs_fopen_glibfs(const gchar* glibfs_filepath, bool is_open) {
 	return fs;
 }
 
-// Ref: https://github.com/boostorg/filesystem/blob/9613ccfa4a2c47bbc7059bf61dd52aec11e53893/src/path.cpp#L1039
-size_t _bpcfs_iterator_increase(const gchar* strl, size_t old_pos) {
+// Reference:
+// https://zh.cppreference.com/w/cpp/filesystem/path
+// todo: boost document url
+typedef struct _BPCFS_PATH {
+	gchar* root_name;
+	bool root_directory;
+	GQueue* filenames;
+}BPCFS_PATH;
 
+#define BPCFS_COMMON_PATH (256u)
+
+#define BPCFS_SEPARATOR '/'
+#ifdef G_OS_WIN32
+#define BPCFS_PREFERRED_SEPARATOR '\\'
+#else
+#define BPCFS_PREFERRED_SEPARATOR '/'
+#endif
+#define BPCFS_DOT '.'
+#define BPCFS_COLON ':'
+#define BPCFS_QUESTIONMARK '?'
+
+#define BPCFS_EMPTY_PATH ""
+#define BPCFS_DOT_PATH "."
+#define BPCFS_DOT_DOT_PATH ".."
+
+// Ref: https://github.com/boostorg/filesystem/blob/9613ccfa4a2c47bbc7059bf61dd52aec11e53893/src/windows_tools.hpp#L41
+#define _bpcfs_is_letter(c) ((c) >= 'A' && (c) <= 'Z') || \
+((c >= 'a' && (c) <= 'z'))
+
+// Ref: https://github.com/boostorg/filesystem/blob/9613ccfa4a2c47bbc7059bf61dd52aec11e53893/src/path.cpp#L78
+// https://googleprojectzero.blogspot.com/2016/02/the-definitive-guide-on-win32-to-nt.html
+// Device names are:
+//
+// - PRN
+// - AUX
+// - NUL
+// - CON
+// - LPT[1-9]
+// - COM[1-9]
+// - CONIN$
+// - CONOUT$
+#define _bpcfs_is_device_char(c) (_bpcfs_is_letter(c) || \
+((c) >= '0' && (c) <= '9') || \
+(c) == L'$')
+
+// Ref: https://github.com/boostorg/filesystem/blob/cffb1d1bbdac53e308d489599138d03fd43f6cbf/include/boost/filesystem/path.hpp#L1347
+#ifdef G_OS_WIN32
+#define _bpcfs_is_directory_separator(c) ((c) == BPCFS_SEPARATOR || (c) == BPCFS_PREFERRED_SEPARATOR)
+#else
+#define _bpcfs_is_directory_separator(c) ((c) == BPCFS_SEPARATOR)
+#endif
+
+BPCFS_PATH* _bpcfs_constructor_path() {
+	BPCFS_PATH* data = g_new0(BPCFS_PATH, 1);
+	data->root_name = NULL;
+	data->root_directory = false;
+	data->filenames = g_queue_new();
 }
-
-// Ref: https://github.com/boostorg/filesystem/blob/9613ccfa4a2c47bbc7059bf61dd52aec11e53893/src/path.cpp#L968
-bool _bpcfs_path_lex_compare(const gchar* lhs, const gchar* rhs) {
-
-
+void _bpcfs_destructor_path(BPCFS_PATH* data) {
+	g_free(data->root_name);
+	g_queue_free_full(data->filenames, g_free);
 }
 
 // Ref: https://github.com/boostorg/filesystem/blob/9613ccfa4a2c47bbc7059bf61dd52aec11e53893/src/path.cpp#L114
-size_t _bpcfs_find_separator(const gchar* in_u8path, size_t size) {
-	const char* sep = (const char*)memchr(in_u8path, '/', size);
-	size_t pos = size;
-	if (!!sep) {
-		pos = sep - in_u8path;
+bool _bpcfs_find_separator(const gchar* in_u8path, size_t* out_pos) {
+	*out_pos = 0u;
+	
+	const char* sep = (const char*)strchr(in_u8path, BPCFS_SEPARATOR);
+#ifdef G_OS_WIN32
+	const char* winsep (const char*)strchr(in_u8path, BPCFS_PREFERRED_SEPARATOR);
+	if (winsep != NULL) {
+		if (sep == NULL) {
+			sep = winsep;
+		} else {
+			sep = sep < winsep ? sep : winsep;
+		}
 	}
-	return pos;
+#endif
+	if (sep != NULL) {
+		*out_pos = sep - in_u8path;
+	}
+	return sep != NULL;
 }
 
 // Ref: https://github.com/boostorg/filesystem/blob/9613ccfa4a2c47bbc7059bf61dd52aec11e53893/src/path.cpp#L831
@@ -102,126 +165,147 @@ size_t _bpcfs_find_root_directory_start(const gchar* in_u8path, size_t size) {
 	// Note: There is ambiguity in a "c:x" path interpretation. It could either mean a file "x" located at the current directory for drive C:,
 	//       or an alternative stream "x" of a file "c". Windows API resolve this as the former, and so do we.
 	if ((size - pos) >= 2 && _bpcfs_is_letter(in_u8path[pos])) {
-		size_t i = pos + 1;
-		for (; i < size; ++i) {
-			if (!_bpcfs_is_device_name_char(in_u8path[i]))
+		size_t i;
+		for (i = pos + 1; i < size; ++i) {
+			if (!_bpcfs_is_device_name_char(in_u8path[i])) {
+				if (in_u8path[i] == BPCFS_COLON) {
+					return pos + 1;
+				}
 				break;
-		}
-
-		if (i < size && in_u8path[i] == BPCFS_COLON) {
-			pos = i + 1;
-			parsing_root_name = false;
-
-			if (pos < size && _bpcfs_is_directory_separator(in_u8path[pos]))
-				return pos;
+			}
 		}
 	}
 #endif
 
 	if (!parsing_root_name)
-		return size;
+		return 0;
 
 find_next_separator:
-	pos += _bpcfs_find_separator(in_u8path + pos, size - pos);
+	size_t posinc;
+	if (_bpcfs_find_separator(in_u8path + pos, &posinc)) {
+		pos += posinc;
+	}
 
 	return pos;
 }
 
-// Ref: https://github.com/boostorg/filesystem/blob/9613ccfa4a2c47bbc7059bf61dd52aec11e53893/src/path.cpp#L811
-size_t _bpcfs_find_filename_size(const gchar* in_u8path, size_t root_name_size, size_t end_pos) {
-	size_t pos = end_pos;
-	while (pos > root_name_size) {
-		--pos;
+BPCFS_PATH* _bpcfs_split_path(const gchar* u8path) {
+	BPCFS_PATH* path = _bpcfs_constructor_path();
+	
+	// fallback to empty path to ensure return value validation
+	if (u8path == NULL) {
+		u8path = BPCFS_EMPTY_PATH;
+	}
+	size_t u8path_len = strlen(u8path);
+	
+	// get root name
+	size_t root_name_len = _bpcfs_find_root_directory_start(u8path, u8path_len);
+	path->root_name = g_strndup(u8path, root_name_len);
+	
+	// get root directory
+	const gchar* path_cursor = u8path + root_name_len;
+	if (path->root_directory = _bpcfs_is_directory_separator(u8path[root_name_len])) {
+		++path_cursor;
+	}
+	
+	// get file names
+	size_t sppos = 0u;
+	while(_bpc_find_separator(path_cursor, &sppos)) {
+		g_queue_push_tail(path->filenames, g_strndup(path_cursor, sppos));
+		path_cursor += sppos + 1;
+	}
+	// process tail file name
+	g_queue_push_tail(path->filenames, g_strdup(path_cursor));
 
-		if (_bpcfs_is_directory_separator(in_u8path[pos])) {
-			++pos; // filename starts past the separator
-			break;
+	return path;
+}
+
+gchar* _bpcfs_join_path(BPCFS_PATH* path) {
+	if (path == NULL) return g_strdup(BPCFS_EMPTY_PATH);
+	
+	// prealloc some space
+	GString* url = g_string_sized_new(BPCFS_COMMON_PATH);
+	// build root name and directory
+	if (path->root_name != NULL) {
+		g_string_append(url, path->root_name);
+	}
+	if (path->root_directory) {
+		g_string_append_c(url, BPCFS_PREFERRED_SEPATATOR);
+	}
+	
+	// build filename
+	guint c = 0u, qmax = path->filenames->length;
+	for (c = 0u; c < qmax; ++c) {
+		// pick
+		gchar* data = g_queue_pop_head(path->filenames);
+		// build slash and file name
+		if (c != 0u) {
+			g_string_append_c(url, BPCFS_PREFERRED_SEPATATOR);
 		}
+		if (data != NULL) {
+			g_string_append(url, data);
+		}
+		// push back in circle
+		g_queue_push_tail(path->filenames, data);
 	}
-
-	return end_pos - pos;
-}
-
-// Ref: https://github.com/boostorg/filesystem/blob/9613ccfa4a2c47bbc7059bf61dd52aec11e53893/src/path.cpp#L797
-bool _bpcfs_is_root_separator(const gchar* in_u8path, size_t root_dir_pos, size_t pos) {
-	/*BOOST_ASSERT_MSG(pos < str.size() && fs::detail::is_directory_separator(str[pos]), "precondition violation");*/
-
-	// root_dir_pos points at the leftmost separator, we need to skip any duplicate separators right of root dir
-	while (pos > root_dir_pos && _bpcfs_is_directory_separator(in_u8path[pos - 1]))
-		--pos;
-
-	return pos == root_dir_pos;
-}
-
-// Ref: https://github.com/boostorg/filesystem/blob/9613ccfa4a2c47bbc7059bf61dd52aec11e53893/src/path.cpp#L434
-gchar* _bpcfs_filename(const gchar* u8_path) {
-	const size_t size = strlen(u8_path);
-	size_t root_dir_pos = _bpcfs_find_root_directory_start(u8_path, size);
-	size_t root_name_size = root_dir_pos;
-	size_t filename_size, pos;
-	if (root_dir_pos < size && _bpcfs_is_directory_separator(u8_path[size - 1]) && is_root_separator(u8_path, root_dir_pos, size - 1)) {
-		// Return root directory
-		pos = root_dir_pos;
-		filename_size = 1u;
-	} else if (root_name_size == size) {
-		// Return root name
-		pos = 0u;
-		filename_size = root_name_size;
-	} else {
-		filename_size = find_filename_size(u8_path, root_name_size, size);
-		pos = size - filename_size;
-		if (filename_size == 0u && pos > root_name_size && _bpcfs_is_directory_separator(u8_path[pos - 1]) && !_bpcfs_is_root_separator(u8_path, root_dir_pos, pos - 1))
-			return g_strdup(BPCFS_DOT_PATH);
-	}
-
-	const char* p = u8_path + pos;
-	return g_strndup(p, filename_size);
-}
-
-// Ref: https://github.com/boostorg/filesystem/blob/9613ccfa4a2c47bbc7059bf61dd52aec11e53893/src/path.cpp#L496
-gchar* _bpcfs_extension(gchar* u8_path) {
-	gchar* name = _bpcfs_filename(u8_path);
-	if (_bpcfs_path_lex_compare(name, BPCFS_DOT_PATH) || _bpcfs_path_lex_compare(name, BPCFS_DOT_DOT_PATH))
-		return path();
-
-	gchar* pos = strrchr(name, BPCFS_DOT);
-	return pos == NULL ? g_strdup(BPCFS_EMPTY_PATH) : g_strdup(pos);
+	
+	return g_string_free(url, false);
 }
 
 // Ref: https://github.com/boostorg/filesystem/blob/9613ccfa4a2c47bbc7059bf61dd52aec11e53893/src/path.cpp#L312
-gchar* bpcfs_replace_extension(const gchar* u8_path, const gchar* u8_ext) {
-	//// check param
-	//if (u8_path == NULL || u8_ext_with_dot == NULL || u8_ext_with_dot[0] != '.') return g_strdup(u8_path);
+gchar* bpcfs_replace_extension(const gchar* u8path, const gchar* u8ext) {
+	// fallback path to empty
+	if (u8path == NULL) u8path = BPCFS_EMPTY_PATH;
+	// fallback to empty
+	if (u8ext == NULL) u8ext = "";
 
-	//// get non-dot part
-	//gsize ext_size = 0;
-	//if (g_str_equal(u8_path, BPCFS_DOT_PATH) || g_str_equal(u8_path, BPCFS_DOT_DOT_PATH)) {
-	//	// do not process
-	//	return g_strdup(u8_path);
-	//}
-
-	//// get dot
-	//GString* gstring_path = g_string_new(u8_path);
-	//gchar* ext = g_utf8_strrchr(gstring_path->str, gstring_path->len, BPCFS_DOT);
-	//if (ext != NULL) {
-	//	ext_size = ext - gstring_path->str;
-	//}
-
-	//// overwrite it
-	//if (ext_size != 0) {
-	//	g_string_truncate(gstring_path, gstring_path->len - ext_size);
-	//	g_string_append(gstring_path, u8_ext_with_dot);
-	//}
-
-	//return g_string_free(gstring_path, false);
+	// split path
+	BPCFS_PATH* path = _bpcfs_split_path(u8path);
+	gchar* oldname = g_queue_pop_tail(path->filenames);
+	GString* newname = g_string_new(oldname);
+	size_t namelen = newname->len;
+	
+	// get dot
+	size_t ext_size = 0;
+	if (oldname != NULL) {
+		if (g_str_equal(oldname, BPCFS_DOT_PATH) || g_str_equal(oldname, BPCFS_DOT_DOT_PATH) {
+			ext_size = 0u;
+		}
+		char* dotpos = strrchr(oldname, BPCFS_DOT);
+		ext_size = namelen - (dotpos == NULL ? 0u : dotpos - oldname);
+	}
+	
+	// erase
+	g_string_truncate(newname, namelen - ext_size);
+	
+	// write ext
+	if (u8ext[0] != '\0') {	// not empty
+		if (u8ext[0] != BPCFS_DOT) {
+			g_string_append_c(newname, BPCFS_DOT);
+		}
+		g_string_append(newname, u8ext);
+	}
+	
+	// free old one, append new one
+	g_free(oldname);
+	g_queue_push_tail(path->filenames, g_string_free(newname, false));
+	
+	// join path and free intermediate struct
+	gchar* result = _bpcfs_join_path(path);
+	_bpcfs_destructor_path(path);
+	return result;
 }
 
 // Reference: 
 // https://github.com/boostorg/filesystem/blob/9613ccfa4a2c47bbc7059bf61dd52aec11e53893/src/path.cpp#L551
 // https://stackoverflow.com/questions/27228743/c-function-to-calculate-relative-path
-gchar* bpcfs_lexically_relative(const gchar* u8_this, const gchar* u8_base) {
-	//// check param
-	//if (u8_this == NULL || u8_base == NULL) return g_strdup(u8_this);
+gchar* bpcfs_lexically_relative(const gchar* u8this, const gchar* u8base) {
+	// fallback to empty
+	if (u8this == NULL) u8this = BPCFS_EMPTY_PATH;
+	if (u8base == NULL) u8base = BPCFS_EMPTY_PATH;
+
+	BPCFS_PATH* thispath = _bpcfs_split_path(u8this);
+	BPCFS_PATH* basepath = _bpcfs_split_path(u8base);
 
 	//// split it by spectator
 	//gchar** splited_this = g_strsplit_set(u8_this, BPCFS_SPECTATOR, -1);
