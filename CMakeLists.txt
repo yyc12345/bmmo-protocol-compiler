@@ -29,11 +29,11 @@ set(shared_c
 	src/bpc_encoding.c
 	src/bpc_error.c
 	src/snippets.c
-    src/codegen/codepy.c
-    src/codegen/codecs.c
-    src/codegen/codehpp.c
-    src/codegen/codecpp.c
-    src/codegen/codeproto.c
+	src/codegen/codepy.c
+	src/codegen/codecs.c
+	src/codegen/codehpp.c
+	src/codegen/codecpp.c
+	src/codegen/codeproto.c
 )
 set(compiler_c
 	src/lex.yy.c
