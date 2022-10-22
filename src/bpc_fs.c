@@ -33,8 +33,8 @@ FILE* bpcfs_fopen_glibfs(const gchar* glibfs_filepath, bool is_open) {
 }
 
 // Reference:
-// https://zh.cppreference.com/w/cpp/filesystem/path
-// todo: boost document url
+// https://en.cppreference.com/w/cpp/filesystem/path
+// https://github.com/boostorg/filesystem/blob/9613ccfa4a2c47bbc7059bf61dd52aec11e53893/doc/reference.html
 typedef struct _BPCFS_PATH {
 	gchar* root_name;
 	bool root_directory;
@@ -63,18 +63,21 @@ typedef struct _BPCFS_PATH {
 #define _bpcfs_is_letter(c) ((c) >= 'A' && (c) <= 'Z') || \
 ((c >= 'a' && (c) <= 'z'))
 
-// Ref: https://github.com/boostorg/filesystem/blob/9613ccfa4a2c47bbc7059bf61dd52aec11e53893/src/path.cpp#L78
+// References:
+// https://github.com/boostorg/filesystem/blob/9613ccfa4a2c47bbc7059bf61dd52aec11e53893/src/path.cpp#L78
 // https://googleprojectzero.blogspot.com/2016/02/the-definitive-guide-on-win32-to-nt.html
-// Device names are:
-//
-// - PRN
-// - AUX
-// - NUL
-// - CON
-// - LPT[1-9]
-// - COM[1-9]
-// - CONIN$
-// - CONOUT$
+/*
+ Device names are:
+
+ - PRN
+ - AUX
+ - NUL
+ - CON
+ - LPT[1-9]
+ - COM[1-9]
+ - CONIN$
+ - CONOUT$
+*/
 #define _bpcfs_is_device_char(c) (_bpcfs_is_letter(c) || \
 ((c) >= '0' && (c) <= '9') || \
 (c) == L'$')
@@ -97,15 +100,16 @@ void _bpcfs_destructor_path(BPCFS_PATH* data) {
 	if (data == NULL) return;
 	g_free(data->root_name);
 	g_ptr_array_free(data->filenames, true);
+	g_free(data);
 }
 
 // Ref: https://github.com/boostorg/filesystem/blob/9613ccfa4a2c47bbc7059bf61dd52aec11e53893/src/path.cpp#L114
 bool _bpcfs_find_separator(const gchar* in_u8path, size_t* out_pos) {
 	*out_pos = 0u;
-	
+
 	const char* sep = (const char*)strchr(in_u8path, BPCFS_SEPARATOR);
 #ifdef G_OS_WIN32
-	const char* winsep (const char*)strchr(in_u8path, BPCFS_PREFERRED_SEPARATOR);
+	const char* winsep = (const char*)strchr(in_u8path, BPCFS_PREFERRED_SEPARATOR);
 	if (winsep != NULL) {
 		if (sep == NULL) {
 			sep = winsep;
@@ -174,7 +178,7 @@ size_t _bpcfs_find_root_directory_start(const gchar* in_u8path, size_t size) {
 	if ((size - pos) >= 2 && _bpcfs_is_letter(in_u8path[pos])) {
 		size_t i;
 		for (i = pos + 1; i < size; ++i) {
-			if (!_bpcfs_is_device_name_char(in_u8path[i])) {
+			if (!_bpcfs_is_device_char(in_u8path[i])) {
 				if (in_u8path[i] == BPCFS_COLON) {
 					return pos + 1;
 				}
@@ -197,27 +201,27 @@ find_next_separator:
 
 BPCFS_PATH* _bpcfs_split_path(const gchar* u8path) {
 	BPCFS_PATH* path = _bpcfs_constructor_path();
-	
+
 	// fallback to empty path to ensure return value validation
 	if (u8path == NULL) {
 		u8path = BPCFS_EMPTY_PATH;
 	}
 	size_t u8path_len = strlen(u8path);
-	
+
 	// get root name
 	size_t root_name_len = _bpcfs_find_root_directory_start(u8path, u8path_len);
 	path->root_name = g_strndup(u8path, root_name_len);
-	
+
 	// get root directory
 	const gchar* path_cursor = u8path + root_name_len;
 	if ((path->root_directory = _bpcfs_is_directory_separator(u8path[root_name_len]))) {
 		++path_cursor;
 	}
-	
+
 	// get file names
-	if (! BPCFS_STR_IS_EMPTY(path_cursor)) {
+	if (!BPCFS_STR_IS_EMPTY(path_cursor)) {
 		size_t sppos = 0u;
-		while(_bpcfs_find_separator(path_cursor, &sppos)) {
+		while (_bpcfs_find_separator(path_cursor, &sppos)) {
 			// skip successive slash
 			if (sppos != 0u) {
 				g_ptr_array_add(path->filenames, g_strndup(path_cursor, sppos));
@@ -227,13 +231,13 @@ BPCFS_PATH* _bpcfs_split_path(const gchar* u8path) {
 		// process tail file name
 		g_ptr_array_add(path->filenames, g_strdup(path_cursor));
 	}
-	
+
 	return path;
 }
 
 gchar* _bpcfs_join_path(BPCFS_PATH* path) {
 	if (path == NULL) return g_strdup(BPCFS_EMPTY_PATH);
-	
+
 	// prealloc some space
 	GString* url = g_string_sized_new(BPCFS_COMMON_PATH);
 	// build root name and directory
@@ -243,7 +247,7 @@ gchar* _bpcfs_join_path(BPCFS_PATH* path) {
 	if (path->root_directory) {
 		g_string_append_c(url, BPCFS_PREFERRED_SEPARATOR);
 	}
-	
+
 	// build filename
 	guint c = 0u, arrmax = path->filenames->len;
 	for (c = 0u; c < arrmax; ++c) {
@@ -251,13 +255,14 @@ gchar* _bpcfs_join_path(BPCFS_PATH* path) {
 		gchar* data = BPCFS_PTRARR_PICK(path->filenames, c);
 		// build slash and file name
 		if (c != 0u) {
-			g_string_append_c(url, BPCFS_PREFERRED_SEPARATOR);
+			// just only in this project, we use separator directly, do not use preferred separator.
+			g_string_append_c(url, BPCFS_SEPARATOR/*BPCFS_PREFERRED_SEPARATOR*/);
 		}
 		if (data != NULL) {
 			g_string_append(url, data);
 		}
 	}
-	
+
 	return g_string_free(url, false);
 }
 
@@ -274,7 +279,7 @@ gchar* bpcfs_replace_extension(const gchar* u8path, const gchar* u8ext) {
 		g_ptr_array_steal_index(path->filenames, path->filenames->len - 1u));
 	GString* newname = g_string_new(oldname);
 	size_t namelen = newname->len;
-	
+
 	// get dot
 	size_t ext_size = 0u;
 	if (oldname != NULL) {
@@ -285,22 +290,22 @@ gchar* bpcfs_replace_extension(const gchar* u8path, const gchar* u8ext) {
 			ext_size = (dotpos == NULL ? 0u : namelen - (dotpos - oldname));
 		}
 	}
-	
+
 	// erase
 	g_string_truncate(newname, namelen - ext_size);
-	
+
 	// write ext
-	if (! BPCFS_STR_IS_EMPTY(u8ext)) {
+	if (!BPCFS_STR_IS_EMPTY(u8ext)) {
 		if (u8ext[0] != BPCFS_DOT) {
 			g_string_append_c(newname, BPCFS_DOT);
 		}
 		g_string_append(newname, u8ext);
 	}
-	
+
 	// free old one, append new one
 	g_free(oldname);
 	g_ptr_array_add(path->filenames, g_string_free(newname, false));
-	
+
 	// join path and free intermediate struct
 	gchar* result = _bpcfs_join_path(path);
 	_bpcfs_destructor_path(path);
@@ -315,8 +320,8 @@ gchar* bpcfs_lexically_relative(const gchar* u8this, const gchar* u8base) {
 	if (u8this == NULL) u8this = BPCFS_EMPTY_PATH;
 	if (u8base == NULL) u8base = BPCFS_EMPTY_PATH;
 
-	BPCFS_PATH *thispath = NULL, *basepath = NULL;
-	BPCFS_PATH *relpath = NULL;
+	BPCFS_PATH* thispath = NULL, * basepath = NULL;
+	BPCFS_PATH* relpath = NULL;
 #define FAKE_DEFER _bpcfs_destructor_path(thispath);\
 _bpcfs_destructor_path(basepath);\
 _bpcfs_destructor_path(relpath);
@@ -334,8 +339,8 @@ _bpcfs_destructor_path(relpath);
 	// mismatch
 	guint thislen = thispath->filenames->len, baselen = basepath->filenames->len;
 	guint thiscur = 0u, basecur = 0u;
-	for (;thiscur < thislen && basecur < baselen && 
-			g_str_equal(BPCFS_PTRARR_PICK(thispath->filenames, thiscur), BPCFS_PTRARR_PICK(basepath->filenames, basecur));) {
+	for (; thiscur < thislen && basecur < baselen &&
+		g_str_equal(BPCFS_PTRARR_PICK(thispath->filenames, thiscur), BPCFS_PTRARR_PICK(basepath->filenames, basecur));) {
 		++thiscur;
 		++basecur;
 	}
@@ -349,20 +354,20 @@ _bpcfs_destructor_path(relpath);
 		FAKE_DEFER;
 		return g_strdup(BPCFS_DOT_PATH);
 	}
-	
+
 	// caclulate n
 	gint n = 0;
 	guint ncur = basecur;
-	for(; ncur < baselen; ++ncur) {
+	for (; ncur < baselen; ++ncur) {
 		if (g_str_equal(BPCFS_PTRARR_PICK(basepath->filenames, ncur), BPCFS_DOT_DOT_PATH)) {
 			--n;
 		} else if (!g_str_equal(BPCFS_PTRARR_PICK(basepath->filenames, ncur), BPCFS_DOT_PATH) &&
-				! BPCFS_STR_IS_EMPTY(BPCFS_PTRARR_PICK(basepath->filenames, ncur))) {
+			!BPCFS_STR_IS_EMPTY(BPCFS_PTRARR_PICK(basepath->filenames, ncur))) {
 			++n;
 		}
 	}
 	// considering n
-	if (n <0) {
+	if (n < 0) {
 		FAKE_DEFER;
 		return g_strdup(BPCFS_EMPTY_PATH);
 	}
@@ -370,20 +375,20 @@ _bpcfs_destructor_path(relpath);
 		FAKE_DEFER;
 		return g_strdup(BPCFS_DOT_PATH);
 	}
-	
+
 	// construct new one
 	// relative path do not need root path
 	relpath = _bpcfs_constructor_path();
 	relpath->root_name = g_strdup(BPCFS_EMPTY_PATH);
 	relpath->root_directory = false;
 	// apply n times dot dot path
-	while(n-- > 0) {
+	while (n-- > 0) {
 		g_ptr_array_add(relpath->filenames, g_strdup(BPCFS_DOT_DOT_PATH));
 	}
-	for(; thiscur < thislen; ++thiscur) {
+	for (; thiscur < thislen; ++thiscur) {
 		g_ptr_array_add(relpath->filenames, g_strdup(BPCFS_PTRARR_PICK(thispath->filenames, thiscur)));
 	}
-	
+
 	// output data
 	gchar* u8rel = _bpcfs_join_path(relpath);
 	FAKE_DEFER;

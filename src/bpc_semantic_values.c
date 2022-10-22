@@ -374,7 +374,7 @@ bool bpcsmtv_get_offset_number(BPCSMTV_COMPOUND_NUMBER* num, uint32_t* outnum) {
 	if (!num->success_uint) return false;
 	if (num->num_uint > UINT32_MAX) return false;
 
-	if (outnum != NULL) *outnum = (uint32_t)outnum;
+	if (outnum != NULL) *outnum = (uint32_t)(num->num_uint);
 	return true;
 }
 
