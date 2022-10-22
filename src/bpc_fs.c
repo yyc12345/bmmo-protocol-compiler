@@ -215,17 +215,19 @@ BPCFS_PATH* _bpcfs_split_path(const gchar* u8path) {
 	}
 	
 	// get file names
-	size_t sppos = 0u;
-	while(_bpcfs_find_separator(path_cursor, &sppos)) {
-		// skip successive slash
-		if (sppos != 0u) {
-			g_ptr_array_add(path->filenames, g_strndup(path_cursor, sppos));
+	if (! BPCFS_STR_IS_EMPTY(path_cursor)) {
+		size_t sppos = 0u;
+		while(_bpcfs_find_separator(path_cursor, &sppos)) {
+			// skip successive slash
+			if (sppos != 0u) {
+				g_ptr_array_add(path->filenames, g_strndup(path_cursor, sppos));
+			}
+			path_cursor += sppos + 1;
 		}
-		path_cursor += sppos + 1;
+		// process tail file name
+		g_ptr_array_add(path->filenames, g_strdup(path_cursor));
 	}
-	// process tail file name
-	g_ptr_array_add(path->filenames, g_strdup(path_cursor));
-
+	
 	return path;
 }
 
@@ -274,20 +276,21 @@ gchar* bpcfs_replace_extension(const gchar* u8path, const gchar* u8ext) {
 	size_t namelen = newname->len;
 	
 	// get dot
-	size_t ext_size = 0;
+	size_t ext_size = 0u;
 	if (oldname != NULL) {
 		if (g_str_equal(oldname, BPCFS_DOT_PATH) || g_str_equal(oldname, BPCFS_DOT_DOT_PATH)) {
 			ext_size = 0u;
+		} else {
+			char* dotpos = strrchr(oldname, BPCFS_DOT);
+			ext_size = (dotpos == NULL ? 0u : namelen - (dotpos - oldname));
 		}
-		char* dotpos = strrchr(oldname, BPCFS_DOT);
-		ext_size = namelen - (dotpos == NULL ? 0u : dotpos - oldname);
 	}
 	
 	// erase
 	g_string_truncate(newname, namelen - ext_size);
 	
 	// write ext
-	if (BPCFS_STR_IS_EMPTY(u8ext)) {
+	if (! BPCFS_STR_IS_EMPTY(u8ext)) {
 		if (u8ext[0] != BPCFS_DOT) {
 			g_string_append_c(newname, BPCFS_DOT);
 		}
@@ -336,8 +339,12 @@ _bpcfs_destructor_path(relpath);
 		++thiscur;
 		++basecur;
 	}
-	
-	// full match
+	// mismatch test
+	// if it is fully mismatched, only absolute path can be saved.
+	if (thiscur == 0u && basecur == 0u && !thispath->root_directory) {
+		FAKE_DEFER;
+		return g_strdup(BPCFS_EMPTY_PATH);
+	}
 	if (thiscur == thislen && basecur == baselen) {
 		FAKE_DEFER;
 		return g_strdup(BPCFS_DOT_PATH);
@@ -349,8 +356,8 @@ _bpcfs_destructor_path(relpath);
 	for(; ncur < baselen; ++ncur) {
 		if (g_str_equal(BPCFS_PTRARR_PICK(basepath->filenames, ncur), BPCFS_DOT_DOT_PATH)) {
 			--n;
-		} else if (g_str_equal(BPCFS_PTRARR_PICK(basepath->filenames, ncur), BPCFS_DOT_PATH) &&
-				BPCFS_STR_IS_EMPTY(BPCFS_PTRARR_PICK(basepath->filenames, ncur))) {
+		} else if (!g_str_equal(BPCFS_PTRARR_PICK(basepath->filenames, ncur), BPCFS_DOT_PATH) &&
+				! BPCFS_STR_IS_EMPTY(BPCFS_PTRARR_PICK(basepath->filenames, ncur))) {
 			++n;
 		}
 	}
@@ -365,15 +372,16 @@ _bpcfs_destructor_path(relpath);
 	}
 	
 	// construct new one
+	// relative path do not need root path
 	relpath = _bpcfs_constructor_path();
-	relpath->root_name = g_strdup(thispath->root_name);
-	relpath->root_directory = thispath->root_directory;
+	relpath->root_name = g_strdup(BPCFS_EMPTY_PATH);
+	relpath->root_directory = false;
 	// apply n times dot dot path
 	while(n-- > 0) {
 		g_ptr_array_add(relpath->filenames, g_strdup(BPCFS_DOT_DOT_PATH));
 	}
 	for(; thiscur < thislen; ++thiscur) {
-		g_ptr_array_add(relpath->filenames, g_strdup(BPCFS_PTRARR_PICK(basepath->filenames, thiscur)));
+		g_ptr_array_add(relpath->filenames, g_strdup(BPCFS_PTRARR_PICK(thispath->filenames, thiscur)));
 	}
 	
 	// output data
