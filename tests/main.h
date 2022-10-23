@@ -18,3 +18,4 @@ g_string_free(entry_name, true);\
 
 void bpctest_semantic_values();
 void bpctest_fs();
+void bpctest_cmd();

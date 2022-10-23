@@ -192,6 +192,7 @@
     <ClCompile Include="src\codegen\codeproto.c" />
     <ClCompile Include="src\codegen\codepy.c" />
     <ClCompile Include="tests\main.c" />
+    <ClCompile Include="tests\tests_cmd.c" />
     <ClCompile Include="tests\tests_fs.c" />
     <ClCompile Include="tests\tests_semantic_values.c" />
   </ItemGroup>

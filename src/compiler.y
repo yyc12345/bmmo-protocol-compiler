@@ -132,7 +132,10 @@ bpc_version bpc_namespace bpc_protocol_body
 	$$->protocol_body = $bpc_protocol_body;
 
 	// output code
-	bpcgen_write_document($$);
+	// only generate code when no thrown error
+	if (!bpcerr_get_errblocking()) {
+		bpcgen_write_document($$);
+	}
 
 	// free doc
 	// WARNING: because bpc_document is a start symbol
@@ -141,7 +144,8 @@ bpc_version bpc_namespace bpc_protocol_body
 	// so we do not need call it in there now.
 	//bpcsmtv_destructor_document($$);
 
-	// reset all registery
+	// reset all registery and blocking
+	bpcerr_reset_errblocking()
 	bpcsmtv_registery_identifier_reset();
 	bpcsmtv_registery_variables_reset();
 };
@@ -282,14 +286,14 @@ BPC_RIGHT_BRACKET
 		YYERROR;
 	}
 	// check body limit
-	if (!bpcsmtv_check_enum_body_limit($bpc_enum_body, $sdd_enum_type)) {
+	// distribute value and check value legality at the same time.
+	if (!bpcsmtv_arrange_enum_body_value($bpc_enum_body, $sdd_enum_type)) {
 		yyerror_format("enum value overflow: %s", $sdd_enum_name);
 		YYERROR;
 	}
 
-	// set enum member value sign type.
-	bpcsmtv_setup_enum_body_value_sign($bpc_enum_body, $sdd_enum_type);
 	// set data
+	// enum body has been processed, so we do not process it again.
 	$$ = bpcsmtv_constructor_enum();
 	$$->enum_name = $sdd_enum_name;
 	$$->enum_basic_type = $sdd_enum_type;
@@ -299,13 +303,11 @@ BPC_RIGHT_BRACKET
 bpc_enum_body:
 bpc_enum_member
 {
-	bpcsmtv_ensure_enum_member_value(NULL, $bpc_enum_member);
 	$$ = g_slist_append(NULL, $bpc_enum_member);
 }
 |
 bpc_enum_body[sdd_parent_enum_body] BPC_COMMA bpc_enum_member
 {
-	bpcsmtv_ensure_enum_member_value($sdd_parent_enum_body, $bpc_enum_member);
 	$$ = g_slist_append($sdd_parent_enum_body, $bpc_enum_member);
 };
 
@@ -321,7 +323,6 @@ BPC_TOKEN_NAME[sdd_name]
 
 	$$ = bpcsmtv_constructor_enum_member();
 	$$->enum_member_name = $sdd_name;
-	// assign number
 	bpcsmtv_assign_enum_member_value($$, NULL);
 }
 |
@@ -336,7 +337,6 @@ BPC_TOKEN_NAME[sdd_name] BPC_EQUAL BPC_TOKEN_NUM[sdd_spec_num]
 
 	$$ = bpcsmtv_constructor_enum_member();
 	$$->enum_member_name = $sdd_name;
-	// assign number
 	bpcsmtv_assign_enum_member_value($$, &($sdd_spec_num));
 };
 
@@ -635,17 +635,19 @@ void yyerror_format(const char* format, ...) {
 }
 
 int run_compiler(BPCCMD_PARSED_ARGS* bpc_args) {
-	// setup parameters
+	// setup stream
 	yyout = stdout;
 	yyin = bpc_args->input_file;
 	if (yyin == NULL) {
 		fprintf(yyout, "[Error] Fail to open src file.\n");
 		return 1;
 	}
+
 	// init code file
 	bpcgen_init_code_file(bpc_args);
 
 	// do parse
+	bpcerr_reset_errblocking();
 	bpcsmtv_registery_identifier_reset();
 	bpcsmtv_registery_variables_reset();
 	int result = yyparse();

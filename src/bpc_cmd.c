@@ -85,38 +85,56 @@ void bpccmd_free_parsed_args(BPCCMD_PARSED_ARGS* struct_args) {
 	g_free(struct_args);
 }
 
-gchar* _bpccmd_get_cpp_relative_header() {
+gchar* _bpccmd_get_cpp_relative_header(const gchar* glibfs_cpp, const gchar* glibfs_hpp) {
 	// no cpp output, write a shit for placeholder
-	if (opt_cpp_source == NULL) {
+	if (glibfs_cpp == NULL) {
 		return NULL;
 	}
 
-	GString* strl = g_string_new(NULL);
-	if (opt_cpp_header == NULL) {
+	if (glibfs_hpp == NULL) {
 		// use self name as references header
-		gchar* cppname = g_path_get_basename(opt_cpp_source);
+		gchar* cppname = g_path_get_basename(glibfs_cpp);
 		gchar* u8_cppname = bpcenc_glibfs_to_utf8(cppname);
 		gchar* u8_hppname = bpcfs_replace_extension(u8_cppname, ".hpp");
 
-		g_string_append(strl, u8_hppname);
 		g_free(cppname);
 		g_free(u8_cppname);
-		g_free(u8_hppname);
-		return g_string_free(strl, false);
+		return u8_hppname;
 	} else {
 		// use header name as references header
 		// user need to assign find path for this header
-		gchar* u8_hppname = bpcenc_glibfs_to_utf8(opt_cpp_header);
-		gchar* cppfolder = g_path_get_dirname(opt_cpp_source);
-		gchar* u8_cppfolder = bpcenc_glibfs_to_utf8(cppfolder);
-		gchar* relative_hpp = bpcfs_lexically_relative(u8_hppname, u8_cppfolder);
 
-		g_string_append(strl, relative_hpp);
-		g_free(u8_hppname);
+		// get hpp file path and cpp located folder path
+		gchar* cppfolder = g_path_get_dirname(glibfs_cpp);
+
+		// convert them into absolute path
+		// only construct with work directory(wd) when it is not absolute path
+		gchar* wd = g_get_current_dir();
+		gchar* abscppfolder = g_path_is_absolute(cppfolder) ? g_build_filename(cppfolder, NULL) : g_build_filename(wd, cppfolder, NULL);
+		gchar* abshpp = g_path_is_absolute(glibfs_hpp) ? g_build_filename(glibfs_hpp, NULL) : g_build_filename(wd, glibfs_hpp, NULL);
+
+		// calc relative
+		gchar* u8_abscppfolder = bpcenc_glibfs_to_utf8(abscppfolder);
+		gchar* u8_abshpp = bpcenc_glibfs_to_utf8(abshpp);
+		gchar* relative_hpp = bpcfs_lexically_relative(u8_abshpp, u8_abscppfolder);
+
+		// get answer and free data
+		gchar* result = NULL;
+		if (relative_hpp[0] == '\0') {
+			// empty, use absolute hpp path
+			result = u8_abshpp;
+			g_free(relative_hpp);
+		} else {
+			result = relative_hpp;
+			g_free(u8_abshpp);
+		}
 		g_free(cppfolder);
-		g_free(u8_cppfolder);
-		g_free(relative_hpp);
-		return g_string_free(strl, false);
+		g_free(wd);
+		g_free(abscppfolder);
+		g_free(abshpp);
+		g_free(u8_abscppfolder);
+
+		return result;
 	}
 }
 
@@ -130,7 +148,7 @@ BPCCMD_PARSED_ARGS* _bpccmd_alloc_parsed_args() {
 	st->out_cpp_source_file = bpcfs_fopen_glibfs(opt_cpp_source, false);
 	st->out_proto_file = bpcfs_fopen_glibfs(opt_proto, false);
 
-	st->ref_cpp_relative_hdr = _bpccmd_get_cpp_relative_header();
+	st->ref_cpp_relative_hdr = _bpccmd_get_cpp_relative_header(opt_cpp_source, opt_cpp_header);
 
 	return st;
 }

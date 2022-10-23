@@ -10,6 +10,8 @@ int main(int argc, char* argv[]) {
     bpctest_semantic_values();
     // fs
     bpctest_fs();
+    // cmd
+    bpctest_cmd();
 
     return g_test_run();
 }

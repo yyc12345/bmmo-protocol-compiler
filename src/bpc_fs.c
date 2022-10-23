@@ -89,14 +89,14 @@ typedef struct _BPCFS_PATH {
 #define _bpcfs_is_directory_separator(c) ((c) == BPCFS_SEPARATOR)
 #endif
 
-BPCFS_PATH* _bpcfs_constructor_path() {
+static BPCFS_PATH* _bpcfs_constructor_path() {
 	BPCFS_PATH* data = g_new0(BPCFS_PATH, 1);
 	data->root_name = NULL;
 	data->root_directory = false;
 	data->filenames = g_ptr_array_new_with_free_func(g_free);
 	return data;
 }
-void _bpcfs_destructor_path(BPCFS_PATH* data) {
+static void _bpcfs_destructor_path(BPCFS_PATH* data) {
 	if (data == NULL) return;
 	g_free(data->root_name);
 	g_ptr_array_free(data->filenames, true);
@@ -104,7 +104,7 @@ void _bpcfs_destructor_path(BPCFS_PATH* data) {
 }
 
 // Ref: https://github.com/boostorg/filesystem/blob/9613ccfa4a2c47bbc7059bf61dd52aec11e53893/src/path.cpp#L114
-bool _bpcfs_find_separator(const gchar* in_u8path, size_t* out_pos) {
+static bool _bpcfs_find_separator(const gchar* in_u8path, size_t* out_pos) {
 	*out_pos = 0u;
 
 	const char* sep = (const char*)strchr(in_u8path, BPCFS_SEPARATOR);
@@ -125,7 +125,7 @@ bool _bpcfs_find_separator(const gchar* in_u8path, size_t* out_pos) {
 }
 
 // Ref: https://github.com/boostorg/filesystem/blob/9613ccfa4a2c47bbc7059bf61dd52aec11e53893/src/path.cpp#L831
-size_t _bpcfs_find_root_directory_start(const gchar* in_u8path, size_t size) {
+static size_t _bpcfs_find_root_directory_start(const gchar* in_u8path, size_t size) {
 	if (size == 0)
 		return 0;
 
@@ -199,7 +199,7 @@ find_next_separator:
 	return pos;
 }
 
-BPCFS_PATH* _bpcfs_split_path(const gchar* u8path) {
+static BPCFS_PATH* _bpcfs_split_path(const gchar* u8path) {
 	BPCFS_PATH* path = _bpcfs_constructor_path();
 
 	// fallback to empty path to ensure return value validation
@@ -235,7 +235,7 @@ BPCFS_PATH* _bpcfs_split_path(const gchar* u8path) {
 	return path;
 }
 
-gchar* _bpcfs_join_path(BPCFS_PATH* path) {
+static gchar* _bpcfs_join_path(BPCFS_PATH* path) {
 	if (path == NULL) return g_strdup(BPCFS_EMPTY_PATH);
 
 	// prealloc some space
@@ -314,7 +314,7 @@ gchar* bpcfs_replace_extension(const gchar* u8path, const gchar* u8ext) {
 
 // Reference: 
 // https://github.com/boostorg/filesystem/blob/9613ccfa4a2c47bbc7059bf61dd52aec11e53893/src/path.cpp#L551
-// https://stackoverflow.com/questions/27228743/c-function-to-calculate-relative-path
+// https://en.cppreference.com/w/cpp/filesystem/path/lexically_normal
 gchar* bpcfs_lexically_relative(const gchar* u8this, const gchar* u8base) {
 	// fallback to empty
 	if (u8this == NULL) u8this = BPCFS_EMPTY_PATH;

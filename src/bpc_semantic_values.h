@@ -126,22 +126,27 @@ typedef struct _BPCSMTV_ENUM_MEMBER {
 	/// </summary>
 	char* enum_member_name;
 	/// <summary>
-	/// whether current enum entry have user specificed value.
+	/// indicate the sign of `distributed_value`, this bool will determine 
+	/// the union member which will be read in `distributed_value`.
+	/// true when distributed value is unsigned int.
 	/// </summary>
-	bool have_specific_value;
+	bool distributed_value_is_uint;
 	/// <summary>
-	/// indicate the sign of `enum_basic_type`, this bool will determine 
-	/// the union member which will be read in `enum_basic_type`.
-	/// true when specified value is unsigned int.
+	/// stored confirmed and arranged enum member value
 	/// </summary>
-	bool specified_value_is_uint;
+	union {
+		uint64_t value_uint;
+		int64_t value_int;
+	}distributed_value;
+
+	/// <summary>
+	/// to indicate whether user has specified a value for this member
+	/// </summary>
+	bool has_specified_value;
 	/// <summary>
 	/// store user specificed value if it has.
 	/// </summary>
-	struct {
-		uint64_t value_uint;
-		int64_t value_int;
-	}specified_value;
+	BPCSMTV_COMPOUND_NUMBER specified_value;
 }BPCSMTV_ENUM_MEMBER;
 
 typedef struct _BPCSMTV_ALIAS {
@@ -263,6 +268,12 @@ bool bpcsmtv_parse_number(const char* strl, size_t len, size_t start_margin, siz
 
 // ==================== Constructor/Deconstructor Functions ====================
 
+/*
+- constructor: create a new instance.
+- destructor: dispose a existed instance.
+- duplicator: return a new allocated instance according to a existed instance.
+*/
+
 BPCSMTV_VARIABLE_ARRAY* bpcsmtv_constructor_variable_array();
 BPCSMTV_VARIABLE_ARRAY* bpcsmtv_duplicator_variable_array(BPCSMTV_VARIABLE_ARRAY* data);
 void bpcsmtv_destructor_variable_array(BPCSMTV_VARIABLE_ARRAY* data);
@@ -343,11 +354,15 @@ void bpcsmtv_setup_field_layout(GSList* variables, BPCSMTV_STRUCT_MODIFIER* modi
 void bpcsmtv_setup_reliability(BPCSMTV_STRUCT_MODIFIER* modifier);
 void bpcsmtv_analyse_underlaying_type(BPCSMTV_VARIABLE_TYPE* variables);
 /// <summary>
-/// 
+/// assign compound number to enum member
 /// </summary>
 /// <param name="member"></param>
-/// <param name="number">a pointer to compound number struct, set NULL to indicate no specified value.</param>
+/// <param name="number">assigned compound number. if it is NULL, assign it as no-specified value.</param>
 void bpcsmtv_assign_enum_member_value(BPCSMTV_ENUM_MEMBER* member, BPCSMTV_COMPOUND_NUMBER* number);
-void bpcsmtv_ensure_enum_member_value(GSList* parents, BPCSMTV_ENUM_MEMBER* member);
-void bpcsmtv_setup_enum_body_value_sign(GSList* enum_body, BPCSMTV_BASIC_TYPE bt);
-bool bpcsmtv_check_enum_body_limit(GSList* enum_body, BPCSMTV_BASIC_TYPE bt);
+/// <summary>
+/// arrange enum body member value and check legality at the same time
+/// </summary>
+/// <param name="enum_body"></param>
+/// <param name="bt"></param>
+/// <returns></returns>
+bool bpcsmtv_arrange_enum_body_value(GSList* enum_body, BPCSMTV_BASIC_TYPE bt);

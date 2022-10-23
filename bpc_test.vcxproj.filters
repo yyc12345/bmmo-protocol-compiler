@@ -66,6 +66,9 @@
     <ClCompile Include="tests\tests_semantic_values.c">
       <Filter>Sources\tests</Filter>
     </ClCompile>
+    <ClCompile Include="tests\tests_cmd.c">
+      <Filter>Sources\tests</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\bpc_semantic_values.h">

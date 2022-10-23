@@ -6,37 +6,8 @@
 #include <Windows.h>
 #endif
 
-void bpcerr_info(BPCERR_ERROR_SOURCE src, const char* format, ...) {
-	va_list ap;
-	va_start(ap, format);
-	_bpcerr_printf(src, BPCERR_ERROR_TYPE_INFO, format, ap);
-	va_end(ap);
-}
 
-void bpcerr_warning(BPCERR_ERROR_SOURCE src, const char* format, ...) {
-	va_list ap;
-	va_start(ap, format);
-	_bpcerr_printf(src, BPCERR_ERROR_TYPE_WARNING, format, ap);
-	va_end(ap);
-}
-
-void bpcerr_error(BPCERR_ERROR_SOURCE src, const char* format, ...) {
-	va_list ap;
-	va_start(ap, format);
-	_bpcerr_printf(src, BPCERR_ERROR_TYPE_ERROR, format, ap);
-	va_end(ap);
-}
-
-void bpcerr_panic(BPCERR_ERROR_SOURCE src, const char* format, ...) {
-	va_list ap;
-	va_start(ap, format);
-	_bpcerr_printf(src, BPCERR_ERROR_TYPE_ERROR, format, ap);
-	va_end(ap);
-
-	_bpcerr_nuke_process(1);
-}
-
-void _bpcerr_printf(BPCERR_ERROR_SOURCE src, BPCERR_ERROR_TYPE err_type, const char* format, va_list ap) {
+static void _bpcerr_printf(BPCERR_ERROR_SOURCE src, BPCERR_ERROR_TYPE err_type, const char* format, va_list ap) {
 	GString* disp = g_string_new(NULL);
 	g_string_vprintf(disp, format, ap);
 
@@ -79,11 +50,56 @@ void _bpcerr_printf(BPCERR_ERROR_SOURCE src, BPCERR_ERROR_TYPE err_type, const c
 	g_string_free(disp, true);
 }
 
-void _bpcerr_nuke_process(int rc) {
+static void _bpcerr_nuke_process(int rc) {
 #ifdef G_OS_WIN32
 	ExitProcess(rc);
 #else
 	(void)rc; // Unused formal parameter
 	kill(getpid(), SIGKILL);
 #endif
+}
+
+
+static bool global_err_blocking = false;
+void bpcerr_reset_errblocking() {
+	global_err_blocking = false;
+}
+void bpcerr_set_errblocking() {
+	global_err_blocking = true;
+}
+bool bpcerr_get_errblocking() {
+	return global_err_blocking;
+}
+
+void bpcerr_info(BPCERR_ERROR_SOURCE src, const char* format, ...) {
+	va_list ap;
+	va_start(ap, format);
+	_bpcerr_printf(src, BPCERR_ERROR_TYPE_INFO, format, ap);
+	va_end(ap);
+}
+
+void bpcerr_warning(BPCERR_ERROR_SOURCE src, const char* format, ...) {
+	va_list ap;
+	va_start(ap, format);
+	_bpcerr_printf(src, BPCERR_ERROR_TYPE_WARNING, format, ap);
+	va_end(ap);
+}
+
+void bpcerr_error(BPCERR_ERROR_SOURCE src, const char* format, ...) {
+	va_list ap;
+	va_start(ap, format);
+	_bpcerr_printf(src, BPCERR_ERROR_TYPE_ERROR, format, ap);
+	va_end(ap);
+
+	bpcerr_set_errblocking();
+}
+
+void bpcerr_panic(BPCERR_ERROR_SOURCE src, const char* format, ...) {
+	va_list ap;
+	va_start(ap, format);
+	_bpcerr_printf(src, BPCERR_ERROR_TYPE_ERROR, format, ap);
+	va_end(ap);
+
+	bpcerr_set_errblocking();
+	_bpcerr_nuke_process(1);
 }

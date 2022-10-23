@@ -507,73 +507,127 @@ void bpcsmtv_analyse_underlaying_type(BPCSMTV_VARIABLE_TYPE* variables) {
 		}
 	}
 }
-
+//
 void bpcsmtv_assign_enum_member_value(BPCSMTV_ENUM_MEMBER* member, BPCSMTV_COMPOUND_NUMBER* number) {
 	if (number == NULL) {
-		member->have_specific_value = false;
+		member->has_specified_value = false;
 	} else {
-		member->have_specific_value = true;
+		member->has_specified_value = true;
 		// copy data when data is valid
-		member->specified_value.value_uint = number->success_uint ? number->num_uint : UINT64_C(0);
-		member->specified_value.value_int = number->success_int ? number->num_int : INT64_C(0);
+		memcpy(&(member->specified_value), number, sizeof(BPCSMTV_COMPOUND_NUMBER));
 	}
 }
+//
+//void bpcsmtv_ensure_enum_member_value(GSList* parents, BPCSMTV_ENUM_MEMBER* member) {
+//	// convert all non-spec value to specified value
+//	if (!member->have_specific_value) {
+//		// try distribute one
+//		if (parents == NULL) {
+//			// no parents
+//			member->specified_value.value_uint = UINT64_C(0);
+//			member->specified_value.value_int = INT64_C(0);
+//		} else {
+//			member->specified_value.value_uint = ((BPCSMTV_ENUM_MEMBER*)parents->data)->specified_value.value_uint + UINT64_C(1);
+//			member->specified_value.value_int = ((BPCSMTV_ENUM_MEMBER*)parents->data)->specified_value.value_int + INT64_C(1);
+//		}
+//
+//		// sign has distributed
+//		member->have_specific_value = true;
+//	}
+//
+//}
+//
+//void bpcsmtv_setup_enum_body_value_sign(GSList* enum_body, BPCSMTV_BASIC_TYPE bt) {
+//	// check sign
+//	bool is_positive = true;
+//	switch (bt) {
+//		case BPCSMTV_BASIC_TYPE_INT64:
+//		case BPCSMTV_BASIC_TYPE_INT32:
+//		case BPCSMTV_BASIC_TYPE_INT16:
+//		case BPCSMTV_BASIC_TYPE_INT8:
+//			is_positive = false;
+//			break;
+//		case BPCSMTV_BASIC_TYPE_UINT64:
+//		case BPCSMTV_BASIC_TYPE_UINT32:
+//		case BPCSMTV_BASIC_TYPE_UINT16:
+//		case BPCSMTV_BASIC_TYPE_UINT8:
+//			is_positive = true;
+//			break;
+//		case BPCSMTV_BASIC_TYPE_FLOAT:
+//		case BPCSMTV_BASIC_TYPE_DOUBLE:
+//		case BPCSMTV_BASIC_TYPE_STRING:
+//		default:
+//			is_positive = true;
+//			break;
+//	}
+//
+//	GSList* cursor;
+//	BPCSMTV_ENUM_MEMBER* member;
+//	for (cursor = enum_body; cursor != NULL; cursor = cursor->next) {
+//		// assign spec value sign type in there
+//		member = (BPCSMTV_ENUM_MEMBER*)cursor->data;
+//		member->specified_value_is_uint = is_positive;
+//	}
+//}
+//
+//bool bpcsmtv_check_enum_body_limit(GSList* enum_body, BPCSMTV_BASIC_TYPE bt) {
+//	// check sign
+//	bool is_positive = true;
+//	size_t offset = 0u;
+//	switch (bt) {
+//		case BPCSMTV_BASIC_TYPE_INT64:
+//			++offset;
+//		case BPCSMTV_BASIC_TYPE_INT32:
+//			++offset;
+//		case BPCSMTV_BASIC_TYPE_INT16:
+//			++offset;
+//		case BPCSMTV_BASIC_TYPE_INT8:
+//			++offset;
+//			is_positive = false;
+//			break;
+//		case BPCSMTV_BASIC_TYPE_UINT64:
+//			++offset;
+//		case BPCSMTV_BASIC_TYPE_UINT32:
+//			++offset;
+//		case BPCSMTV_BASIC_TYPE_UINT16:
+//			++offset;
+//		case BPCSMTV_BASIC_TYPE_UINT8:
+//			++offset;
+//			is_positive = true;
+//			break;
+//		case BPCSMTV_BASIC_TYPE_FLOAT:
+//		case BPCSMTV_BASIC_TYPE_DOUBLE:
+//		case BPCSMTV_BASIC_TYPE_STRING:
+//		default:
+//			is_positive = true;
+//			break;
+//	}
+//	offset = offset == 0u ? 0u : offset - 1u;
+//
+//	GSList* cursor;
+//	BPCSMTV_ENUM_MEMBER* member;
+//	for (cursor = enum_body; cursor != NULL; cursor = cursor->next) {
+//		member = (BPCSMTV_ENUM_MEMBER*)cursor->data;
+//
+//		// check limit
+//		if (is_positive) {
+//			if (member->specified_value.value_uint <= uint_max_limit[offset]) {
+//				return false;
+//			}
+//		} else {
+//			if (member->specified_value.value_int >= int_max_limit[offset] ||
+//				member->specified_value.value_int <= int_min_limit[offset]) {
+//				return false;
+//			}
+//		}
+//	}
+//
+//	return true;
+//}
 
-void bpcsmtv_ensure_enum_member_value(GSList* parents, BPCSMTV_ENUM_MEMBER* member) {
-	// convert all non-spec value to specified value
-	if (!member->have_specific_value) {
-		// try distribute one
-		if (parents == NULL) {
-			// no parents
-			member->specified_value.value_uint = UINT64_C(0);
-			member->specified_value.value_int = INT64_C(0);
-		} else {
-			member->specified_value.value_uint = ((BPCSMTV_ENUM_MEMBER*)parents->data)->specified_value.value_uint + UINT64_C(1);
-			member->specified_value.value_int = ((BPCSMTV_ENUM_MEMBER*)parents->data)->specified_value.value_int + INT64_C(1);
-		}
-
-		// sign has distributed
-		member->have_specific_value = true;
-	}
-
-}
-
-void bpcsmtv_setup_enum_body_value_sign(GSList* enum_body, BPCSMTV_BASIC_TYPE bt) {
+bool bpcsmtv_arrange_enum_body_value(GSList* enum_body, BPCSMTV_BASIC_TYPE bt) {
 	// check sign
-	bool is_positive = true;
-	switch (bt) {
-		case BPCSMTV_BASIC_TYPE_INT64:
-		case BPCSMTV_BASIC_TYPE_INT32:
-		case BPCSMTV_BASIC_TYPE_INT16:
-		case BPCSMTV_BASIC_TYPE_INT8:
-			is_positive = false;
-			break;
-		case BPCSMTV_BASIC_TYPE_UINT64:
-		case BPCSMTV_BASIC_TYPE_UINT32:
-		case BPCSMTV_BASIC_TYPE_UINT16:
-		case BPCSMTV_BASIC_TYPE_UINT8:
-			is_positive = true;
-			break;
-		case BPCSMTV_BASIC_TYPE_FLOAT:
-		case BPCSMTV_BASIC_TYPE_DOUBLE:
-		case BPCSMTV_BASIC_TYPE_STRING:
-		default:
-			is_positive = true;
-			break;
-	}
-
-	GSList* cursor;
-	BPCSMTV_ENUM_MEMBER* member;
-	for (cursor = enum_body; cursor != NULL; cursor = cursor->next) {
-		// assign spec value sign type in there
-		member = (BPCSMTV_ENUM_MEMBER*)cursor->data;
-		member->specified_value_is_uint = is_positive;
-	}
-}
-
-bool bpcsmtv_check_enum_body_limit(GSList* enum_body, BPCSMTV_BASIC_TYPE bt) {
-	// check sign
-	bool is_positive = true;
+	bool is_unsigned = true;
 	size_t offset = 0u;
 	switch (bt) {
 		case BPCSMTV_BASIC_TYPE_INT64:
@@ -584,7 +638,7 @@ bool bpcsmtv_check_enum_body_limit(GSList* enum_body, BPCSMTV_BASIC_TYPE bt) {
 			++offset;
 		case BPCSMTV_BASIC_TYPE_INT8:
 			++offset;
-			is_positive = false;
+			is_unsigned = false;
 			break;
 		case BPCSMTV_BASIC_TYPE_UINT64:
 			++offset;
@@ -594,35 +648,78 @@ bool bpcsmtv_check_enum_body_limit(GSList* enum_body, BPCSMTV_BASIC_TYPE bt) {
 			++offset;
 		case BPCSMTV_BASIC_TYPE_UINT8:
 			++offset;
-			is_positive = true;
+			is_unsigned = true;
 			break;
 		case BPCSMTV_BASIC_TYPE_FLOAT:
 		case BPCSMTV_BASIC_TYPE_DOUBLE:
 		case BPCSMTV_BASIC_TYPE_STRING:
 		default:
-			is_positive = true;
+			is_unsigned = true;
 			break;
 	}
 	offset = offset == 0u ? 0u : offset - 1u;
 
 	GSList* cursor;
-	BPCSMTV_ENUM_MEMBER* member;
+	BPCSMTV_ENUM_MEMBER* member = NULL;
+	uint64_t pending_uint = UINT64_C(0);
+	int64_t pending_int = INT64_C(0);
 	for (cursor = enum_body; cursor != NULL; cursor = cursor->next) {
 		member = (BPCSMTV_ENUM_MEMBER*)cursor->data;
 
-		// check limit
-		if (is_positive) {
-			if (member->specified_value.value_uint <= uint_max_limit[offset]) {
-				return false;
+		// mark sign
+		member->distributed_value_is_uint = is_unsigned;
+		
+		// distribute number
+		if (member->has_specified_value) {
+			// analyse speficied value
+			if (is_unsigned) {
+				// fail to parse uint
+				if (!member->specified_value.success_uint) return false;
+				// value overflow
+				if (member->specified_value.num_uint > uint_max_limit[offset]) return false;
+
+				// assign
+				pending_uint = member->specified_value.num_uint;
+				member->distributed_value.value_uint = member->specified_value.num_uint;
+			} else {
+				// fail to parse int
+				if (!member->specified_value.success_int) return false;
+				// value overflow
+				if (member->specified_value.num_int > int_max_limit[offset] ||
+					member->specified_value.num_int < int_min_limit[offset]) {
+					return false;
+				}
+
+				// assign
+				pending_int = member->specified_value.num_int;
+				member->distributed_value.value_int = member->specified_value.num_int;
 			}
 		} else {
-			if (member->specified_value.value_int >= int_max_limit[offset] ||
-				member->specified_value.value_int <= int_min_limit[offset]) {
-				return false;
+			// try distribute one
+			if (is_unsigned) {
+				// if overflow, shrunk to zero
+				if (pending_uint >= uint_max_limit[offset]) {
+					pending_uint = UINT64_C(0);
+				} else {
+					++pending_uint;
+				}
+				
+				// assign
+				member->distributed_value.value_uint = pending_uint;
+			} else {
+				// if overflow, shrunk to min value
+				if (pending_int >= int_max_limit[offset]) {
+					pending_int = int_min_limit[offset];
+				} else {
+					++pending_int;
+				}
+
+				// assign
+				member->distributed_value.value_int = pending_int;
 			}
 		}
+
 	}
 
 	return true;
 }
-

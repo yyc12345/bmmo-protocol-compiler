@@ -25,6 +25,11 @@ enum int64 tests_enum_limit_int {
 	entry2 = -9223372036854775807,
 	entry3
 }
+enum int8 tests_enum_limit_int8 {
+	entry1,
+	entry2 = -128,
+	entry3
+}
 
 narrow struct tests_struct_blank {}
 narrow struct tests_struct {

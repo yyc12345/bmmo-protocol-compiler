@@ -44,6 +44,7 @@ set(tests_c
 	tests/main.c
 	tests/tests_semantic_values.c
 	tests/tests_fs.c
+	tests/tests_cmd.c
 )
 
 # add the executable
