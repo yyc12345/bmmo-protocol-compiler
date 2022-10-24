@@ -22,7 +22,7 @@ static const BPCDB_CMD_GET_RELHPP dbset_get_relhpp[] = {
 	{ "C:\\a\\test.cpp", "C:\\a\\test.hpp", "test.hpp" },
 #endif
 
-	{ "a/test.cpp", "/a/b/test.hpp", "/a/b/test.hpp" }
+	{ "a/test.cpp", "//ftp.bkt.moe/a/b/test.hpp", "//ftp.bkt.moe/a/b/test.hpp" }
 
 };
 static const size_t dblen_get_relhpp = sizeof(dbset_get_relhpp) / sizeof(BPCDB_CMD_GET_RELHPP);

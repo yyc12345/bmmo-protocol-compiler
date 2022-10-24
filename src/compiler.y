@@ -145,7 +145,7 @@ bpc_version bpc_namespace bpc_protocol_body
 	//bpcsmtv_destructor_document($$);
 
 	// reset all registery and blocking
-	bpcerr_reset_errblocking()
+	bpcerr_reset_errblocking();
 	bpcsmtv_registery_identifier_reset();
 	bpcsmtv_registery_variables_reset();
 };

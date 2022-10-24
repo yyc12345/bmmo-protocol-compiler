@@ -7,10 +7,11 @@
 /// </summary>
 static GHashTable* hashtable_variables = NULL;
 /// <summary>
-/// item is `BPCSMTV_REGISTERY_IDENTIFIER_ITEM*` of each identifier
+/// item is `BPCSMTV_PROTOCOL_BODY*` of each identifier
 /// </summary>
 static GHashTable* hashtable_identifier = NULL;
 static uint32_t msg_index_distributor = 0;
+static GHashTable* hashtable_enum_value = NULL;
 
 static const char* basic_type_showcase[] = {
 	"float", "double",
@@ -626,6 +627,16 @@ void bpcsmtv_assign_enum_member_value(BPCSMTV_ENUM_MEMBER* member, BPCSMTV_COMPO
 //}
 
 bool bpcsmtv_arrange_enum_body_value(GSList* enum_body, BPCSMTV_BASIC_TYPE bt) {
+	// prepare value duplication detector hashtable first
+	// init hashtable when necessary
+	if (hashtable_enum_value == NULL) {
+		// we use it as Set, so we only need to free key, otherwise, string will be freed twice.
+		hashtable_enum_value = g_hash_table_new_full(g_int64_hash, g_int64_equal, g_free, NULL);
+	} else {
+		// clear hashtable
+		g_hash_table_remove_all(hashtable_enum_value);
+	}
+	
 	// check sign
 	bool is_unsigned = true;
 	size_t offset = 0u;
@@ -660,15 +671,13 @@ bool bpcsmtv_arrange_enum_body_value(GSList* enum_body, BPCSMTV_BASIC_TYPE bt) {
 	offset = offset == 0u ? 0u : offset - 1u;
 
 	GSList* cursor;
-	BPCSMTV_ENUM_MEMBER* member = NULL;
+	BPCSMTV_ENUM_MEMBER *member = NULL, *parent = NULL;
 	uint64_t pending_uint = UINT64_C(0);
 	int64_t pending_int = INT64_C(0);
 	for (cursor = enum_body; cursor != NULL; cursor = cursor->next) {
+		parent = member;
 		member = (BPCSMTV_ENUM_MEMBER*)cursor->data;
 
-		// mark sign
-		member->distributed_value_is_uint = is_unsigned;
-		
 		// distribute number
 		if (member->has_specified_value) {
 			// analyse speficied value
@@ -680,7 +689,6 @@ bool bpcsmtv_arrange_enum_body_value(GSList* enum_body, BPCSMTV_BASIC_TYPE bt) {
 
 				// assign
 				pending_uint = member->specified_value.num_uint;
-				member->distributed_value.value_uint = member->specified_value.num_uint;
 			} else {
 				// fail to parse int
 				if (!member->specified_value.success_int) return false;
@@ -692,33 +700,56 @@ bool bpcsmtv_arrange_enum_body_value(GSList* enum_body, BPCSMTV_BASIC_TYPE bt) {
 
 				// assign
 				pending_int = member->specified_value.num_int;
-				member->distributed_value.value_int = member->specified_value.num_int;
 			}
 		} else {
 			// try distribute one
 			if (is_unsigned) {
-				// if overflow, shrunk to zero
-				if (pending_uint >= uint_max_limit[offset]) {
+				// set to zero when it is the first member
+				if (parent == NULL) {
 					pending_uint = UINT64_C(0);
 				} else {
-					++pending_uint;
+					// if overflow, shrunk to zero
+					if (pending_uint >= uint_max_limit[offset]) {
+						pending_uint = UINT64_C(0);
+					} else {
+						// otherwise, inc
+						++pending_uint;
+					}
 				}
 				
-				// assign
-				member->distributed_value.value_uint = pending_uint;
 			} else {
-				// if overflow, shrunk to min value
-				if (pending_int >= int_max_limit[offset]) {
-					pending_int = int_min_limit[offset];
+				// set to zero when it is the first member
+				if (parent == NULL) {
+					pending_int = INT64_C(0);
 				} else {
-					++pending_int;
+					// if overflow, shrunk to min value
+					if (pending_int >= int_max_limit[offset]) {
+						pending_int = int_min_limit[offset];
+					} else {
+						// otherwise, inc
+						++pending_int;
+					}
 				}
 
-				// assign
-				member->distributed_value.value_int = pending_int;
 			}
 		}
-
+		
+		// check duplication
+		gpointer prob = NULL;
+		if (is_unsigned) prob = g_memdup2(&pending_uint, sizeof(uint64_t));
+		else prob = g_memdup2(&pending_int, sizeof(int64_t));
+		if (!g_hash_table_add(hashtable_enum_value, prob)) {
+			// add is a macro to replace function. so in any cases, 
+			// the data has been push into hashtable and we do not process it anymore,
+			// including free it. the old value has been freed by hashtable self-impl and 
+			// the new value has been managed by hashtable.
+			return false;
+		}
+		
+		// mark sign and assign data
+		member->distributed_value_is_uint = is_unsigned;
+		if (is_unsigned) member->distributed_value.value_uint = pending_uint;
+		else member->distributed_value.value_int = pending_int;
 	}
 
 	return true;
