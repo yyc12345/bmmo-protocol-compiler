@@ -13,5 +13,9 @@ int main(int argc, char* argv[]) {
     // cmd
     bpctest_cmd();
 
+    // full compiler test
+    // without codegen
+    bpctest_project();
+
     return g_test_run();
 }

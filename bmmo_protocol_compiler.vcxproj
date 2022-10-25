@@ -196,15 +196,7 @@
     <ClCompile Include="src\y.tab.c" />
   </ItemGroup>
   <ItemGroup>
-    <CopyFileToFolders Include="examples\errors.bp">
-      <DeploymentContent>true</DeploymentContent>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(OutDir)examples</DestinationFolders>
-      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(OutDir)examples</DestinationFolders>
-      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)examples</DestinationFolders>
-      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)examples</DestinationFolders>
-    </CopyFileToFolders>
-    <CopyFileToFolders Include="examples\example.bp">
+    <CopyFileToFolders Include="examples\test.bp">
       <DeploymentContent>true</DeploymentContent>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(OutDir)examples</DestinationFolders>

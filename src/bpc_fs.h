@@ -13,7 +13,7 @@
 gchar* bpcfs_vsprintf(const char* format, va_list ap);
 
 void bpcfs_write_snippets(FILE* fs, BPCSNP_EMBEDDED_FILE* snp);
-FILE* bpcfs_fopen_glibfs(const gchar* glibfs_filepath, bool is_open);
+FILE* bpcfs_fopen_glibfs(const gchar* glibfs_filepath, bool is_read);
 
 /// <summary>
 /// replace file extension lile std::filesystem::path::replace_extension()

@@ -391,12 +391,12 @@ bool bpcsmtv_is_basic_type_suit_for_enum(BPCSMTV_BASIC_TYPE bt) {
 		case BPCSMTV_BASIC_TYPE_INT8:
 		case BPCSMTV_BASIC_TYPE_INT16:
 		case BPCSMTV_BASIC_TYPE_INT32:
+		case BPCSMTV_BASIC_TYPE_INT64:
 		case BPCSMTV_BASIC_TYPE_UINT8:
 		case BPCSMTV_BASIC_TYPE_UINT16:
 		case BPCSMTV_BASIC_TYPE_UINT32:
-			return true;
-		case BPCSMTV_BASIC_TYPE_INT64:
 		case BPCSMTV_BASIC_TYPE_UINT64:
+			return true;
 		case BPCSMTV_BASIC_TYPE_FLOAT:
 		case BPCSMTV_BASIC_TYPE_DOUBLE:
 		case BPCSMTV_BASIC_TYPE_STRING:
@@ -423,18 +423,18 @@ void bpcsmtv_setup_field_layout(GSList* variables, BPCSMTV_STRUCT_MODIFIER* modi
 			break;
 		}
 		if (variable->variable_type->full_uncover_is_basic_type) {
+			// enum or alias
+			if (variable->variable_type->full_uncover_basic_type == BPCSMTV_BASIC_TYPE_STRING) {
+				// string is not allowed
+				can_be_natural = false;
+				break;
+			}
+		} else {
 			// struct
 			// look up whether it is natural struct
 			BPCSMTV_PROTOCOL_BODY* entry = bpcsmtv_registery_identifier_get(variable->variable_type->type_data.custom_type);
 			if (entry->node_data.struct_data->struct_modifier->is_narrow) {
 				// narrow struct is not allowed
-				can_be_natural = false;
-				break;
-			}
-		} else {
-			// enum or alias
-			if (variable->variable_type->full_uncover_basic_type == BPCSMTV_BASIC_TYPE_STRING) {
-				// string is not allowed
 				can_be_natural = false;
 				break;
 			}
@@ -469,19 +469,19 @@ void bpcsmtv_setup_field_layout(GSList* variables, BPCSMTV_STRUCT_MODIFIER* modi
 			variable = (BPCSMTV_VARIABLE*)cursor->data;
 
 			if (variable->variable_type->full_uncover_is_basic_type) {
-				// struct
-				// look up its natural struct
-				BPCSMTV_PROTOCOL_BODY* entry = bpcsmtv_registery_identifier_get(variable->variable_type->type_data.custom_type);
-				BPCSMTV_STRUCT_MODIFIER* ref_modifier = entry->node_data.struct_data->struct_modifier;
-				
-				// compare and get larger one.
-				modifier->struct_unit_size = modifier->struct_unit_size >= ref_modifier->struct_unit_size ? 
-					modifier->struct_unit_size : ref_modifier->struct_unit_size;
-			} else {
 				// direct basic type, enum or alias
 				uint32_t gotten_alignof = basic_type_alignof[(size_t)variable->variable_type->full_uncover_basic_type];
 				modifier->struct_unit_size = modifier->struct_unit_size >= gotten_alignof ?
 					modifier->struct_unit_size : gotten_alignof;
+			} else {
+				// struct
+				// look up its natural struct
+				BPCSMTV_PROTOCOL_BODY* entry = bpcsmtv_registery_identifier_get(variable->variable_type->type_data.custom_type);
+				BPCSMTV_STRUCT_MODIFIER* ref_modifier = entry->node_data.struct_data->struct_modifier;
+
+				// compare and get larger one.
+				modifier->struct_unit_size = modifier->struct_unit_size >= ref_modifier->struct_unit_size ?
+					modifier->struct_unit_size : ref_modifier->struct_unit_size;
 			}
 		}
 		
@@ -494,13 +494,13 @@ void bpcsmtv_setup_field_layout(GSList* variables, BPCSMTV_STRUCT_MODIFIER* modi
 			// calc real size first
 			// considering base type
 			if (variable->variable_type->full_uncover_is_basic_type) {
+				// direct basic type, enum or alias
+				real_size = basic_type_sizeof[(size_t)variable->variable_type->full_uncover_basic_type];
+			} else {
 				// struct
 				// look up its natural struct
 				BPCSMTV_PROTOCOL_BODY* entry = bpcsmtv_registery_identifier_get(variable->variable_type->type_data.custom_type);
 				real_size = entry->node_data.struct_data->struct_modifier->struct_size;
-			} else {
-				// direct basic type, enum or alias
-				real_size = basic_type_sizeof[(size_t)variable->variable_type->full_uncover_basic_type];
 			}
 			// considering array
 			if (variable->variable_array->is_array) {
@@ -591,113 +591,6 @@ void bpcsmtv_assign_enum_member_value(BPCSMTV_ENUM_MEMBER* member, BPCSMTV_COMPO
 		memcpy(&(member->specified_value), number, sizeof(BPCSMTV_COMPOUND_NUMBER));
 	}
 }
-//
-//void bpcsmtv_ensure_enum_member_value(GSList* parents, BPCSMTV_ENUM_MEMBER* member) {
-//	// convert all non-spec value to specified value
-//	if (!member->have_specific_value) {
-//		// try distribute one
-//		if (parents == NULL) {
-//			// no parents
-//			member->specified_value.value_uint = UINT64_C(0);
-//			member->specified_value.value_int = INT64_C(0);
-//		} else {
-//			member->specified_value.value_uint = ((BPCSMTV_ENUM_MEMBER*)parents->data)->specified_value.value_uint + UINT64_C(1);
-//			member->specified_value.value_int = ((BPCSMTV_ENUM_MEMBER*)parents->data)->specified_value.value_int + INT64_C(1);
-//		}
-//
-//		// sign has distributed
-//		member->have_specific_value = true;
-//	}
-//
-//}
-//
-//void bpcsmtv_setup_enum_body_value_sign(GSList* enum_body, BPCSMTV_BASIC_TYPE bt) {
-//	// check sign
-//	bool is_positive = true;
-//	switch (bt) {
-//		case BPCSMTV_BASIC_TYPE_INT64:
-//		case BPCSMTV_BASIC_TYPE_INT32:
-//		case BPCSMTV_BASIC_TYPE_INT16:
-//		case BPCSMTV_BASIC_TYPE_INT8:
-//			is_positive = false;
-//			break;
-//		case BPCSMTV_BASIC_TYPE_UINT64:
-//		case BPCSMTV_BASIC_TYPE_UINT32:
-//		case BPCSMTV_BASIC_TYPE_UINT16:
-//		case BPCSMTV_BASIC_TYPE_UINT8:
-//			is_positive = true;
-//			break;
-//		case BPCSMTV_BASIC_TYPE_FLOAT:
-//		case BPCSMTV_BASIC_TYPE_DOUBLE:
-//		case BPCSMTV_BASIC_TYPE_STRING:
-//		default:
-//			is_positive = true;
-//			break;
-//	}
-//
-//	GSList* cursor;
-//	BPCSMTV_ENUM_MEMBER* member;
-//	for (cursor = enum_body; cursor != NULL; cursor = cursor->next) {
-//		// assign spec value sign type in there
-//		member = (BPCSMTV_ENUM_MEMBER*)cursor->data;
-//		member->specified_value_is_uint = is_positive;
-//	}
-//}
-//
-//bool bpcsmtv_check_enum_body_limit(GSList* enum_body, BPCSMTV_BASIC_TYPE bt) {
-//	// check sign
-//	bool is_positive = true;
-//	size_t offset = 0u;
-//	switch (bt) {
-//		case BPCSMTV_BASIC_TYPE_INT64:
-//			++offset;
-//		case BPCSMTV_BASIC_TYPE_INT32:
-//			++offset;
-//		case BPCSMTV_BASIC_TYPE_INT16:
-//			++offset;
-//		case BPCSMTV_BASIC_TYPE_INT8:
-//			++offset;
-//			is_positive = false;
-//			break;
-//		case BPCSMTV_BASIC_TYPE_UINT64:
-//			++offset;
-//		case BPCSMTV_BASIC_TYPE_UINT32:
-//			++offset;
-//		case BPCSMTV_BASIC_TYPE_UINT16:
-//			++offset;
-//		case BPCSMTV_BASIC_TYPE_UINT8:
-//			++offset;
-//			is_positive = true;
-//			break;
-//		case BPCSMTV_BASIC_TYPE_FLOAT:
-//		case BPCSMTV_BASIC_TYPE_DOUBLE:
-//		case BPCSMTV_BASIC_TYPE_STRING:
-//		default:
-//			is_positive = true;
-//			break;
-//	}
-//	offset = offset == 0u ? 0u : offset - 1u;
-//
-//	GSList* cursor;
-//	BPCSMTV_ENUM_MEMBER* member;
-//	for (cursor = enum_body; cursor != NULL; cursor = cursor->next) {
-//		member = (BPCSMTV_ENUM_MEMBER*)cursor->data;
-//
-//		// check limit
-//		if (is_positive) {
-//			if (member->specified_value.value_uint <= uint_max_limit[offset]) {
-//				return false;
-//			}
-//		} else {
-//			if (member->specified_value.value_int >= int_max_limit[offset] ||
-//				member->specified_value.value_int <= int_min_limit[offset]) {
-//				return false;
-//			}
-//		}
-//	}
-//
-//	return true;
-//}
 
 bool bpcsmtv_arrange_enum_body_value(GSList* enum_body, BPCSMTV_BASIC_TYPE bt) {
 	// prepare value duplication detector hashtable first

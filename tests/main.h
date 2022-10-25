@@ -16,6 +16,7 @@ for (cursor = 0u; cursor < datalen; ++cursor) {\
 g_string_free(entry_name, true);\
 }
 
+void bpctest_project();
 void bpctest_semantic_values();
 void bpctest_fs();
 void bpctest_cmd();

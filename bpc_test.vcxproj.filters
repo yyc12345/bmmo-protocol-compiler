@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Resources\examples">
+      <UniqueIdentifier>{f49a9803-ed8e-4eaf-98d3-95d2e136addc}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Sources\codegen">
       <UniqueIdentifier>{abb6107f-f629-48aa-8528-f4a59d7ae6b2}</UniqueIdentifier>
     </Filter>
@@ -21,6 +24,12 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\lex.yy.c">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\y.tab.c">
+      <Filter>Sources</Filter>
+    </ClCompile>
     <ClCompile Include="src\snippets.c">
       <Filter>Sources</Filter>
     </ClCompile>
@@ -69,8 +78,14 @@
     <ClCompile Include="tests\tests_cmd.c">
       <Filter>Sources\tests</Filter>
     </ClCompile>
+    <ClCompile Include="tests\tests_project.c">
+      <Filter>Sources\tests</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\y.tab.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
     <ClInclude Include="src\bpc_semantic_values.h">
       <Filter>Headers</Filter>
     </ClInclude>
@@ -98,5 +113,13 @@
     <ClInclude Include="src\snippets.h">
       <Filter>Headers</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="examples\test.bp">
+      <Filter>Resources\examples</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="examples\bmmo.bp">
+      <Filter>Resources\examples</Filter>
+    </CopyFileToFolders>
   </ItemGroup>
 </Project>

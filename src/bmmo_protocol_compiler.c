@@ -7,7 +7,7 @@ int main(int argc, char* argv[]) {
 	if (args == NULL) return 0;
 
 	int result = 0;
-	if ((result = run_compiler(args))) {
+	if ((result = run_compiler(args, NULL))) {
 		printf("Compile Failed.\n");
 	} else {
 		printf("Compile Done.\n");

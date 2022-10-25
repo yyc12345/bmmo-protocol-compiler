@@ -16,17 +16,17 @@ enum int32 tests_enum_negative {
 	entry2
 }
 enum uint64 tests_enum_limit_uint {
-	entry1,
+	entry1 = 1,
 	entry2 = 18446744073709551615,
 	entry3
 }
 enum int64 tests_enum_limit_int {
-	entry1,
+	entry1 = 1,
 	entry2 = -9223372036854775807,
 	entry3
 }
 enum int8 tests_enum_limit_int8 {
-	entry1,
+	entry1 = 1,
 	entry2 = -128,
 	entry3
 }
@@ -144,14 +144,14 @@ struct tests_struct_nospec_narrow3 {
 struct tests_struct_nospec_narrow4 {
 	tests_struct_nospec_narrow1 data1;
 }
-natural tests_struct_natural_warning {
+natural struct tests_struct_natural_warning {
 	int8 data1#2;
 }
 
 reliable narrow msg tests_msg1 {
 	int8 data1;
 }
-unreliable narrow msh tests_msg2 {
+unreliable narrow msg tests_msg2 {
 	int8 data1;
 }
 msg tests_nospec_msg {

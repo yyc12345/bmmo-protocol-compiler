@@ -24,7 +24,7 @@ void lexerror_format(const char* format, ...);
 
 %}
 
-LEGAL_BLANK		[ \t]+
+LEGAL_BLANK		[ \t]*
 TOKEN_NUM		"-"?[1-9][0-9]*
 TOKEN_NAME		[a-zA-Z][a-zA-Z0-9_]*
 
@@ -76,7 +76,7 @@ TOKEN_NAME		[a-zA-Z][a-zA-Z0-9_]*
 	yylval.token_basic_type = bpcsmtv_parse_basic_type(yytext);
 	return BPC_BASIC_TYPE;
 }
-"[]" {
+"["{LEGAL_BLANK}"]" {
 	return BPC_ARRAY_LIST;
 }
 "["{LEGAL_BLANK}{TOKEN_NUM}{LEGAL_BLANK}"]" {

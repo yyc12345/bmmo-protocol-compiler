@@ -34,14 +34,15 @@ set(shared_c
 	src/codegen/codehpp.c
 	src/codegen/codecpp.c
 	src/codegen/codeproto.c
-)
-set(compiler_c
 	src/lex.yy.c
 	src/y.tab.c
+)
+set(compiler_c
 	src/bmmo_protocol_compiler.c
 )
 set(tests_c
 	tests/main.c
+	tests/tests_project.c
 	tests/tests_semantic_values.c
 	tests/tests_fs.c
 	tests/tests_cmd.c

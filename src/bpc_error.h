@@ -16,10 +16,6 @@ typedef enum _BPCERR_ERROR_TYPE {
 	BPCERR_ERROR_TYPE_ERROR
 }BPCERR_ERROR_TYPE;
 
-void bpcerr_reset_errblocking();
-void bpcerr_set_errblocking();
-bool bpcerr_get_errblocking();
-
 void bpcerr_info(BPCERR_ERROR_SOURCE src, const char* format, ...);
 void bpcerr_warning(BPCERR_ERROR_SOURCE src, const char* format, ...);
 void bpcerr_error(BPCERR_ERROR_SOURCE src, const char* format, ...);

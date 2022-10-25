@@ -13,19 +13,19 @@ void bpcfs_write_snippets(FILE* fs, BPCSNP_EMBEDDED_FILE* snp) {
 	fwrite(snp->file, snp->len, sizeof(char), fs);
 }
 
-FILE* bpcfs_fopen_glibfs(const gchar* glibfs_filepath, bool is_open) {
+FILE* bpcfs_fopen_glibfs(const gchar* glibfs_filepath, bool is_read) {
 	if (glibfs_filepath == NULL) return NULL;
 	FILE* fs = NULL;
 
 #ifdef G_OS_WIN32
 	wchar_t* wfilename = bpcenc_glibfs_to_wchar((gchar*)glibfs_filepath);
 	if (wfilename == NULL) return NULL;
-	fs = _wfopen(wfilename, is_open ? L"r" : L"w");
+	fs = _wfopen(wfilename, is_read ? L"r" : L"w");
 	g_free(wfilename);
 #else
 	gchar* utf8_filename = bpcenc_glibfs_to_utf8((gchar*)glibfs_filepath);
 	if (utf8_filename == NULL) return NULL;
-	fs = fopen(utf8_filename, is_open ? "r" : "w");
+	fs = fopen(utf8_filename, is_read ? "r" : "w");
 	g_free(utf8_filename);
 #endif
 

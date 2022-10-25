@@ -15,13 +15,16 @@
 }
 
 %code provides {
-int run_compiler(BPCCMD_PARSED_ARGS* bpc_args);
+typedef void (*compiler_test_probe) (BPCSMTV_DOCUMENT* document);
+int run_compiler(BPCCMD_PARSED_ARGS* bpc_args, compiler_test_probe probe);
 }
 
 %code {
 int yywrap();
 void yyerror(const char *s);
 void yyerror_format(const char* format, ...);
+
+static compiler_test_probe test_probe = NULL;
 
 // yyin, yyout and yylex is comes from flex code
 // so declare them as extern here
@@ -133,9 +136,7 @@ bpc_version bpc_namespace bpc_protocol_body
 
 	// output code
 	// only generate code when no thrown error
-	if (!bpcerr_get_errblocking()) {
-		bpcgen_write_document($$);
-	}
+	bpcgen_write_document($$);
 
 	// free doc
 	// WARNING: because bpc_document is a start symbol
@@ -144,8 +145,13 @@ bpc_version bpc_namespace bpc_protocol_body
 	// so we do not need call it in there now.
 	//bpcsmtv_destructor_document($$);
 
-	// reset all registery and blocking
-	bpcerr_reset_errblocking();
+	// run test probe if necessary
+	// probe should be run before register free, because probe need register data
+	if (test_probe != NULL) {
+		(*test_probe)($$);
+	}
+
+	// reset all registery
 	bpcsmtv_registery_identifier_reset();
 	bpcsmtv_registery_variables_reset();
 };
@@ -198,7 +204,7 @@ bpc_protocol_body[sdd_parent_protocol_body] bpc_alias
 	node->node_data.alias_data = $bpc_alias;
 	$$ = g_slist_append($sdd_parent_protocol_body, node);
 
-	bpcsmtv_registery_variables_add($bpc_alias->custom_type);
+	bpcsmtv_registery_identifier_add(node);
 	bpcsmtv_registery_variables_reset();
 }
 |
@@ -209,7 +215,7 @@ bpc_protocol_body[sdd_parent_protocol_body] bpc_enum
 	node->node_data.enum_data = $bpc_enum;
 	$$ = g_slist_append($sdd_parent_protocol_body, node);
 
-	bpcsmtv_registery_variables_add($bpc_enum->enum_name);
+	bpcsmtv_registery_identifier_add(node);
 	bpcsmtv_registery_variables_reset();
 }
 |
@@ -220,7 +226,7 @@ bpc_protocol_body[sdd_parent_protocol_body] bpc_struct
 	node->node_data.struct_data = $bpc_struct;
 	$$ = g_slist_append($sdd_parent_protocol_body, node);
 
-	bpcsmtv_registery_variables_add($bpc_struct->struct_name);
+	bpcsmtv_registery_identifier_add(node);
 	bpcsmtv_registery_variables_reset();
 }
 |
@@ -231,7 +237,7 @@ bpc_protocol_body[sdd_parent_protocol_body] bpc_msg
 	node->node_data.msg_data = $bpc_msg;
 	$$ = g_slist_append($sdd_parent_protocol_body, node);
 
-	bpcsmtv_registery_variables_add($bpc_msg->msg_name);
+	bpcsmtv_registery_identifier_add(node);
 	bpcsmtv_registery_variables_reset();
 }
 |
@@ -635,7 +641,10 @@ void yyerror_format(const char* format, ...) {
 	g_free(buf);
 }
 
-int run_compiler(BPCCMD_PARSED_ARGS* bpc_args) {
+int run_compiler(BPCCMD_PARSED_ARGS* bpc_args, compiler_test_probe probe) {
+	// setup test probe
+	test_probe = probe;
+
 	// setup stream
 	yyout = stdout;
 	yyin = bpc_args->input_file;
@@ -648,7 +657,6 @@ int run_compiler(BPCCMD_PARSED_ARGS* bpc_args) {
 	bpcgen_init_code_file(bpc_args);
 
 	// do parse
-	bpcerr_reset_errblocking();
 	bpcsmtv_registery_identifier_reset();
 	bpcsmtv_registery_variables_reset();
 	int result = yyparse();
@@ -656,6 +664,9 @@ int run_compiler(BPCCMD_PARSED_ARGS* bpc_args) {
 	// free resources
 	yyin = stdin;
 	bpcgen_free_code_file();
+
+	// free test probe
+	test_probe = NULL;
 
 	return result;
 }

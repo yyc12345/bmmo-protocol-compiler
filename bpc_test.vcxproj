@@ -194,7 +194,28 @@
     <ClCompile Include="tests\main.c" />
     <ClCompile Include="tests\tests_cmd.c" />
     <ClCompile Include="tests\tests_fs.c" />
+    <ClCompile Include="tests\tests_project.c" />
     <ClCompile Include="tests\tests_semantic_values.c" />
+    <ClCompile Include="src\lex.yy.c" />
+    <ClCompile Include="src\y.tab.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="examples\test.bp">
+      <DeploymentContent>true</DeploymentContent>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(OutDir)examples</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(OutDir)examples</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)examples</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)examples</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="examples\bmmo.bp">
+      <DeploymentContent>true</DeploymentContent>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(OutDir)examples</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(OutDir)examples</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)examples</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)examples</DestinationFolders>
+    </CopyFileToFolders>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\bpc_cmd.h" />
@@ -205,6 +226,7 @@
     <ClInclude Include="src\bpc_semantic_values.h" />
     <ClInclude Include="src\bpc_ver.h" />
     <ClInclude Include="src\snippets.h" />
+    <ClInclude Include="src\y.tab.h" />
     <ClInclude Include="tests\main.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

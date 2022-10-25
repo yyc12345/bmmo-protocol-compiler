@@ -59,18 +59,6 @@ static void _bpcerr_nuke_process(int rc) {
 #endif
 }
 
-
-static bool global_err_blocking = false;
-void bpcerr_reset_errblocking() {
-	global_err_blocking = false;
-}
-void bpcerr_set_errblocking() {
-	global_err_blocking = true;
-}
-bool bpcerr_get_errblocking() {
-	return global_err_blocking;
-}
-
 void bpcerr_info(BPCERR_ERROR_SOURCE src, const char* format, ...) {
 	va_list ap;
 	va_start(ap, format);
@@ -90,8 +78,6 @@ void bpcerr_error(BPCERR_ERROR_SOURCE src, const char* format, ...) {
 	va_start(ap, format);
 	_bpcerr_printf(src, BPCERR_ERROR_TYPE_ERROR, format, ap);
 	va_end(ap);
-
-	bpcerr_set_errblocking();
 }
 
 void bpcerr_panic(BPCERR_ERROR_SOURCE src, const char* format, ...) {
@@ -100,6 +86,5 @@ void bpcerr_panic(BPCERR_ERROR_SOURCE src, const char* format, ...) {
 	_bpcerr_printf(src, BPCERR_ERROR_TYPE_ERROR, format, ap);
 	va_end(ap);
 
-	bpcerr_set_errblocking();
 	_bpcerr_nuke_process(1);
 }

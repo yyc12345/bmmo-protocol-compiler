@@ -1,11 +1,11 @@
 #include "bpc_encoding.h"
 
-gchar* bpcenc_glibfs_to_utf8(gchar* src) {
+gchar* bpcenc_glibfs_to_utf8(const gchar* src) {
 	if (src == NULL) return NULL;
 	return g_filename_to_utf8(src, -1, NULL, NULL, NULL);
 }
 
-gchar* bpcenc_utf8_to_glibfs(gchar* src) {
+gchar* bpcenc_utf8_to_glibfs(const gchar* src) {
 	if (src == NULL) return NULL;
 	return g_filename_from_utf8(src, -1, NULL, NULL, NULL);
 }
@@ -13,7 +13,7 @@ gchar* bpcenc_utf8_to_glibfs(gchar* src) {
 
 #ifdef G_OS_WIN32
 
-gchar* bpcenc_wchar_to_utf8(wchar_t* src) {
+gchar* bpcenc_wchar_to_utf8(const wchar_t* src) {
 	if (src == NULL) return NULL;
 	int count, write_result;
 
@@ -30,7 +30,7 @@ gchar* bpcenc_wchar_to_utf8(wchar_t* src) {
 	return dest;
 }
 
-wchar_t* bpcenc_utf8_to_wchar(gchar* src) {
+wchar_t* bpcenc_utf8_to_wchar(const gchar* src) {
 	if (src == NULL) return NULL;
 	int wcount, write_result;
 
@@ -48,14 +48,14 @@ wchar_t* bpcenc_utf8_to_wchar(gchar* src) {
 }
 
 
-wchar_t* bpcenc_glibfs_to_wchar(gchar* src) {
+wchar_t* bpcenc_glibfs_to_wchar(const gchar* src) {
 	gchar* utf8 = bpcenc_glibfs_to_utf8(src);
 	wchar_t* res = bpcenc_utf8_to_wchar(utf8);
 	g_free(utf8);
 	return res;
 }
 
-gchar* bpcenc_wchar_to_glibfs(wchar_t* src) {
+gchar* bpcenc_wchar_to_glibfs(const wchar_t* src) {
 	gchar* utf8 = bpcenc_wchar_to_utf8(src);
 	gchar* res = bpcenc_utf8_to_glibfs(utf8);
 	g_free(utf8);
