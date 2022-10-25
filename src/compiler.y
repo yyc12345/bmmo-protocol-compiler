@@ -348,7 +348,8 @@ bpc_struct_modifier:
 	$$->is_reliable = true;
 	$$->has_set_field_layout = false;
 	$$->is_narrow = true;
-	$$->struct_size = 0u;
+	$$->struct_size = UINT32_C(1);
+	$$->struct_unit_size = UINT32_C(1);
 }
 |
 bpc_struct_modifier[sdd_parent_modifier] BPC_RELIABILITY[sdd_reliability]

@@ -22,7 +22,14 @@ static const size_t basic_type_len = sizeof(basic_type_showcase) / sizeof(char*)
 static const uint32_t basic_type_sizeof[] = {
 	4, 8,
 	1, 2, 4, 8, 1, 2, 4, 8,
-	0
+	1
+};
+static const uint32_t basic_type_alignof[] = {
+	// we use x86 align in any platform, due to this compiler purpose.
+	// so some 8bytes data types are aligned at 4bytes boundry.
+	4, 4,
+	1, 2, 4, 4, 1, 2, 4, 4,
+	1
 };
 
 static const uint64_t uint_max_limit[] = { UINT8_MAX, UINT16_MAX, UINT32_MAX, UINT64_MAX };
@@ -451,15 +458,81 @@ void bpcsmtv_setup_field_layout(GSList* variables, BPCSMTV_STRUCT_MODIFIER* modi
 
 	// set align prop
 	if (modifier->is_narrow) {
-
-
-
-		modifier->struct_size = 0u;
+		// narrow mode, set to default mode
+		modifier->struct_size = UINT32_C(1);
+		modifier->struct_unit_size = UINT32_C(1);
 	} else {
-
 		// todo: finish padding
+		// iterate full list to gain unit size
+		modifier->struct_unit_size = UINT32_C(1);
+		for (cursor = variables; cursor != NULL; cursor = cursor->next) {
+			variable = (BPCSMTV_VARIABLE*)cursor->data;
 
-		modifier->struct_size = 1u;
+			if (variable->variable_type->full_uncover_is_basic_type) {
+				// struct
+				// look up its natural struct
+				BPCSMTV_PROTOCOL_BODY* entry = bpcsmtv_registery_identifier_get(variable->variable_type->type_data.custom_type);
+				BPCSMTV_STRUCT_MODIFIER* ref_modifier = entry->node_data.struct_data->struct_modifier;
+				
+				// compare and get larger one.
+				modifier->struct_unit_size = modifier->struct_unit_size >= ref_modifier->struct_unit_size ? 
+					modifier->struct_unit_size : ref_modifier->struct_unit_size;
+			} else {
+				// direct basic type, enum or alias
+				uint32_t gotten_alignof = basic_type_alignof[(size_t)variable->variable_type->full_uncover_basic_type];
+				modifier->struct_unit_size = modifier->struct_unit_size >= gotten_alignof ?
+					modifier->struct_unit_size : gotten_alignof;
+			}
+		}
+		
+		// set align for each item
+		modifier->struct_size = UINT32_C(0);
+		uint32_t padding = UINT32_C(0), real_size = UINT32_C(0);
+		for (cursor = variables; cursor != NULL; cursor = cursor->next) {
+			variable = (BPCSMTV_VARIABLE*)cursor->data;
+			
+			// calc real size first
+			// considering base type
+			if (variable->variable_type->full_uncover_is_basic_type) {
+				// struct
+				// look up its natural struct
+				BPCSMTV_PROTOCOL_BODY* entry = bpcsmtv_registery_identifier_get(variable->variable_type->type_data.custom_type);
+				real_size = entry->node_data.struct_data->struct_modifier->struct_size;
+			} else {
+				// direct basic type, enum or alias
+				real_size = basic_type_sizeof[(size_t)variable->variable_type->full_uncover_basic_type];
+			}
+			// considering array
+			if (variable->variable_array->is_array) {
+				real_size *= variable->variable_array->static_array_len;
+			}
+			
+			// calc padding
+			// Ref: https://en.wikipedia.org/wiki/Data_structure_alignment
+			padding = (modifier->struct_unit_size - (real_size & (modifier->struct_unit_size - UINT32_C(1)))) & (modifier->struct_unit_size - UINT32_C(1));
+			
+			// set align if necessary
+			// raise warning if there is a existed align
+			if (variable->variable_align->use_align) {
+				bpcerr_warning(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "your specified align %" PRIu32 " for variable %s has been replaced due to natural struct layout", 
+					variable->variable_align->padding_size, variable->variable_name);
+			}
+			if (padding != UINT32_C(0)) {
+				variable->variable_align->use_align = true;
+				variable->variable_align->padding_size = padding;
+			} else {
+				variable->variable_align->use_align = false;
+			}
+			
+			// feedback to full size
+			modifier->struct_size += real_size + padding;
+		}
+		
+		// correct full size if necessary
+		if (modifier->struct_size == UINT32_C(0)) {
+			modifier->struct_size = UINT32_C(1);
+		}
+		
 	}
 
 }

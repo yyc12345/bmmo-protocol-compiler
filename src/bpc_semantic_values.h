@@ -16,7 +16,7 @@ typedef struct _BPCSMTV_COMPOUND_NUMBER {
 }BPCSMTV_COMPOUND_NUMBER;
 
 // Invalid basic type const value
-#define BPCSMTV_BASIC_TYPE_INVALID (-1);
+#define BPCSMTV_BASIC_TYPE_INVALID (-1)
 typedef enum _BPCSMTV_BASIC_TYPE {
 	BPCSMTV_BASIC_TYPE_FLOAT,
 	BPCSMTV_BASIC_TYPE_DOUBLE,
@@ -36,7 +36,15 @@ typedef struct _BPCSMTV_STRUCT_MODIFIER {
 	bool is_reliable;
 	bool has_set_field_layout;
 	bool is_narrow;
+	
+	/// <summary>
+	/// the size of this struct if in natural mode. set as 1 when it is in narrow mode
+	/// </summary>
 	uint32_t struct_size;
+	/// <summary>
+	/// the maximum size of the member of this struct.
+	/// </summary>
+	uint32_t struct_unit_size;
 }BPCSMTV_STRUCT_MODIFIER;
 
 typedef struct _BPCSMTV_VARIABLE_ARRAY {
