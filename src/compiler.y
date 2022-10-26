@@ -162,12 +162,12 @@ BPC_VERSION BPC_TOKEN_NUM[sdd_version_num] BPC_SEMICOLON
 	// check number first
 	uint32_t parsed = UINT32_C(0);
 	if (!bpcsmtv_get_offset_number(&($sdd_version_num), &parsed)) {
-		yyerror_format("invalid number for bpc version.");
+		yyerror_format("Invalid number for bpc version.");
 		YYABORT;
 	}
 	// check version
 	if (parsed != BPCVER_COMPILER_VERSION) {
-		yyerror_format("unsupported version: %" PRIu32 ". expecting: %" PRIu32 ".", 
+		yyerror_format("Unsupported version: %" PRIu32 ". Expecting: %" PRIu32 ".", 
 			parsed, BPCVER_COMPILER_VERSION);
 		YYABORT;
 	}
@@ -265,7 +265,7 @@ BPC_ALIAS BPC_TOKEN_NAME[sdd_user_type] BPC_BASIC_TYPE[sdd_basic_type] BPC_SEMIC
 	$$ = NULL;
 	// check identifier
 	if (bpcsmtv_registery_identifier_test($sdd_user_type)) {
-		yyerror_format("duplicated identifier: %s", $sdd_user_type);
+		yyerror_format("Duplicated identifier: \"%s\"", $sdd_user_type);
 		YYERROR;
 	}
 
@@ -283,18 +283,18 @@ BPC_RIGHT_BRACKET
 	$$ = NULL;
 	// check basic type
 	if (!bpcsmtv_is_basic_type_suit_for_enum($sdd_enum_type)) {
-		yyerror_format("specified basic type is not suit for enum.");
+		yyerror_format("Specified basic type is not suit for enum \"%s\".", $sdd_enum_name);
 		YYERROR;
 	}
 	// check identifier
 	if (bpcsmtv_registery_identifier_test($sdd_enum_name)) {
-		yyerror_format("duplicated identifier: %s", $sdd_enum_name);
+		yyerror_format("Duplicated identifier: \"%s\"", $sdd_enum_name);
 		YYERROR;
 	}
 	// check body limit
 	// distribute value and check value legality at the same time.
-	if (!bpcsmtv_arrange_enum_body_value($bpc_enum_body, $sdd_enum_type)) {
-		yyerror_format("enum value overflow: %s", $sdd_enum_name);
+	if (!bpcsmtv_arrange_enum_body_value($bpc_enum_body, $sdd_enum_type, $sdd_enum_name)) {
+		yyerror_format("Enum \"%s\" is invalid because its members have some issues which have been introduced above.", $sdd_enum_name);
 		YYERROR;
 	}
 
@@ -323,7 +323,7 @@ BPC_TOKEN_NAME[sdd_name]
 	$$ = NULL;
 	// check variable duplication first
 	if (bpcsmtv_registery_variables_test($sdd_name)) {
-		yyerror_format("duplicated variable: %s", $sdd_name);
+		yyerror_format("Duplicated enum member \"%s\"", $sdd_name);
 		YYERROR;
 	}
 
@@ -337,7 +337,7 @@ BPC_TOKEN_NAME[sdd_name] BPC_EQUAL BPC_TOKEN_NUM[sdd_spec_num]
 	$$ = NULL;
 	// check variable duplication first
 	if (bpcsmtv_registery_variables_test($sdd_name)) {
-		yyerror_format("duplicated variable: %s", $sdd_name);
+		yyerror_format("Duplicated enum member \"%s\"", $sdd_name);
 		YYERROR;
 	}
 
@@ -363,7 +363,7 @@ bpc_struct_modifier[sdd_parent_modifier] BPC_RELIABILITY[sdd_reliability]
 	$$ = NULL;
 	// check duplicated assign
 	if ($sdd_parent_modifier->has_set_reliability) {
-		yyerror_format("duplicated assign reliability modifier.");
+		yyerror_format("Duplicated assignment of reliability modifier.");
 		YYERROR;
 	}
 
@@ -378,7 +378,7 @@ bpc_struct_modifier[sdd_parent_modifier] BPC_FIELD_LAYOUT[sdd_field_layout]
 	$$ = NULL;
 	// check duplicated assign
 	if ($sdd_parent_modifier->has_set_field_layout) {
-		yyerror_format("duplicated assign field layout modifier.");
+		yyerror_format("Duplicated assignment of field layout modifier.");
 		YYERROR;
 	}
 
@@ -396,18 +396,18 @@ BPC_RIGHT_BRACKET
 	$$ = NULL;
 	// check modifier
 	if (!bpcsmtv_is_modifier_suit_struct($bpc_struct_modifier)) {
-		yyerror_format("invalid struct modifier. reliability is invalid for struct syntax.");
+		yyerror_format("Invalid struct modifier of \"%s\". Reliability modifier only can be applied for Msg define.", $sdd_struct_name);
 		YYERROR;
 	}
 	// check identifier
 	if (bpcsmtv_registery_identifier_test($sdd_struct_name)) {
-		yyerror_format("duplicated identifier: %s", $sdd_struct_name);
+		yyerror_format("Duplicated identifier: \"%s\"", $sdd_struct_name);
 		YYERROR;
 	}
 
 	// set data
 	// setup field layout
-	bpcsmtv_setup_field_layout($bpc_variables, $bpc_struct_modifier);
+	bpcsmtv_setup_field_layout($bpc_variables, $bpc_struct_modifier, $sdd_struct_name);
 	// fill data
 	$$ = bpcsmtv_constructor_struct();
 	$$->struct_modifier = $bpc_struct_modifier;
@@ -423,15 +423,15 @@ BPC_RIGHT_BRACKET
 	$$ = NULL;
 	// check identifier
 	if (bpcsmtv_registery_identifier_test($sdd_msg_name)) {
-		yyerror_format("duplicated identifier: %s", $sdd_msg_name);
+		yyerror_format("Duplicated identifier: \"%s\"", $sdd_msg_name);
 		YYERROR;
 	}
 
 	// set data
 	// setup field layout
-	bpcsmtv_setup_field_layout($bpc_variables, $bpc_struct_modifier);
+	bpcsmtv_setup_field_layout($bpc_variables, $bpc_struct_modifier, $sdd_msg_name);
 	// setup reliability
-	bpcsmtv_setup_reliability($bpc_struct_modifier);
+	bpcsmtv_setup_reliability($bpc_struct_modifier, $sdd_msg_name);
 	// fill data
 	$$ = bpcsmtv_constructor_msg();
 	$$->msg_modifier = $bpc_struct_modifier;
@@ -454,7 +454,7 @@ bpc_variable_array[sdd_parent_array] BPC_ARRAY_LIST
 	$$ = NULL;
 	// check duplicated assign
 	if ($sdd_parent_array->is_array) {
-		yyerror_format("duplicated assign array modifier.");
+		yyerror_format("Duplicated array modifier.");
 		YYERROR;
 	}
 
@@ -470,13 +470,13 @@ bpc_variable_array[sdd_parent_array] BPC_ARRAY_TUPLE[sdd_tuple]
 	$$ = NULL;
 	// check duplicated assign
 	if ($sdd_parent_array->is_array) {
-		yyerror_format("duplicated assign array modifier.");
+		yyerror_format("Duplicated array modifier.");
 		YYERROR;
 	}
 	// check tuple size
 	uint32_t parsed_size = UINT32_C(0);
 	if (!bpcsmtv_get_offset_number(&($sdd_tuple), &parsed_size)) {
-		yyerror_format("assign an invalid size for static array modifier.");
+		yyerror_format("Static array modifier is invalid. The reason has been written above.");
 		YYERROR;
 	}
 
@@ -494,10 +494,10 @@ BPC_TOKEN_NAME[sdd_custom_type]
 	// validate identifier
 	BPCSMTV_PROTOCOL_BODY* entry = bpcsmtv_registery_identifier_get($sdd_custom_type);
 	if (entry == NULL) {
-		yyerror_format("invalid variable type identifier.");
+		yyerror_format("Invalid variable data type \"%s\" . Please refer it after its defination.", $sdd_custom_type);
 		YYERROR;
 	} else if (entry->node_type == BPCSMTV_DEFINED_IDENTIFIER_TYPE_MSG) {
-		yyerror_format("msg should not be specified as a data type.");
+		yyerror_format("Msg \"%s\" can not be set as data type. Consider using Struct please.", $sdd_custom_type);
 		YYERROR;
 	}
 
@@ -535,7 +535,7 @@ BPC_ALIGN[sdd_align]
 	// check align size
 	uint32_t parsed_align = UINT32_C(0);
 	if (!bpcsmtv_get_offset_number(&($sdd_align), &parsed_align)) {
-		yyerror_format("assign an invalid size %" PRIu64 " for align modifier.", $sdd_align);
+		yyerror_format("Align modifier is invalid. The reason has been written above.");
 		YYERROR;
 	}
 
@@ -551,7 +551,7 @@ BPC_TOKEN_NAME[sdd_name]
 	$$ = NULL;
 	// check variable duplication first
 	if (bpcsmtv_registery_variables_test($sdd_name)) {
-		yyerror_format("duplicated variable: %s", $sdd_name);
+		yyerror_format("duplicated variable: \"%s\"", $sdd_name);
 		YYERROR;
 	}
 
@@ -565,7 +565,7 @@ bpc_variable_declarators[sdd_parent_declarators] BPC_TOKEN_NAME[sdd_name]
 	$$ = NULL;
 	// check variable duplication first
 	if (bpcsmtv_registery_variables_test($sdd_name)) {
-		yyerror_format("duplicated variable: %s", $sdd_name);
+		yyerror_format("Duplicated variable \"%s\"", $sdd_name);
 		YYERROR;
 	}
 
@@ -649,7 +649,7 @@ int run_compiler(BPCCMD_PARSED_ARGS* bpc_args, compiler_test_probe probe) {
 	yyout = stdout;
 	yyin = bpc_args->input_file;
 	if (yyin == NULL) {
-		fprintf(yyout, "[Error] Fail to open src file.\n");
+		bpcerr_error(BPCERR_ERROR_SOURCE_PARSER, "Fail to open bp file stream. Compile aborted.");
 		return 1;
 	}
 

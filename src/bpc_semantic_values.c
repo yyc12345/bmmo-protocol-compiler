@@ -379,8 +379,14 @@ void bpcsmtv_registery_identifier_add(BPCSMTV_PROTOCOL_BODY* data) {
 bool bpcsmtv_get_offset_number(BPCSMTV_COMPOUND_NUMBER* num, uint32_t* outnum) {
 	if (outnum != NULL) *outnum = UINT32_C(0);
 
-	if (!num->success_uint) return false;
-	if (num->num_uint > UINT32_MAX) return false;
+	if (!num->success_uint) {
+		bpcerr_error(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "Can not get a unsigned integer from parsed compound integer.");
+		return false;
+	}
+	if (num->num_uint > UINT32_MAX) {
+		bpcerr_error(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "Integer %" PRIu64 " is too large for an offset.", num->num_uint);
+		return false;
+	}
 
 	if (outnum != NULL) *outnum = (uint32_t)(num->num_uint);
 	return true;
@@ -409,7 +415,7 @@ bool bpcsmtv_is_modifier_suit_struct(BPCSMTV_STRUCT_MODIFIER* modifier) {
 	return (!modifier->has_set_reliability);
 }
 
-void bpcsmtv_setup_field_layout(GSList* variables, BPCSMTV_STRUCT_MODIFIER* modifier) {
+void bpcsmtv_setup_field_layout(GSList* variables, BPCSMTV_STRUCT_MODIFIER* modifier, const char* hint_name) {
 	// check data
 	bool can_be_natural = true;
 	GSList* cursor;
@@ -433,6 +439,11 @@ void bpcsmtv_setup_field_layout(GSList* variables, BPCSMTV_STRUCT_MODIFIER* modi
 			// struct
 			// look up whether it is natural struct
 			BPCSMTV_PROTOCOL_BODY* entry = bpcsmtv_registery_identifier_get(variable->variable_type->type_data.custom_type);
+			if (G_UNLIKELY(entry == NULL)) {
+				bpcerr_panic(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "Fail to get already defined data struct \"%s\".",
+					variable->variable_type->type_data.custom_type);
+			}
+
 			if (entry->node_data.struct_data->struct_modifier->is_narrow) {
 				// narrow struct is not allowed
 				can_be_natural = false;
@@ -444,13 +455,14 @@ void bpcsmtv_setup_field_layout(GSList* variables, BPCSMTV_STRUCT_MODIFIER* modi
 	// change modifier
 	if (modifier->has_set_field_layout) {
 		if (!can_be_natural && !modifier->is_narrow) {
-			bpcerr_warning(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "your speficied field layout modifier `nature` is not suit for current struct. we change it to `narrow` forcely.");
+			bpcerr_warning(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, 
+				"Speficied field layout modifier \"natural\" is not suit for \"%s\". we change it to \"narrow\" forcely.", hint_name);
 
 			modifier->is_narrow = !can_be_natural;
 		}
 	} else {
-		bpcerr_info(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "field layout modifier not found, we assume it as %s.",
-			can_be_natural ? "`natural`" : "`narrow`");
+		bpcerr_info(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "The field layout modifier of \"%s\" is not found, we assume it as \"%s\".",
+			hint_name, (can_be_natural ? "natural" : "narrow"));
 
 		modifier->has_set_field_layout = true;
 		modifier->is_narrow = !can_be_natural;
@@ -477,8 +489,12 @@ void bpcsmtv_setup_field_layout(GSList* variables, BPCSMTV_STRUCT_MODIFIER* modi
 				// struct
 				// look up its natural struct
 				BPCSMTV_PROTOCOL_BODY* entry = bpcsmtv_registery_identifier_get(variable->variable_type->type_data.custom_type);
-				BPCSMTV_STRUCT_MODIFIER* ref_modifier = entry->node_data.struct_data->struct_modifier;
+				if (G_UNLIKELY(entry == NULL)) {
+					bpcerr_panic(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "Fail to get already defined data struct \"%s\" when analysing \"%s\".",
+						variable->variable_type->type_data.custom_type, hint_name);
+				}
 
+				BPCSMTV_STRUCT_MODIFIER* ref_modifier = entry->node_data.struct_data->struct_modifier;
 				// compare and get larger one.
 				modifier->struct_unit_size = modifier->struct_unit_size >= ref_modifier->struct_unit_size ?
 					modifier->struct_unit_size : ref_modifier->struct_unit_size;
@@ -500,6 +516,11 @@ void bpcsmtv_setup_field_layout(GSList* variables, BPCSMTV_STRUCT_MODIFIER* modi
 				// struct
 				// look up its natural struct
 				BPCSMTV_PROTOCOL_BODY* entry = bpcsmtv_registery_identifier_get(variable->variable_type->type_data.custom_type);
+				if (G_UNLIKELY(entry == NULL)) {
+					bpcerr_panic(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "Fail to get already defined data struct \"%s\" when analysing \"%s\".",
+						variable->variable_type->type_data.custom_type, hint_name);
+				}
+
 				real_size = entry->node_data.struct_data->struct_modifier->struct_size;
 			}
 			// considering array
@@ -514,8 +535,8 @@ void bpcsmtv_setup_field_layout(GSList* variables, BPCSMTV_STRUCT_MODIFIER* modi
 			// set align if necessary
 			// raise warning if there is a existed align
 			if (variable->variable_align->use_align) {
-				bpcerr_warning(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "your specified align %" PRIu32 " for variable %s has been replaced due to natural struct layout", 
-					variable->variable_align->padding_size, variable->variable_name);
+				bpcerr_warning(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "Specified align %" PRIu32 " for variable \"%s\" in \"%s\" has been replaced due to natural struct layout", 
+					variable->variable_align->padding_size, variable->variable_name, hint_name);
 			}
 			if (padding != UINT32_C(0)) {
 				variable->variable_align->use_align = true;
@@ -537,9 +558,9 @@ void bpcsmtv_setup_field_layout(GSList* variables, BPCSMTV_STRUCT_MODIFIER* modi
 
 }
 
-void bpcsmtv_setup_reliability(BPCSMTV_STRUCT_MODIFIER* modifier) {
+void bpcsmtv_setup_reliability(BPCSMTV_STRUCT_MODIFIER* modifier, const char* hint_name) {
 	if (!modifier->has_set_reliability) {
-		bpcerr_info(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "realibility modifier not found, we assume it as `reliable`.");
+		bpcerr_info(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "The realibility modifier of \"%s\" is not found, we assume it as \"reliable\".", hint_name);
 
 		modifier->has_set_reliability = true;
 		modifier->is_reliable = true;
@@ -556,6 +577,10 @@ void bpcsmtv_analyse_underlaying_type(BPCSMTV_VARIABLE_TYPE* variables) {
 		// check user defined type
 		// token type will never be msg accoring to syntax define
 		BPCSMTV_PROTOCOL_BODY* entry = bpcsmtv_registery_identifier_get(variables->type_data.custom_type);
+		if (G_UNLIKELY(entry == NULL)) {
+			bpcerr_panic(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "Fail to get previous defined data type when evaluating underlaying data type.");
+		}
+
 		switch (entry->node_type) {
 			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_ALIAS:
 				variables->full_uncover_is_basic_type = true;
@@ -577,6 +602,7 @@ void bpcsmtv_analyse_underlaying_type(BPCSMTV_VARIABLE_TYPE* variables) {
 				break;
 			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_MSG:
 			default:
+				bpcerr_panic(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "Previous defined data type is invalid when evaluating underlaying data type.");
 				break;	// skip
 		}
 	}
@@ -592,7 +618,7 @@ void bpcsmtv_assign_enum_member_value(BPCSMTV_ENUM_MEMBER* member, BPCSMTV_COMPO
 	}
 }
 
-bool bpcsmtv_arrange_enum_body_value(GSList* enum_body, BPCSMTV_BASIC_TYPE bt) {
+bool bpcsmtv_arrange_enum_body_value(GSList* enum_body, BPCSMTV_BASIC_TYPE bt, const char* hint_name) {
 	// prepare value duplication detector hashtable first
 	// init hashtable when necessary
 	if (hashtable_enum_value == NULL) {
@@ -649,18 +675,32 @@ bool bpcsmtv_arrange_enum_body_value(GSList* enum_body, BPCSMTV_BASIC_TYPE bt) {
 			// analyse speficied value
 			if (is_unsigned) {
 				// fail to parse uint
-				if (!member->specified_value.success_uint) return false;
+				if (!member->specified_value.success_uint) {
+					bpcerr_error(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "Enum \"%s\", member \"%s\" do not have parsed unsigned integer.",
+						hint_name, member->enum_member_name);
+					return false;
+				}
 				// value overflow
-				if (member->specified_value.num_uint > uint_max_limit[offset]) return false;
+				if (member->specified_value.num_uint > uint_max_limit[offset]) {
+					bpcerr_error(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "Enum \"%s\", member \"%s\" specify too large integer %" PRIu64 ". The legal max integer is %" PRIu64 ".",
+						hint_name, member->enum_member_name, member->specified_value.num_uint, uint_max_limit[offset]);
+					return false;
+				}
 
 				// assign
 				pending_uint = member->specified_value.num_uint;
 			} else {
 				// fail to parse int
-				if (!member->specified_value.success_int) return false;
+				if (!member->specified_value.success_int) {
+					bpcerr_error(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "Enum \"%s\", member \"%s\" do not have parsed signed integer.",
+						hint_name, member->enum_member_name);
+					return false;
+				}
 				// value overflow
 				if (member->specified_value.num_int > int_max_limit[offset] ||
 					member->specified_value.num_int < int_min_limit[offset]) {
+					bpcerr_error(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "Enum \"%s\", member \"%s\" specify too large integer %" PRIi64 ". The legal min integer is %" PRIi64 ", and max integer is %" PRIi64 ".",
+						hint_name, member->enum_member_name, member->specified_value.num_int, int_min_limit[offset], int_max_limit[offset]);
 					return false;
 				}
 
@@ -709,6 +749,13 @@ bool bpcsmtv_arrange_enum_body_value(GSList* enum_body, BPCSMTV_BASIC_TYPE bt) {
 			// the data has been push into hashtable and we do not process it anymore,
 			// including free it. the old value has been freed by hashtable self-impl and 
 			// the new value has been managed by hashtable.
+			if (is_unsigned) {
+				bpcerr_error(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "Dupicated value %" PRIu64 " of enum \"%s\", member \"%s\"",
+					pending_uint, hint_name, member->enum_member_name);
+			} else {
+				bpcerr_error(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "Dupicated value %" PRIi64 " of enum \"%s\", member \"%s\"",
+					pending_int, hint_name, member->enum_member_name);
+			}
 			return false;
 		}
 		

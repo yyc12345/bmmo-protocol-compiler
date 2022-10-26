@@ -358,8 +358,9 @@ bool bpcsmtv_is_modifier_suit_struct(BPCSMTV_STRUCT_MODIFIER* modifier);
 /// </summary>
 /// <param name="variables"></param>
 /// <param name="modifier"></param>
-void bpcsmtv_setup_field_layout(GSList* variables, BPCSMTV_STRUCT_MODIFIER* modifier);
-void bpcsmtv_setup_reliability(BPCSMTV_STRUCT_MODIFIER* modifier);
+/// <param name="hint_name">the name of struct or msg used by bpcerr functions call</param>
+void bpcsmtv_setup_field_layout(GSList* variables, BPCSMTV_STRUCT_MODIFIER* modifier, const char* hint_name);
+void bpcsmtv_setup_reliability(BPCSMTV_STRUCT_MODIFIER* modifier, const char* hint_name);
 void bpcsmtv_analyse_underlaying_type(BPCSMTV_VARIABLE_TYPE* variables);
 /// <summary>
 /// assign compound number to enum member
@@ -372,5 +373,6 @@ void bpcsmtv_assign_enum_member_value(BPCSMTV_ENUM_MEMBER* member, BPCSMTV_COMPO
 /// </summary>
 /// <param name="enum_body"></param>
 /// <param name="bt"></param>
+/// <param name="hint_name">the name of enum used by bpcerr functions call</param>
 /// <returns></returns>
-bool bpcsmtv_arrange_enum_body_value(GSList* enum_body, BPCSMTV_BASIC_TYPE bt);
+bool bpcsmtv_arrange_enum_body_value(GSList* enum_body, BPCSMTV_BASIC_TYPE bt, const char* hint_name);

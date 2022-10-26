@@ -9,7 +9,7 @@ static void project_test_core(BPCSMTV_DOCUMENT* document) {
 	
 }
 
-static void project_test_wrapper() {
+static void project_test_wrapper(void) {
 	// construct a fake args
 	BPCCMD_PARSED_ARGS fake_args;
 

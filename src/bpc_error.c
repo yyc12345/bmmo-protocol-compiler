@@ -1,5 +1,4 @@
 #include "bpc_error.h"
-#include <glib.h>
 #include <stdbool.h>
 
 #ifdef G_OS_WIN32
@@ -50,7 +49,7 @@ static void _bpcerr_printf(BPCERR_ERROR_SOURCE src, BPCERR_ERROR_TYPE err_type, 
 	g_string_free(disp, true);
 }
 
-static void _bpcerr_nuke_process(int rc) {
+G_NORETURN static void _bpcerr_nuke_process(int rc) {
 #ifdef G_OS_WIN32
 	ExitProcess(rc);
 #else
@@ -80,7 +79,7 @@ void bpcerr_error(BPCERR_ERROR_SOURCE src, const char* format, ...) {
 	va_end(ap);
 }
 
-void bpcerr_panic(BPCERR_ERROR_SOURCE src, const char* format, ...) {
+G_NORETURN void bpcerr_panic(BPCERR_ERROR_SOURCE src, const char* format, ...) {
 	va_list ap;
 	va_start(ap, format);
 	_bpcerr_printf(src, BPCERR_ERROR_TYPE_ERROR, format, ap);
