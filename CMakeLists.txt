@@ -8,7 +8,15 @@ find_package(BISON 3.6 REQUIRED)
 # precompile some files
 execute_process(
 COMMAND
-	"${PROJECT_SOURCE_DIR}/precompile.sh"
+	"./precompile.sh"
+WORKING_DIRECTORY
+	${PROJECT_SOURCE_DIR}
+COMMAND_ERROR_IS_FATAL ANY
+)
+# prepare examples
+execute_process(
+COMMAND
+	cp -r -f "examples" "out/examples"
 WORKING_DIRECTORY
 	${PROJECT_SOURCE_DIR}
 COMMAND_ERROR_IS_FATAL ANY

@@ -5,11 +5,11 @@
 #include "../src/bpc_semantic_values.h"
 #include "../src/y.tab.h"
 
-void project_test_core(BPCSMTV_DOCUMENT* document) {
+static void project_test_core(BPCSMTV_DOCUMENT* document) {
 	
 }
 
-void bpctest_project() {
+static void project_test_wrapper() {
 	// construct a fake args
 	BPCCMD_PARSED_ARGS fake_args;
 
@@ -33,5 +33,8 @@ void bpctest_project() {
 
 	// free fake args
 	fclose(fake_args.input_file);
+}
 
+void bpctest_project() {
+	g_test_add_func("/project", project_test_wrapper);
 }
