@@ -7,6 +7,8 @@ namespace my.test.name;
 alias tests_alias_int uint32;
 alias tests_alias_float float;
 alias tests_alias_string string;
+alias tests_alias_dup_error uint8;
+alias tests_alias_dup_error uint8;
 
 enum uint32 tests_enum {
 	entry

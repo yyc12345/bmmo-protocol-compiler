@@ -177,7 +177,7 @@ typedef struct _BPCSMTV_ENUM {
 	/// </summary>
 	BPCSMTV_BASIC_TYPE enum_basic_type;
 	/// <summary>
-	/// item is `BPCSMTV_ENUM_BODY*`
+	/// item is `BPCSMTV_ENUM_MEMBER*`
 	/// </summary>
 	GSList* enum_body;
 }BPCSMTV_ENUM;
