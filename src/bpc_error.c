@@ -3,6 +3,8 @@
 
 #ifdef G_OS_WIN32
 #include <Windows.h>
+#else
+#include <signal.h>
 #endif
 
 

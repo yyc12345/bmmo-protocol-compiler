@@ -44,6 +44,7 @@ BPCSMTV_BASIC_TYPE bpcsmtv_parse_basic_type(const char* strl) {
 	}
 
 	// error
+	bpcerr_panic(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "Fail to parse a basic type token which definately is a valid basic type token.");
 	return BPCSMTV_BASIC_TYPE_INVALID;
 }
 bool bpcsmtv_parse_reliability(const char* strl) {
@@ -474,7 +475,6 @@ void bpcsmtv_setup_field_layout(GSList* variables, BPCSMTV_STRUCT_MODIFIER* modi
 		modifier->struct_size = UINT32_C(1);
 		modifier->struct_unit_size = UINT32_C(1);
 	} else {
-		// todo: finish padding
 		// iterate full list to gain unit size
 		modifier->struct_unit_size = UINT32_C(1);
 		for (cursor = variables; cursor != NULL; cursor = cursor->next) {
@@ -482,7 +482,16 @@ void bpcsmtv_setup_field_layout(GSList* variables, BPCSMTV_STRUCT_MODIFIER* modi
 
 			if (variable->variable_type->full_uncover_is_basic_type) {
 				// direct basic type, enum or alias
-				uint32_t gotten_alignof = basic_type_alignof[(size_t)variable->variable_type->full_uncover_basic_type];
+				// check len
+				if (G_UNLIKELY(variable->variable_type->full_uncover_basic_type == BPCSMTV_BASIC_TYPE_STRING)) {
+					bpcerr_panic(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "Get string as natural elements in accident when getting basic type alignof.");
+				}
+				size_t gotten_alignof_offset = (size_t)variable->variable_type->full_uncover_basic_type;
+				if (G_UNLIKELY(gotten_alignof_offset >= basic_type_len)) {
+					bpcerr_panic(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "Element offset overflow when getting basic type alignof.");
+				}
+				
+				uint32_t gotten_alignof = basic_type_alignof[gotten_alignof_offset];
 				modifier->struct_unit_size = modifier->struct_unit_size >= gotten_alignof ?
 					modifier->struct_unit_size : gotten_alignof;
 			} else {
@@ -511,7 +520,15 @@ void bpcsmtv_setup_field_layout(GSList* variables, BPCSMTV_STRUCT_MODIFIER* modi
 			// considering base type
 			if (variable->variable_type->full_uncover_is_basic_type) {
 				// direct basic type, enum or alias
-				real_size = basic_type_sizeof[(size_t)variable->variable_type->full_uncover_basic_type];
+				if (G_UNLIKELY(variable->variable_type->full_uncover_basic_type == BPCSMTV_BASIC_TYPE_STRING)) {
+					bpcerr_panic(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "Get string as natural elements in accident when getting basic type sizeof.");
+				}
+				size_t gotten_sizeof_offset = (size_t)variable->variable_type->full_uncover_basic_type;
+				if (G_UNLIKELY(gotten_sizeof_offset >= basic_type_len)) {
+					bpcerr_panic(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "Element offset overflow when getting basic type sizeof.");
+				}
+				
+				real_size = basic_type_sizeof[gotten_sizeof_offset];
 			} else {
 				// struct
 				// look up its natural struct
@@ -658,6 +675,7 @@ bool bpcsmtv_arrange_enum_body_value(GSList* enum_body, BPCSMTV_BASIC_TYPE bt, c
 		case BPCSMTV_BASIC_TYPE_STRING:
 		default:
 			is_unsigned = true;
+			bpcerr_panic(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "Get invalid enum basic type when analysing enum members.");
 			break;
 	}
 	offset = offset == 0u ? 0u : offset - 1u;
