@@ -622,7 +622,7 @@ int yywrap() {
 
 void yyerror(const char *s) {
 	bpcerr_error(BPCERR_ERROR_SOURCE_PARSER, "%s\n\
-	from ln:%d col:%d - ln:%d col:%d", 
+	from ln:%d col:%d, to ln:%d col:%d", 
 		s,
 		yylloc.first_line, yylloc.first_column, yylloc.last_line, yylloc.last_column
 	);
