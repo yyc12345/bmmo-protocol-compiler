@@ -4,11 +4,17 @@ namespace my.test.name;
 // annotation test
 /* annotation test */
 
+/*
+some error test have trialing semicolon ";"
+because according to design, compiler need a recovering symbol ";"
+to recvery from error.
+*/
+
 alias tests_alias_int uint32;
 alias tests_alias_float float;
 alias tests_alias_string string;
 alias tests_alias_dup_error uint8;
-alias tests_alias_dup_error uint8;
+alias tests_alias_dup_error uint8;;
 
 enum uint32 tests_enum {
 	entry
@@ -32,6 +38,26 @@ enum int8 tests_enum_limit_int8 {
 	entry2 = -128,
 	entry3
 }
+enum int8 tests_enum_error_overflow {
+	entry1 = 1,
+	entry2 = 114514,
+	entry3
+};
+enum int8 tests_enum_error_raw_overflow {
+	entry1 = 1,
+	entry2 = 114514191981011451419198101145141919810,
+	entry3
+}
+enum int8 tests_enum_error_dup_member {
+	entry1,
+    entry1,
+    entry2
+}
+enum string tests_enum_error_type {
+	entry1,
+	entry2,
+	entry3
+};
 
 narrow struct tests_struct_blank {}
 narrow struct tests_struct {
@@ -149,6 +175,28 @@ struct tests_struct_nospec_narrow4 {
 natural struct tests_struct_natural_warning {
 	int8 data1#2;
 }
+struct tests_struct_error_dup_variable {
+    int8 data1;
+    int8 data1;
+    int8 data2;
+}
+struct tests_struct_error_overflow {
+    int8 data1 #114514191981011451419198101145141919810;
+    int8 data2;
+    int8[114514191981011451419198101145141919810] data3;
+    int8 data4;
+}
+struct tests_struct_error_unknow_type {
+    unknow_type data1;
+    int8 data2;
+}
+narrow natural struct tests_struct_error_dup_modifier {
+    int8 data1;
+}
+struct tests_struct_error_dup_array {
+    int8[8][] data1;
+    int8 data2;
+}
 
 reliable narrow msg tests_msg1 {
 	int8 data1;
@@ -158,4 +206,11 @@ unreliable narrow msg tests_msg2 {
 }
 msg tests_nospec_msg {
 	int8 data1;
+}
+msg tests_msg_error_invalid_type {
+    tests_nospec_msg data1;
+    int8 data2;
+}
+reliable unreliable msg tests_msg_error_dup_modifier {
+    int8 data1;
 }

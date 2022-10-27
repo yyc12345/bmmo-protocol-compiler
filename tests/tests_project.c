@@ -46,6 +46,22 @@ static void check_alias_bt(const char* name, BPCSMTV_BASIC_TYPE bt) {
 	g_assert_true(alias->basic_type == bt);
 }
 
+static void check_enum_no_member(const char* name, const char* member_name) {
+	BPCSMTV_ENUM* menum = check_enum(name);
+	g_assert_nonnull(menum->enum_body);
+
+	GSList* cursor = NULL;
+	BPCSMTV_ENUM_MEMBER* data = NULL;
+	for (cursor = menum->enum_body; cursor != NULL; cursor = cursor->next) {
+		data = (BPCSMTV_ENUM_MEMBER*)cursor->data;
+		g_assert_nonnull(data);
+		if (g_str_equal(data->enum_member_name, member_name)) {
+			break;
+		}
+	}
+
+	g_assert_null(cursor);
+}
 static BPCSMTV_ENUM_MEMBER* check_enum_member(const char* name, const char* member_name) {
 	BPCSMTV_ENUM* menum = check_enum(name);
 	g_assert_nonnull(menum->enum_body);
@@ -88,6 +104,21 @@ static void check_struct_natural_data(const char* name, uint32_t num_size, uint3
 	g_assert_false(mstruct->struct_modifier->is_narrow);
 	g_assert_cmpuint(mstruct->struct_modifier->struct_size, ==, num_size);
 	g_assert_cmpuint(mstruct->struct_modifier->struct_unit_size, ==, num_unit_size);
+}
+static BPCSMTV_VARIABLE* check_struct_no_variable(const char* name, const char* variable_name) {
+	BPCSMTV_STRUCT* mstruct = check_struct(name);
+
+	GSList* cursor;
+	BPCSMTV_VARIABLE* data = NULL;
+	for (cursor = mstruct->struct_body; cursor != NULL; cursor = cursor->next) {
+		data = (BPCSMTV_VARIABLE*)cursor->data;
+		g_assert_nonnull(data);
+		if (g_str_equal(data->variable_name, variable_name)) {
+			break;
+		}
+	}
+
+	g_assert_null(cursor);
 }
 static BPCSMTV_VARIABLE* check_struct_variable(const char* name, const char* variable_name) {
 	BPCSMTV_STRUCT* mstruct = check_struct(name);

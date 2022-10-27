@@ -82,7 +82,7 @@ TOKEN_NAME		[a-zA-Z][a-zA-Z0-9_]*
 "["{LEGAL_BLANK}{TOKEN_NUM}{LEGAL_BLANK}"]" {
 	bool suc = bpcsmtv_parse_number(yytext, yyleng, 1u, 1u, &(yylval.token_num));
 	if(suc) return BPC_ARRAY_TUPLE;
-	else lexerror_format("fail to parse number: %s", yytext);
+	else lexerror_format("Fail to parse number: %s", yytext);
 }
 "reliable"|"unreliable" {
 	yylval.token_bool = bpcsmtv_parse_reliability(yytext);
@@ -95,7 +95,7 @@ TOKEN_NAME		[a-zA-Z][a-zA-Z0-9_]*
 "#"{LEGAL_BLANK}{TOKEN_NUM} {
 	bool suc = bpcsmtv_parse_number(yytext, yyleng, 1u, 0u, &(yylval.token_num));
 	if(suc) return BPC_ALIGN;
-	else lexerror_format("fail to parse number: %s", yytext);
+	else lexerror_format("Fail to parse number: %s", yytext);
 }
 "," {
 	return BPC_COMMA;
@@ -124,7 +124,7 @@ TOKEN_NAME		[a-zA-Z][a-zA-Z0-9_]*
 {TOKEN_NUM} {
 	bool suc = bpcsmtv_parse_number(yytext, yyleng, 0u, 0u, &(yylval.token_num));
 	if(suc) return BPC_TOKEN_NUM;
-	else lexerror_format("fail to parse number: %s", yytext);
+	else lexerror_format("Fail to parse number: %s", yytext);
 }
 
 [ \t\n]+ /* ignore whitespace */;
@@ -132,14 +132,14 @@ TOKEN_NAME		[a-zA-Z][a-zA-Z0-9_]*
 .|\n {
 	/* eat up any unmatched character */
 	// and report error
-	lexerror_format("invalid text: %s", yytext);
+	lexerror_format("Invalid text \"%s\"", yytext);
 }
 
 %%
 
 void _lexerror(const char* s) {
 	bpcerr_error(BPCERR_ERROR_SOURCE_LEX, "%s\n\
-	from ln:%d col:%d - ln:%d col:%d", 
+	from ln:%d col:%d, to ln:%d col:%d", 
 		s,
 		yylloc.first_line, yylloc.first_column, yylloc.last_line, yylloc.last_column
 	);
