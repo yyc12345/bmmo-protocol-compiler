@@ -330,6 +330,8 @@ BPC_TOKEN_NAME[sdd_name]
 	$$ = bpcsmtv_constructor_enum_member();
 	$$->enum_member_name = $sdd_name;
 	bpcsmtv_assign_enum_member_value($$, NULL);
+	
+	bpcsmtv_registery_variables_add($sdd_name);
 }
 |
 BPC_TOKEN_NAME[sdd_name] BPC_EQUAL BPC_TOKEN_NUM[sdd_spec_num]
@@ -344,6 +346,8 @@ BPC_TOKEN_NAME[sdd_name] BPC_EQUAL BPC_TOKEN_NUM[sdd_spec_num]
 	$$ = bpcsmtv_constructor_enum_member();
 	$$->enum_member_name = $sdd_name;
 	bpcsmtv_assign_enum_member_value($$, &($sdd_spec_num));
+	
+	bpcsmtv_registery_variables_add($sdd_name);
 };
 
 bpc_struct_modifier:

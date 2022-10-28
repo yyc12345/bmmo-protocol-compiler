@@ -7,6 +7,33 @@
 
 // ===== Test Helper Functions =====
 
+static BPCSMTV_VARIABLE* find_variable_from_gslist(const char* name, GSList* ls) {
+	GSList* cursor;
+	BPCSMTV_VARIABLE* data = NULL;
+	for (cursor = ls; cursor != NULL; cursor = cursor->next) {
+		data = (BPCSMTV_VARIABLE*)cursor->data;
+		g_assert_nonnull(data);
+		if (g_str_equal(data->variable_name, name)) {
+			break;
+		}
+	}
+	
+	return cursor == NULL ? NULL : data;
+}
+static BPCSMTV_ENUM_MEMBER* find_member_from_gslist(const char* name, GSList* ls) {
+	GSList* cursor = NULL;
+	BPCSMTV_ENUM_MEMBER* data = NULL;
+	for (cursor = ls; cursor != NULL; cursor = cursor->next) {
+		data = (BPCSMTV_ENUM_MEMBER*)cursor->data;
+		g_assert_nonnull(data);
+		if (g_str_equal(data->enum_member_name, name)) {
+			break;
+		}
+	}
+	
+	return cursor == NULL ? NULL : data;
+}
+
 static BPCSMTV_PROTOCOL_BODY* check_has_identifier(const char* name) {
 	BPCSMTV_PROTOCOL_BODY* identifier = bpcsmtv_registery_identifier_get(name);
 	g_assert_nonnull(identifier);
@@ -50,33 +77,15 @@ static void check_enum_no_member(const char* name, const char* member_name) {
 	BPCSMTV_ENUM* menum = check_enum(name);
 	g_assert_nonnull(menum->enum_body);
 
-	GSList* cursor = NULL;
-	BPCSMTV_ENUM_MEMBER* data = NULL;
-	for (cursor = menum->enum_body; cursor != NULL; cursor = cursor->next) {
-		data = (BPCSMTV_ENUM_MEMBER*)cursor->data;
-		g_assert_nonnull(data);
-		if (g_str_equal(data->enum_member_name, member_name)) {
-			break;
-		}
-	}
-
-	g_assert_null(cursor);
+	BPCSMTV_ENUM_MEMBER* data = find_member_from_gslist(member_name, menum->enum_body);
+	g_assert_null(data);
 }
 static BPCSMTV_ENUM_MEMBER* check_enum_member(const char* name, const char* member_name) {
 	BPCSMTV_ENUM* menum = check_enum(name);
 	g_assert_nonnull(menum->enum_body);
 	
-	GSList* cursor = NULL;
-	BPCSMTV_ENUM_MEMBER* data = NULL;
-	for (cursor = menum->enum_body; cursor != NULL; cursor = cursor->next) {
-		data = (BPCSMTV_ENUM_MEMBER*)cursor->data;
-		g_assert_nonnull(data);
-		if (g_str_equal(data->enum_member_name, member_name)) {
-			break;
-		}
-	}
-	
-	g_assert_nonnull(cursor);
+	BPCSMTV_ENUM_MEMBER* data = find_member_from_gslist(member_name, menum->enum_body);
+	g_assert_nonnull(data);
 	return data;
 }
 static void check_enum_member_uvalue(const char* name, const char* member_name, uint64_t val) {
@@ -105,35 +114,17 @@ static void check_struct_natural_data(const char* name, uint32_t num_size, uint3
 	g_assert_cmpuint(mstruct->struct_modifier->struct_size, ==, num_size);
 	g_assert_cmpuint(mstruct->struct_modifier->struct_unit_size, ==, num_unit_size);
 }
-static BPCSMTV_VARIABLE* check_struct_no_variable(const char* name, const char* variable_name) {
+static void check_struct_no_variable(const char* name, const char* variable_name) {
 	BPCSMTV_STRUCT* mstruct = check_struct(name);
 
-	GSList* cursor;
-	BPCSMTV_VARIABLE* data = NULL;
-	for (cursor = mstruct->struct_body; cursor != NULL; cursor = cursor->next) {
-		data = (BPCSMTV_VARIABLE*)cursor->data;
-		g_assert_nonnull(data);
-		if (g_str_equal(data->variable_name, variable_name)) {
-			break;
-		}
-	}
-
-	g_assert_null(cursor);
+	BPCSMTV_VARIABLE* data = find_variable_from_gslist(variable_name, mstruct->struct_body);
+	g_assert_null(data);
 }
 static BPCSMTV_VARIABLE* check_struct_variable(const char* name, const char* variable_name) {
 	BPCSMTV_STRUCT* mstruct = check_struct(name);
 	
-	GSList* cursor;
-	BPCSMTV_VARIABLE* data =NULL;
-	for (cursor = mstruct->struct_body; cursor != NULL; cursor = cursor->next) {
-		data = (BPCSMTV_VARIABLE*)cursor->data;
-		g_assert_nonnull(data);
-		if (g_str_equal(data->variable_name, variable_name)) {
-			break;
-		}
-	}
-	
-	g_assert_nonnull(cursor);
+	BPCSMTV_VARIABLE* data = find_variable_from_gslist(variable_name, mstruct->struct_body);
+	g_assert_nonnull(data);
 	return data;
 }
 static void check_struct_variable_align(const char* name, const char* variable_name, uint32_t align) {
@@ -178,6 +169,19 @@ static void check_msg_modifier(const char* name, bool is_narrow, bool is_reliabl
 	g_assert_true(msg->msg_modifier->has_set_field_layout);
 	g_assert_true(msg->msg_modifier->is_narrow == is_narrow);
 }
+static void check_msg_no_variable(const char* name, const char* variable_name) {
+	BPCSMTV_MSG* msg = check_msg(name);
+
+	BPCSMTV_VARIABLE* data = find_variable_from_gslist(variable_name, msg->msg_body);
+	g_assert_null(data);
+}
+static BPCSMTV_VARIABLE* check_msg_variable(const char* name, const char* variable_name) {
+	BPCSMTV_MSG* msg = check_msg(name);
+	
+	BPCSMTV_VARIABLE* data = find_variable_from_gslist(variable_name, msg->msg_body);
+	g_assert_nonnull(data);
+	return data;
+}
 static void check_msg_index(const char* name, uint32_t idx) {
 	BPCSMTV_MSG* msg = check_msg(name);
 	g_assert_cmpuint(msg->msg_index, ==, idx);
@@ -186,6 +190,96 @@ static void check_msg_index(const char* name, uint32_t idx) {
 // ===== Real Test Functions =====
 
 static void project_test_core(BPCSMTV_DOCUMENT* document) {
+	//  === Alias ===
+	check_alias_bt("tests_alias_int", BPCSMTV_BASIC_TYPE_UINT32);
+	check_alias_bt("tests_alias_float", BPCSMTV_BASIC_TYPE_FLOAT);
+	check_alias_bt("tests_alias_string", BPCSMTV_BASIC_TYPE_STRING);
+	check_alias("tests_alias_dup_error");
+	
+	// === Enum ===
+	check_enum_member_uvalue("tests_enum", "entry", UINT64_C(0));
+	check_enum_member_ivalue("tests_enum_negative", "entry2", INT64_C(-114513));
+	check_enum_member_uvalue("tests_enum_limit_uint", "entry3", UINT64_C(0));
+	check_enum_member_ivalue("tests_enum_limit_int", "entry3", INT64_C(-9223372036854775807) - INT64_C(1));
+	check_enum_member_ivalue("tests_enum_limit_int8", "entry3", INT64_C(-128));
+	
+	check_no_identifier("tests_enum_error_overflow");
+	check_no_identifier("tests_enum_error_raw_overflow");
+	check_no_identifier("tests_enum_error_dup_member");
+	check_no_identifier("tests_enum_error_type");
+	
+	// === Struct ===
+	check_struct("tests_struct_blank");
+	check_struct_modifier("tests_struct", true);
+	
+	check_struct_variable_list("tests_struct_list", "data1");
+	check_struct_variable_list("tests_struct_list", "data9");
+	check_struct_variable_tuple("tests_struct_tuple", "data1", UINT32_C(8));
+	check_struct_variable_tuple("tests_struct_tuple", "data9", UINT32_C(8));
+	check_struct_variable_align("tests_struct_align", "data1", UINT32_C(4));
+	check_struct_variable_align("tests_struct_align", "data9", UINT32_C(4));
+	
+	check_struct_variable_no_array("tests_struct_hybrid", "data7");
+	check_struct_variable_align("tests_struct_hybrid", "data7", UINT32_C(0));
+	check_struct_variable_no_array("tests_struct_hybrid", "data8");
+	check_struct_variable_align("tests_struct_hybrid", "data8", UINT32_C(0));
+	check_struct_variable_no_array("tests_struct_hybrid", "data9");
+	check_struct_variable_align("tests_struct_hybrid", "data9", UINT32_C(0));
+	
+	check_struct_modifier("tests_struct_natural1", false);
+	check_struct_modifier("tests_struct_natural2", false);
+	
+	check_struct_variable_align("tests_struct_natural_align1", "data1", UINT32_C(1));
+	check_struct_variable_align("tests_struct_natural_align1", "data2", UINT32_C(0));
+	check_struct_variable_align("tests_struct_natural_align1", "data3", UINT32_C(1));
+	check_struct_variable_align("tests_struct_natural_align1", "data4", UINT32_C(0));
+	check_struct_natural_data("tests_struct_natural_align1", UINT32_C(10), UINT32_C(2));
+	check_struct_variable_align("tests_struct_natural_align2", "data1", UINT32_C(3));
+	check_struct_variable_align("tests_struct_natural_align2", "data2", UINT32_C(0));
+	check_struct_variable_align("tests_struct_natural_align2", "data3", UINT32_C(1));
+	check_struct_variable_align("tests_struct_natural_align2", "data4", UINT32_C(0));
+	check_struct_variable_align("tests_struct_natural_align2", "data5", UINT32_C(2));
+	check_struct_variable_align("tests_struct_natural_align2", "data6", UINT32_C(2));
+	check_struct_natural_data("tests_struct_natural_align2", UINT32_C(64), UINT32_C(4));
+	
+	check_struct_modifier("tests_struct_nospec_natural1", false);
+	check_struct_modifier("tests_struct_nospec_natural2", false);
+	check_struct_modifier("tests_struct_nospec_narrow1", true);
+	check_struct_modifier("tests_struct_nospec_narrow2", true);
+	check_struct_modifier("tests_struct_nospec_narrow3", true);
+	check_struct_modifier("tests_struct_nospec_narrow4", true);
+	
+	check_struct_variable_align("tests_struct_natural_warning", "data1", UINT32_C(0));
+	
+	check_struct_variable("tests_struct_error_dup_variable", "data1");
+	check_struct_variable("tests_struct_error_dup_variable", "data2");
+	
+	check_struct_variable_align("tests_struct_error_overflow", "data1", UINT32_C(0));
+	check_struct_variable("tests_struct_error_overflow", "data2");
+	check_struct_variable_no_array("tests_struct_error_overflow", "data3");
+	check_struct_variable("tests_struct_error_overflow", "data4");
+	
+	check_struct_no_variable("tests_struct_error_unknow_type", "data1");
+	check_struct_variable("tests_struct_error_unknow_type", "data2");
+	
+	check_no_identifier("tests_struct_error_dup_modifier");
+	
+	check_struct_no_variable("tests_struct_error_dup_array", "data1");
+	check_struct_variable("tests_struct_error_dup_array", "data2");
+	
+	// === Msg ===
+	check_msg_modifier("tests_msg1", true, true);
+	check_msg_index("tests_msg1", UINT32_C(0));
+	check_msg_modifier("tests_msg2", false, false);
+	check_msg_index("tests_msg2", UINT32_C(1));
+	check_msg_modifier("tests_nospec_msg", false, true);
+	check_msg_index("tests_nospec_msg", UINT32_C(2));
+	
+	check_no_identifier("tests_msg_error_dup_modifier");
+	
+	check_msg_no_variable("tests_msg_error_invalid_type", "data1");
+	check_msg_variable("tests_msg_error_invalid_type", "data2");
+	check_msg_index("tests_msg_error_invalid_type", UINT32_C(3));
 	
 }
 

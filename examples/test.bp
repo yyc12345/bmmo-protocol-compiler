@@ -30,12 +30,12 @@ enum uint64 tests_enum_limit_uint {
 }
 enum int64 tests_enum_limit_int {
 	entry1 = 1,
-	entry2 = -9223372036854775807,
+	entry2 = 9223372036854775807,
 	entry3
 }
 enum int8 tests_enum_limit_int8 {
 	entry1 = 1,
-	entry2 = -128,
+	entry2 = 127,
 	entry3
 }
 enum int8 tests_enum_error_overflow {
@@ -52,7 +52,7 @@ enum int8 tests_enum_error_dup_member {
 	entry1,
     entry1,
     entry2
-}
+};
 enum string tests_enum_error_type {
 	entry1,
 	entry2,
@@ -113,6 +113,9 @@ narrow struct tests_struct_hybrid {
 	float[] data4#4;
 	string[8] data5#4;
 	string[] data6#4;
+	uint32 data7;
+	float data8;
+	string data9;
 }
 natural struct tests_struct_natural1 {
 	uint32 data1;
@@ -138,17 +141,17 @@ natural struct tests_struct_natural2 {
 }
 natural struct tests_struct_natural_align1 {
 	int8 data1;
-	int32 data2;
-	int8[5] data3;
-	int64 data4;
+	int16 data2;
+	int8[3] data3;
+	uint16 data4;
 }
 natural struct tests_struct_natural_align2 {
 	int8 data1;
 	int32 data2;
-	int8[5] data3;
+	int8[3] data3;
 	int64 data4;
-	int8[3] data5;
-	tests_struct_natural_align1 data6;
+	tests_struct_natural_align1 data5;
+	tests_struct_natural_align1[3] data6;
 }
 struct tests_struct_nospec_natural1 {
 	int8 data1;
@@ -201,16 +204,16 @@ struct tests_struct_error_dup_array {
 reliable narrow msg tests_msg1 {
 	int8 data1;
 }
-unreliable narrow msg tests_msg2 {
+unreliable natural msg tests_msg2 {
 	int8 data1;
 }
 msg tests_nospec_msg {
 	int8 data1;
 }
+reliable unreliable msg tests_msg_error_dup_modifier {
+    int8 data1;
+}
 msg tests_msg_error_invalid_type {
     tests_nospec_msg data1;
     int8 data2;
-}
-reliable unreliable msg tests_msg_error_dup_modifier {
-    int8 data1;
 }
