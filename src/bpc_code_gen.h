@@ -2,12 +2,28 @@
 
 #include "bpc_semantic_values.h"
 #include <stdint.h>
+#include <inttypes.h>
 #include <stdbool.h>
 #include "bpc_cmd.h"
+
+#define BPCGEN_INDENT_INIT_NEW(fs) uint32_t _indent_level = UINT32_C(0), _indent_loop = UINT32_C(0); FILE* _indent_fs = fs;
+#define BPCGEN_INDENT_INIT_REF(fs, ref_indent) uint32_t _indent_level = ref_indent, _indent_loop = 0; FILE* _indent_fs = fs;
+#define BPCGEN_INDENT_RESET _indent_level = _indent_loop = UINT32_C(0);
+#define BPCGEN_INDENT_INC ++_indent_level;
+#define BPCGEN_INDENT_DEC --_indent_level;
+#define BPCGEN_INDENT_PRINT fputc('\n', _indent_fs); \
+for (_indent_loop = UINT32_C(0); _indent_loop < _indent_level; ++_indent_loop) \
+fputc('\t', _indent_fs);
 
 void bpcgen_init_code_file(BPCCMD_PARSED_ARGS* bpc_args);
 void bpcgen_write_document(BPCSMTV_DOCUMENT* document);
 void bpcgen_free_code_file();
+
+void codepy_write_document(FILE* fs, BPCSMTV_DOCUMENT* document);
+void codecs_write_document(FILE* fs, BPCSMTV_DOCUMENT* document);
+void codehpp_write_document(FILE* fs, BPCSMTV_DOCUMENT* document);
+void codecpp_write_document(FILE* fs, BPCSMTV_DOCUMENT* document, const gchar* hpp_reference);
+void codeproto_write_document(FILE* fs, BPCSMTV_DOCUMENT* document);
 
 /*
 `like_basic_type` and `underlaying_basic_type` is a pair. both of them usually indicating 

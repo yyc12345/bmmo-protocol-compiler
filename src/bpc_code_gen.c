@@ -4,13 +4,36 @@
 #include "bpc_error.h"
 #include "bpc_fs.h"
 
+static FILE* fs_python = NULL;
+static FILE* fs_csharp = NULL;
+static FILE* fs_cpp_hdr = NULL;
+static FILE* fs_cpp_src = NULL;
+static FILE* fs_proto = NULL;
+static gchar* hpp_reference = NULL;
+
 void bpcgen_init_code_file(BPCCMD_PARSED_ARGS* bpc_args) {
+	fs_python = bpc_args->out_python_file;
+	fs_csharp = bpc_args->out_csharp_file;
+	fs_cpp_hdr = bpc_args->out_cpp_header_file;
+	fs_cpp_src = bpc_args->out_cpp_source_file;
+	fs_proto = bpc_args->out_proto_file;
+
+	hpp_reference = g_strdup(bpc_args->ref_cpp_relative_hdr);
 }
 
 void bpcgen_write_document(BPCSMTV_DOCUMENT* document) {
+	if (fs_python != NULL) codepy_write_document(fs_python, document);
+	if (fs_csharp != NULL) codecs_write_document(fs_csharp, document);
+	if (fs_cpp_hdr != NULL) codehpp_write_document(fs_cpp_hdr, document);
+	if (fs_cpp_src != NULL) codecpp_write_document(fs_cpp_src, document, hpp_reference);
+	if (fs_proto != NULL) codeproto_write_document(fs_proto, document);
 }
 
 void bpcgen_free_code_file() {
+	// just empty file stream variables in this file.
+	// the work of file free is taken by commandline parser.
+	fs_python = fs_csharp = fs_cpp_hdr = fs_cpp_src = fs_proto = NULL;
+	g_free(hpp_reference);
 }
 
 
