@@ -384,8 +384,8 @@ bool bpcsmtv_get_offset_number(BPCSMTV_COMPOUND_NUMBER* num, uint32_t* outnum) {
 		bpcerr_error(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "Can not get a unsigned integer from parsed compound integer.");
 		return false;
 	}
-	if (num->num_uint > UINT32_MAX) {
-		bpcerr_error(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "Integer %" PRIu64 " is too large for an offset.", num->num_uint);
+	if (num->num_uint > UINT32_MAX || num->num_uint == UINT64_C(0)) {
+		bpcerr_error(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "Integer %" PRIu64 " is not in the legal range of offset.", num->num_uint);
 		return false;
 	}
 

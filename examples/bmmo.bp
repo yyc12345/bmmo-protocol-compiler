@@ -1,178 +1,201 @@
 bpc 1;
-namespace bmmo.data_struct;
+namespace Bmmo.DataStructs;
 
 // assume:
 // bpbool -> uint8
 // bpint -> int32
-alias valvegns_player_uuid uint32;
+alias gnsid uint32;
 alias bpbool uint8;
 alias bpint int32;
 
 // ============= basic msg chapter
 
-msg none_msg : reliable {} // not used
+narrow reliable msg none_msg {} // not used
 
-msg login_request_msg : reliable {
+narrow reliable msg login_request_msg {
     string nickname;
 }
 
-struct login_accepted {
+narrow struct login_accepted {
     string nickname;
-    valvegns_player_uuid uuid;
+    gnsid uuid;
 }
-msg login_accepted_msg : reliable {
-    login_accepted data list;
-}
-
-msg login_denied_msg : reliable {}
-
-msg player_disconnected_msg : reliable {
-    valvegns_player_uuid player_id;
+narrow reliable msg login_accepted_msg {
+    login_accepted[] pairs;
 }
 
-msg player_connected_msg : reliable {
-    valvegns_player_uuid player_id;
-    string nickname;
+enum uint8 action_type {
+    Unknown,
+    LoginDenied,
+    CurrentMapQuery,
+    FatalError, // client encountered a fatal error; end connection from server
 }
 
-msg ping_msg : reliable {} // not used
+natural reliable msg simple_action_msg {
+	action_type action;
+}
 
-struct vx_position {
+natural reliable msg player_disconnected_msg {
+    gnsid connection_id;
+}
+
+narrow reliable msg player_connected_msg {
+    gnsid connection_id;
+    string name;
+}
+
+narrow reliable msg ping_msg {} // not used
+
+natural struct vx_position {
     float x,y,z;
 }
-struct vx_quaternion {
+natural struct vx_quaternion {
     float x,y,z,w;
 }
-struct ball_state {
+natural struct ball_state {
     uint32 type;
     vx_position position;
     vx_quaternion rotation;
 }
-msg ball_state_msg : unreliable {
+natural unreliable msg ball_state_msg {
     ball_state data;
 }
 
-struct owned_ball_state {
+natural struct owned_ball_state {
     ball_state state;
-    valvegns_player_uuid player_id;
+    gnsid player_id;
 }
-msg owned_ball_state_msg : unreliable {
+natural unreliable msg owned_ball_state_msg {
     owned_ball_state data;
 }
 
-msg keyboard_input_msg : reliable {} // not used
+reliable msg keyboard_input_msg {} // not used
 
-msg chat_msg : reliable {
-    valvegns_player_uuid player_id;
+narrow struct chat_body {
+    gnsid someone_id;
     string chat_content;
 }
+narrow reliable msg chat_msg {
+    chat_body data;
+}
 
-msg level_finish_msg : reliable {
-    valvegns_player_uuid player_id;
-    int32 points,lifes,lifeBonus,levelBonus;
+natural reliable msg level_finish_msg {
+    gnsid player_id;
+    int32 points, lifes, lifeBonus, levelBonus;
     float timeElapsed;
 
-    int32 startPoints,currentLevel;
+    int32 startPoints, currentLevel;
     bpbool cheated;
 }
 
 // ============= v3.1 cheat update chapter
 
-enum bmmo_stage : uint8 {
+enum uint8 bmmo_stage {
     Alpha,
     Beta,
     RC,
     Release
 }
-struct bmmo_version {
+natural struct version_t {
     uint8 major;
     uint8 minor;
     uint8 subminor;
     bmmo_stage stage;
     uint8 build;
 }
-msg login_request_v2_msg : reliable {
-    bmmo_version version;
+narrow reliable msg login_request_v2_msg {
+    version_t version;
     string nickname;
     uint8 cheated;
 }
 
-struct login_accepted_v2 {
-    valvegns_player_uuid uuid;
+narrow struct player_status {
+    gnsid uuid;
     string nickname;
     uint8 cheated;
 }
-msg login_accepted_v2_msg : reliable {
-    login_accepted_v2 data list;
+narrow reliable msg login_accepted_v2_msg {
+    player_status[] players;
 }
 
-msg player_connected_v2_msg : reliable {
-    login_accepted_v2 data;
+narrow reliable msg player_connected_v2_msg {
+    player_status player;
 }
 
-struct cheat_state {
+natural struct cheat_state {
     uint8 cheated;
     uint8 notify;
 }
-msg cheat_state_msg : reliable {
+natural reliable msg cheat_state_msg {
     cheat_state data;
 }
 
-msg owned_cheat_state_msg : reliable {
-    cheat_state state align 2;
-    valvegns_player_uuid player_id;
+natural reliable msg owned_cheat_state_msg {
+    cheat_state state;
+    gnsid player_id;
 }
 
-msg cheat_toggle_msg : reliable {
+natural reliable msg cheat_toggle_msg {
     cheat_state data;
 }
 
-msg owned_cheat_toggle_msg : reliable {
-    cheat_state state align 2;
-    valvegns_player_uuid player_id;
+natural reliable msg owned_cheat_toggle_msg {
+    cheat_state state;
+    gnsid player_id;
 }
 
 // ============= v3.2 kick update chapter
 
-msg kick_request_msg : reliable {
+narrow reliable msg kick_request_msg {
     string kicked_player_name;
-    valvegns_player_uuid operator_player;
+    gnsid operator_player;
     string reason;
 }
 
-msg player_kicked_msg : reliable {
+enum uint8 crash_type {
+    None = 0, // not crashed
+    Crash = 1,
+    FatalError = 2
+}
+
+narrow reliable msg player_kicked_msg {
     string kicked_player_name;
     string executor_name;
     string reason;
     uint8 crashed;
 }
 
-// ============= v3.2 bandwidth reduce & map hash update chapter
+// ============= v3.2 bandwidth reduce & map hash update & identity system chapter
 
-msg owned_ball_state_v2_msg : reliable {
-    owned_ball_state data list;
+narrow unreliable msg owned_ball_state_v2_msg {
+    owned_ball_state[] data;
 }
 
-msg login_request_v3_msg : reliable {
-    bmmo_version version;
+narrow reliable msg login_request_v3_msg {
+    version_t version;
     string nickname;
     uint8 cheated;
-    uint8 uuid tuple 16;
+    uint8[16] uuid;
 }
 
-enum map_type : uint8 {
-    UnknownType,
-    Original,
-    Custom
+enum uint8 map_type {
+    Unknown,
+    OriginalLevel,
+    CustomMap
 }
-struct map {
-    string map_name;
-    map_type bmap_type;
-    uint8 map_md5 tuple 16;
-    uint32 map_level;
+natural struct map {
+    map_type type;
+    uint8[16] md5;
+    uint32 level;
 }
-msg level_finish_v2_msg : reliable {
-    valvegns_player_uuid player_id;
+narrow named_map {
+    string name;
+    map_type type;
+    uint8[16] md5;
+    uint32 level;
+}
+natural reliable msg level_finish_v2_msg {
+    gnsid player_id;
     int32 points,lifes,lifeBonus,levelBonus;
     float timeElapsed;
 
@@ -180,42 +203,147 @@ msg level_finish_v2_msg : reliable {
     bpbool cheated;
     
     map bmap;
-    bpint rank;
+    int32 rank;
 }
 
 // ============= v3.2 op permission update chapter
 
-enum action_denied_reason : uint8 {
-    UnknownReason,
+enum uint8 deny_reason {
+    Unknown,
     NoPermission,
     InvalidAction,
     InvalidTarget,
-    TargetNotFound
+    TargetNotFound,
+    PlayerMuted
 }
-struct action_denied {
-    action_denied_reason reason;
-}
-msg action_denied_msg : reliable {
-    action_denied data;
+natural reliable msg action_denied_msg {
+    deny_reason reason;
 }
 
-msg op_state_msg : reliable {
+natural reliable msg op_state_msg {
     uint8 op;
 }
 
-// ============= v3.2 sync-restart update chapter
+// ============= v3.2 sync-restart update & basic context chapter
 
-enum countdown_type: uint8 {
-    CountdownType_Go,
-    CountdownType_1,
-    CountdownType_2,
-    CountdownType_3,
-    CountdownType_Unknown = 255
+enum uint8 countdown_type {
+    Go = 0,
+    Countdown_1 = 1,
+    Countdown_2 = 2,
+    Countdown_3 = 3,
+    Ready = 4,
+    ConfirmReady = 5,
+    Unknown = 255
 }
-msg countdown_msg : reliable {
+natural reliable msg countdown_msg {
     countdown_type cd_type;
-    valvegns_player_uuid sender;
+    gnsid sender;
     map for_map;
     uint8 restart_level;
     uint8 force_restart;
+}
+
+natural reliable msg did_not_finish_msg {
+    gnsid player_id;
+    uint8 cheated;
+    map in_map;
+    int32 sector;
+}
+
+// ============= v3 map in detail chapter
+
+narrow reliable msg map_names_msg {
+    uint8[16] md5;
+    string name;
+}
+
+// used in messages sent by server.
+narrow reliable msg plain_text_msg {
+    string text_content;
+}
+
+enum uint8 state_type {
+    None, 
+    Announcement, 
+    EnteringMap
+}
+natural struct current_map_state {
+    gnsid player_id;
+    map in_map;
+    int32 sector;
+    state_type type;
+}
+natural reliable msg current_map_msg {
+    current_map_state state;
+}
+
+narrow reliable msg hash_data_msg {
+    string data_name;
+    uint8[16] md5;
+}
+
+// ============= v3.3 extrapolation chapter
+
+// i create a alias as the implementation of bmmo timestamp.
+// bp do not have align barrier because it always use x86 align strategy.
+// in x86 align, both uint32 and uint64 have the same align, 4 bytes.
+alias timestamp_t uint64;
+
+natural struct timed_ball_state {
+    ball_state inherited;
+    timestamp_t timestamp;
+}
+natural unreliable msg timed_ball_state_msg {
+    timed_ball_state data;
+}
+
+natural struct owned_timed_ball_state {
+    timed_ball_state state;
+    gnsid player_id;
+}
+natural struct owned_timestamp {
+    timestamp_t timestamp;
+    gnsid player_id;
+}
+narrow unreliable msg owned_timed_ball_state_msg {
+    owned_timed_ball_state[] balls;
+    owned_timestamp[] unchaged_balls;
+}
+
+// ============= v3 enhanced context & misc improvements chapter
+
+narrow reliable msg private_chat_msg {
+    chat_body data;
+}
+
+natural reliable msg player_ready_msg {
+    gnsid player_id;
+    uint32 count;
+    uint8 ready;
+}
+
+narrow reliable msg important_notification_msg {
+    chat_body data;
+}
+
+narrow struct mod_pair {
+    string mod_name;
+    string mod_version;
+}
+narrow reliable msg mod_list_msg {
+    mod_pair[] pairs;
+}
+
+narrow reliable msg popup_box_msg {
+    string title;
+    string text_content;
+}
+
+natural reliable msg current_sector_msg {
+    gnsid player_id;
+    int32 sector;
+}
+
+narrow reliable msg current_map_list_msg {
+    current_map_state[] states;
 }

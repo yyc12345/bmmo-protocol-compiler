@@ -1,11 +1,16 @@
 #pragma once
 
 #include "bpc_semantic_values.h"
+#include "bpc_cmd.h"
+#include "snippets.h"
+#include "bpc_error.h"
+#include "bpc_fs.h"
 #include <stdint.h>
+#include <stdio.h>
 #include <inttypes.h>
 #include <stdbool.h>
-#include "bpc_cmd.h"
 
+#define BPCGEN_INDENT_TYPE uint32_t
 #define BPCGEN_INDENT_INIT_NEW(fs) uint32_t _indent_level = UINT32_C(0), _indent_loop = UINT32_C(0); FILE* _indent_fs = fs;
 #define BPCGEN_INDENT_INIT_REF(fs, ref_indent) uint32_t _indent_level = ref_indent, _indent_loop = 0; FILE* _indent_fs = fs;
 #define BPCGEN_INDENT_RESET _indent_level = _indent_loop = UINT32_C(0);
@@ -19,6 +24,13 @@ void bpcgen_init_code_file(BPCCMD_PARSED_ARGS* bpc_args);
 void bpcgen_write_document(BPCSMTV_DOCUMENT* document);
 void bpcgen_free_code_file();
 
+///// <summary>
+///// pick msg struct from protocol body
+///// </summary>
+///// <param name="full_list">the original list, item is `BPCSMTV_PROTOCOL_BODY*`</param>
+///// <returns>the picked list. item is `BPCSMTV_MSG*` and its items should *not* be free. please free slist directly.</returns>
+//GSList* bpcgen_pick_msg_slist(GSList* full_list);
+
 void codepy_write_document(FILE* fs, BPCSMTV_DOCUMENT* document);
 void codecs_write_document(FILE* fs, BPCSMTV_DOCUMENT* document);
 void codehpp_write_document(FILE* fs, BPCSMTV_DOCUMENT* document);
@@ -26,10 +38,10 @@ void codecpp_write_document(FILE* fs, BPCSMTV_DOCUMENT* document, const gchar* h
 void codeproto_write_document(FILE* fs, BPCSMTV_DOCUMENT* document);
 
 /*
-`like_basic_type` and `underlaying_basic_type` is a pair. both of them usually indicating 
+`like_basic_type` and `underlaying_basic_type` is a pair. both of them usually indicating
 whether explicit serialize/deserialize functions or calling serialize/deserialize functions should be used.
 
-`is_pure_basic_type` and `c_style_type` is a pair. both of them always be used in strong-type language, such as C#, C++, 
+`is_pure_basic_type` and `c_style_type` is a pair. both of them always be used in strong-type language, such as C#, C++,
 to make code generation more flexible. For example, we need create a field with type `SomeEnum` in C# (enum SomeEnum : UInt32).
 Now we need read it, however, we should first dig the basic type of `SomeEnum`, `UInt32` in this example. Then, we need call a type-convertion,
 `member = (SomeEnum)br.ReadUInt32()`. In this outputed syntax, we get `SomeEnum` from `c_style_type`, get `UInt32` from `underlaying_basic_type`.
@@ -47,13 +59,13 @@ typedef struct _BPCGEN_UNDERLAYING_MEMBER {
 
 	/// <summary>
 	/// Whether field is basic type, after resolving with alias and enum.
-	/// When it is false, it mean that this member is must be a struct and 
+	/// When it is false, it mean that this member is must be a struct and
 	/// shoule be serialized or deserialized by calling functions rather than
 	/// direct code.
 	/// </summary>
 	bool like_basic_type;
 	/// <summary>
-	/// The detected basic type of current member. 
+	/// The detected basic type of current member.
 	/// Only valid when `like_basic_type` is true.
 	/// </summary>
 	BPCSMTV_BASIC_TYPE underlaying_basic_type;
@@ -65,8 +77,8 @@ typedef struct _BPCGEN_UNDERLAYING_MEMBER {
 	/// </summary>
 	bool is_pure_basic_type;
 	/// <summary>
-	/// The c style type of member for convenient code gen. 
-	/// Only valid when `is_pure_basic_type` is false. 
+	/// The c style type of member for convenient code gen.
+	/// Only valid when `is_pure_basic_type` is false.
 	/// </summary>
 	char* c_style_type;
 }BPCGEN_UNDERLAYING_MEMBER;

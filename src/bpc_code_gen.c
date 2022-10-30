@@ -36,6 +36,18 @@ void bpcgen_free_code_file() {
 	g_free(hpp_reference);
 }
 
+//GSList* bpcgen_pick_msg_slist(GSList* full_list) {
+//	GSList* picked = NULL;
+//	GSList* cursor;
+//	for (cursor = full_list; cursor != NULL; cursor = cursor->next) {
+//		BPCSMTV_PROTOCOL_BODY* data = (BPCSMTV_PROTOCOL_BODY*)cursor->data;
+//		if (data->node_type == BPCSMTV_DEFINED_IDENTIFIER_TYPE_MSG) {
+//			picked = g_slist_append(picked, data->node_data.msg_data);
+//		}
+//	}
+//
+//	return picked;
+//}
 
 /*
 
