@@ -28,7 +28,7 @@ enum uint8 action_type {
     Unknown,
     LoginDenied,
     CurrentMapQuery,
-    FatalError, // client encountered a fatal error; end connection from server
+    FatalError // client encountered a fatal error; end connection from server
 }
 
 natural reliable msg simple_action_msg {
@@ -47,10 +47,10 @@ narrow reliable msg player_connected_msg {
 narrow reliable msg ping_msg {} // not used
 
 natural struct vx_position {
-    float x,y,z;
+    float x, y, z;
 }
 natural struct vx_quaternion {
-    float x,y,z,w;
+    float x, y, z, w;
 }
 natural struct ball_state {
     uint32 type;
@@ -69,7 +69,7 @@ natural unreliable msg owned_ball_state_msg {
     owned_ball_state data;
 }
 
-reliable msg keyboard_input_msg {} // not used
+narrow reliable msg keyboard_input_msg {} // not used
 
 narrow struct chat_body {
     gnsid someone_id;
@@ -153,7 +153,7 @@ narrow reliable msg kick_request_msg {
 }
 
 enum uint8 crash_type {
-    None = 0, // not crashed
+    NoCrash = 0, // not crashed
     Crash = 1,
     FatalError = 2
 }
@@ -188,7 +188,7 @@ natural struct map {
     uint8[16] md5;
     uint32 level;
 }
-narrow named_map {
+narrow struct named_map {
     string name;
     map_type type;
     uint8[16] md5;
@@ -263,7 +263,7 @@ narrow reliable msg plain_text_msg {
 }
 
 enum uint8 state_type {
-    None, 
+    NoState, 
     Announcement, 
     EnteringMap
 }

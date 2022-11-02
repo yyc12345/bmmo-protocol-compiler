@@ -202,8 +202,10 @@ static void write_substantial_struct(FILE* fs, SubstantialStructUnion* union_dat
 
 	// class header
 	BPCGEN_INDENT_PRINT;
-	fprintf(fs, "class %s():", substantial_struct_name); BPCGEN_INDENT_INC;
-
+	fprintf(fs, "class %s(%s):", substantial_struct_name, 
+		(is_msg ? "_BpMessage" : "object"));
+	BPCGEN_INDENT_INC;
+	
 	// static natural struct pack
 	BPCGEN_INDENT_PRINT;
 	fputs("_struct_packer = (", fs);
@@ -332,7 +334,7 @@ static void write_substantial_struct(FILE* fs, SubstantialStructUnion* union_dat
 				// use different strategy for string and other types.
 				BPCGEN_INDENT_PRINT;
 				if (data->variable_type->full_uncover_basic_type == BPCSMTV_BASIC_TYPE_STRING) {
-					fprintf(fs, "%s = _read_bp_string(_ss)", oper->str);
+					fprintf(fs, "%s = self._read_bp_string(_ss)", oper->str);
 				} else {
 					fprintf(fs, "%s = struct.unpack('<%c', _ss.read(%c))[0]",
 						oper->str,
@@ -374,8 +376,9 @@ static void write_substantial_struct(FILE* fs, SubstantialStructUnion* union_dat
 			BPCGEN_INDENT_PRINT;
 			fputc('(', fs);
 			write_tuple_series(fs, bdata->auto_proc_data.param_list);
-			fprintf(fs, ") = _struct_packer[%" PRIu32 "].unpack(_ss.read(_struct_packer[%" PRIu32 "].size))",
-				bdata->auto_proc_data.pystruct_index, bdata->auto_proc_data.pystruct_index);
+			fprintf(fs, ") = %s._struct_packer[%" PRIu32 "].unpack(_ss.read(%s._struct_packer[%" PRIu32 "].size))",
+				substantial_struct_name, bdata->auto_proc_data.pystruct_index, 
+				substantial_struct_name, bdata->auto_proc_data.pystruct_index);
 
 		}
 	}
@@ -427,7 +430,7 @@ static void write_substantial_struct(FILE* fs, SubstantialStructUnion* union_dat
 				// native serializer
 				BPCGEN_INDENT_PRINT;
 				if (data->variable_type->full_uncover_basic_type == BPCSMTV_BASIC_TYPE_STRING) {
-					fprintf(fs, "_write_bp_string(_ss, %s)", oper->str);
+					fprintf(fs, "self._write_bp_string(_ss, %s)", oper->str);
 				} else {
 					fprintf(fs, "_ss.write(struct.pack('%c', %s))",
 						python_struct_fmt[(size_t)data->variable_type->full_uncover_basic_type],
@@ -459,7 +462,7 @@ static void write_substantial_struct(FILE* fs, SubstantialStructUnion* union_dat
 
 			// binary writer
 			BPCGEN_INDENT_PRINT;
-			fprintf(fs, "_ss.write(_struct_packer[%" PRIu32 "].pack(", bdata->auto_proc_data.pystruct_index);
+			fprintf(fs, "_ss.write(%s._struct_packer[%" PRIu32 "].pack(", substantial_struct_name, bdata->auto_proc_data.pystruct_index);
 			write_args_series(fs, bdata->auto_proc_data.param_list);
 			fputs("))", fs);
 		}
@@ -508,7 +511,7 @@ static void write_uniform_deserialize(FILE* fs, GSList* msg_ls) {
 
 	// write uniformed deserialize func
 	BPCGEN_INDENT_PRINT;
-	fputs("def _UniformDeserialize(_ss: io.BytesIO):", fs); BPCGEN_INDENT_INC;
+	fputs("def _UniformDeserialize(_ss: io.BytesIO) -> _BpMessage:", fs); BPCGEN_INDENT_INC;
 	BPCGEN_INDENT_PRINT;
 	fputs("_opcode = _opcode_packer.unpack(_ss.read(_opcode_packer.size))[0]", fs);
 	for (cursor = msg_ls; cursor != NULL; cursor = cursor->next) {

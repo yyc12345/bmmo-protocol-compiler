@@ -29,7 +29,11 @@ static const BPCDB_SMTV_PARSE_INT dbset_parse_int[] = {
 	{ "18446744073709551615", 20u, 0u, 0u, false, INT64_C(0) },
 
 	{ "aaa", 3u, 0u, 0u, false, INT64_C(0) },
-	{ "[[\0\t 123\0\t]]", 12u, 2u, 2u, true, INT64_C(123) }
+	{ "[[\0\t 123\0\t]]", 12u, 2u, 2u, true, INT64_C(123) },
+	
+	{ "0", 1u, 0u, 0u, true, INT64_C(0) },
+	{ "-0", 2u, 0u, 0u, true, INT64_C(0) },
+	{ "007", 3u, 0u, 0u, true, INT64_C(7) },
 };
 static const size_t dblen_parse_int = sizeof(dbset_parse_int) / sizeof(BPCDB_SMTV_PARSE_INT);
 

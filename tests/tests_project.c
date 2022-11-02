@@ -256,6 +256,19 @@ static void project_test_core(BPCSMTV_DOCUMENT* document) {
 	// === Struct ===
 	check_struct("tests_struct_blank");
 	check_struct_modifier("tests_struct", true);
+	
+	check_struct_variable("tests_struct_successive_decl", "data1");
+	check_struct_variable("tests_struct_successive_decl", "data2");
+	check_struct_variable("tests_struct_successive_decl", "data3");
+	check_struct_variable_list("tests_struct_successive_decl", "data4");
+	check_struct_variable_list("tests_struct_successive_decl", "data5");
+	check_struct_variable_list("tests_struct_successive_decl", "data6");
+	check_struct_variable_tuple("tests_struct_successive_decl", "data7", UINT32_C(2));
+	check_struct_variable_tuple("tests_struct_successive_decl", "data8", UINT32_C(2));
+	check_struct_variable_tuple("tests_struct_successive_decl", "data9", UINT32_C(2));
+	check_struct_variable_align("tests_struct_successive_decl", "data10", UINT32_C(2));
+	check_struct_variable_align("tests_struct_successive_decl", "data11", UINT32_C(2));
+	check_struct_variable_align("tests_struct_successive_decl", "data12", UINT32_C(2));
 
 	check_struct_variable_list("tests_struct_list", "data1");
 	check_struct_variable_list("tests_struct_list", "data9");

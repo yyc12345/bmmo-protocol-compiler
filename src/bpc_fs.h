@@ -12,7 +12,7 @@
 
 gchar* bpcfs_vsprintf(const char* format, va_list ap);
 
-void bpcfs_write_snippets(FILE* fs, BPCSNP_EMBEDDED_FILE* snp);
+void bpcfs_write_snippets(FILE* fs, const BPCSNP_EMBEDDED_FILE* snp);
 FILE* bpcfs_fopen_glibfs(const gchar* glibfs_filepath, bool is_read);
 
 /// <summary>

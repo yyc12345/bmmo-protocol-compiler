@@ -564,7 +564,7 @@ BPC_TOKEN_NAME[sdd_name]
 	bpcsmtv_registery_variables_add($sdd_name);
 }
 |
-bpc_variable_declarators[sdd_parent_declarators] BPC_TOKEN_NAME[sdd_name]
+bpc_variable_declarators[sdd_parent_declarators] BPC_COMMA BPC_TOKEN_NAME[sdd_name]
 {
 	$$ = NULL;
 	// check variable duplication first

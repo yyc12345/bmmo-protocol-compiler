@@ -25,7 +25,7 @@ void bpcll_error_fmt(const char* format, ...);
 %}
 
 LEGAL_BLANK		[ \t]*
-TOKEN_NUM		"-"?[1-9][0-9]*
+TOKEN_NUM		"0"|("-"?[1-9][0-9]*)
 TOKEN_NAME		[a-zA-Z][a-zA-Z0-9_]*
 
 %option never-interactive

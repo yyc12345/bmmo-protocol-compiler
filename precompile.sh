@@ -16,7 +16,7 @@ do_bin2c(){
 	echo -n "static const char _bpcsnp_file_${1}[] = \"" >> $snippets_c
 	bin2c < ${2} >> $snippets_c
 	echo "\";" >> $snippets_c
-	echo "const BPCSNP_EMBEDDED_FILE bpcsnp_${1} = { _bpcsnp_file_${1}, sizeof(_bpcsnp_file_${1}) / sizeof(char) };" >> $snippets_c
+	echo "const BPCSNP_EMBEDDED_FILE bpcsnp_${1} = { _bpcsnp_file_${1}, sizeof(_bpcsnp_file_${1}) / sizeof(char) - 1u };" >> $snippets_c
 }
 
 # set header and reset source and header

@@ -70,6 +70,12 @@ narrow struct tests_struct {
 	tests_struct_blank data7;
 	tests_enum data8;
 }
+narrow struct tests_struct_successive_decl {
+	uint32 data1, data2, data3;
+	uint32[] data4, data5, data6;
+	uint32[2] data7, data8, data9;
+	uint32 data10, data11, data12 #2;
+}
 narrow struct tests_struct_list {
 	uint32[]data1;
 	float[] data2;
