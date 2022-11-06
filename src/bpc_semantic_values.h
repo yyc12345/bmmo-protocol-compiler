@@ -353,6 +353,7 @@ void bpcsmtv_registery_identifier_add(BPCSMTV_PROTOCOL_BODY* data);
 bool bpcsmtv_get_offset_number(BPCSMTV_COMPOUND_NUMBER* num, uint32_t* outnum);
 bool bpcsmtv_is_basic_type_suit_for_enum(BPCSMTV_BASIC_TYPE bt);
 bool bpcsmtv_is_modifier_suit_struct(BPCSMTV_STRUCT_MODIFIER* modifier);
+uint32_t bpcsmtv_get_bt_size(BPCSMTV_BASIC_TYPE bt);
 /// <summary>
 /// called when preparing struct/msg body to fulfill field layout data.
 /// </summary>

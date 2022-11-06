@@ -140,6 +140,7 @@ static GPtrArray* constructor_bond_vars(GSList* variables, bool is_narrow) {
 			// manual proc need manually shift to next
 			cursor = cursor->next;
 		} else {
+			// auto proc index register
 			data->auto_proc_data.pystruct_index = index_counter++;
 		}
 		
@@ -185,14 +186,10 @@ static void write_enum(FILE* fs, BPCSMTV_ENUM* smtv_enum) {
 	BPCGEN_INDENT_DEC;
 }
 
-typedef union _SubstantialStructUnion {
-	BPCSMTV_STRUCT* pStruct;
-	BPCSMTV_MSG* pMsg;
-}SubstantialStructUnion;
-static void write_substantial_struct(FILE* fs, SubstantialStructUnion* union_data, bool is_msg) {
+static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool is_msg) {
 	GSList* cursor = NULL, * variables = (is_msg ? union_data->pMsg->msg_body : union_data->pStruct->struct_body);
 	BPCSMTV_STRUCT_MODIFIER* modifier = (is_msg ? union_data->pMsg->msg_modifier : union_data->pStruct->struct_modifier);
-	char* substantial_struct_name = (is_msg ? union_data->pMsg->msg_name : union_data->pStruct->struct_name);
+	char* struct_like_name = (is_msg ? union_data->pMsg->msg_name : union_data->pStruct->struct_name);
 	GString* oper = g_string_new(NULL);
 	guint c = 0u;
 	BPCGEN_INDENT_INIT_NEW(fs);
@@ -202,7 +199,7 @@ static void write_substantial_struct(FILE* fs, SubstantialStructUnion* union_dat
 
 	// class header
 	BPCGEN_INDENT_PRINT;
-	fprintf(fs, "class %s(%s):", substantial_struct_name, 
+	fprintf(fs, "class %s(%s):", struct_like_name, 
 		(is_msg ? "_BpMessage" : "object"));
 	BPCGEN_INDENT_INC;
 	
@@ -377,8 +374,8 @@ static void write_substantial_struct(FILE* fs, SubstantialStructUnion* union_dat
 			fputc('(', fs);
 			write_tuple_series(fs, bdata->auto_proc_data.param_list);
 			fprintf(fs, ") = %s._struct_packer[%" PRIu32 "].unpack(_ss.read(%s._struct_packer[%" PRIu32 "].size))",
-				substantial_struct_name, bdata->auto_proc_data.pystruct_index, 
-				substantial_struct_name, bdata->auto_proc_data.pystruct_index);
+				struct_like_name, bdata->auto_proc_data.pystruct_index, 
+				struct_like_name, bdata->auto_proc_data.pystruct_index);
 
 		}
 	}
@@ -462,7 +459,7 @@ static void write_substantial_struct(FILE* fs, SubstantialStructUnion* union_dat
 
 			// binary writer
 			BPCGEN_INDENT_PRINT;
-			fprintf(fs, "_ss.write(%s._struct_packer[%" PRIu32 "].pack(", substantial_struct_name, bdata->auto_proc_data.pystruct_index);
+			fprintf(fs, "_ss.write(%s._struct_packer[%" PRIu32 "].pack(", struct_like_name, bdata->auto_proc_data.pystruct_index);
 			write_args_series(fs, bdata->auto_proc_data.param_list);
 			fputs("))", fs);
 		}
@@ -548,7 +545,7 @@ void codepy_write_document(FILE* fs, BPCSMTV_DOCUMENT* document) {
 	// iterate list to get data
 	// and pick msg
 	GSList* cursor = NULL, * msg_ls = NULL;
-	SubstantialStructUnion substantial_struct;
+	BPCGEN_STRUCT_LIKE struct_like = { 0 };
 	for (cursor = document->protocol_body; cursor != NULL; cursor = cursor->next) {
 		BPCSMTV_PROTOCOL_BODY* data = (BPCSMTV_PROTOCOL_BODY*)cursor->data;
 
@@ -557,12 +554,12 @@ void codepy_write_document(FILE* fs, BPCSMTV_DOCUMENT* document) {
 				write_enum(fs, data->node_data.enum_data);
 				break;
 			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_STRUCT:
-				substantial_struct.pStruct = data->node_data.struct_data;
-				write_substantial_struct(fs, &substantial_struct, false);
+				struct_like.pStruct = data->node_data.struct_data;
+				write_struct_or_msg(fs, &struct_like, false);
 				break;
 			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_MSG:
-				substantial_struct.pMsg = data->node_data.msg_data;
-				write_substantial_struct(fs, &substantial_struct, true);
+				struct_like.pMsg = data->node_data.msg_data;
+				write_struct_or_msg(fs, &struct_like, true);
 
 				msg_ls = g_slist_append(msg_ls, data->node_data.msg_data);
 				break;

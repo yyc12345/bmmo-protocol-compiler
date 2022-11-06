@@ -20,6 +20,15 @@
 for (_indent_loop = UINT32_C(0); _indent_loop < _indent_level; ++_indent_loop) \
 fputc('\t', _indent_fs);
 
+/// <summary>
+/// the union of struct and msg. because they are almost equal
+/// except a little differences. so they share the same write function commonly.
+/// </summary>
+typedef union _BPCGEN_STRUCT_LIKE {
+	BPCSMTV_STRUCT* pStruct;
+	BPCSMTV_MSG* pMsg;
+}BPCGEN_STRUCT_LIKE;
+
 void bpcgen_init_code_file(BPCCMD_PARSED_ARGS* bpc_args);
 void bpcgen_write_document(BPCSMTV_DOCUMENT* document);
 void bpcgen_free_code_file();
