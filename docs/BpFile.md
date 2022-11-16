@@ -2,7 +2,7 @@
 
 ## Layout
 
-Bp file consists of 2 parts, config head and protocol body. There is a example. Each parts will be introduced in following chapter.
+Bp file consists of 2 parts, config head and protocol body. There is a example. Each parts will be introduced in following chapters.
 
 ```
 bpc 1;
@@ -27,7 +27,7 @@ narrow unreliable ball_state {
 
 ## Annotations
 
-Bp file supports 2 styles of annotation, line annotation and block annotations. They are very similar than C language annotation. There is a example.
+Bp file supports 2 styles of annotation, line annotation and block annotation. They are very similar than C language annotation. There is a example.
 
 ```
 // I'm a line annotation.
@@ -37,6 +37,7 @@ Hey.
 I'm a block annotation.
 */
 ```
+
 ## Control Head
 
 ### Version
@@ -44,7 +45,7 @@ I'm a block annotation.
 Example: `bpc 1;`
 
 Specific compiler version.   
-Mismatched version will abort the process of parsing. For current compiler, version is 1.  
+Mismatched version will abort the process of parsing. For current compiler, version is `1`.  
 This syntax must be place at the head of bp file.
 
 ### Namespace
@@ -53,7 +54,7 @@ Example: `namespace aaa.bbb.blablabla;`
 
 Namespace is a common feature for the most of programming language. Bp file also support namespace feature to ensure the generated code will not be post in global scope and prevent any name pollution at the same time.  
 Namespace is a essential syntax and should be written after Version syntax immediately.  
-Namespace only works in generated C#, C++ and Proto code. It will not applied to Python code because Python do not have namespace feature. Python use its unique module feature which is related to generated code file name.
+Namespace only works in generated C\#, C++ and Proto code. It will not applied to Python code because Python do not have namespace feature. Python use its unique module feature which is related to generated code file name.
 
 ## Protocol Body
 
@@ -78,14 +79,14 @@ Bp file supports following basic types:
 
 ### Naming Requirements
 
-For each alias, enum, struct and msg declaration, they have a unique name. We call it **identifier**. Also, for every enum members' name, and every struct and msg's fields' name. We call it **entry**. This section will introduce the constraints of identifier and entry.
+For each alias, enum, struct and msg declarations, they have a unique name. We call it **identifier**. Also, for every enum members' name, and every name of struct and msg's field (aka. variable). We call it **entry**. This section will introduce the constraints of identifier and entry.
 
 Like C language, we require:
 
 * Identifier should starts with `a` to `z` and `A` to `Z`. `_` is **not** allowed in first character.
 * The rest of identifier can be `0` to `9`, `a` to `z`, `A` to `Z` and `_`.
 
-Also, the name shouldn't be the keywords used by bp file. In the same scope, the name shouldn't duplicated.
+Also, the name shouldn't be the keywords used by bp file. In the same scope, the name shouldn't be duplicated.
 
 ### Alias
 
@@ -192,6 +193,8 @@ Switch `(BASIC_TYPE | IDENTIFIER)` order you to make a choice between basic type
 
 #### Field Layout
 
+Aka. Variable Layout.
+
 If you have experience with C++ language, you may know about align feature. Compiler will pad some bytes after some fields to make the whole struct can be visited fluently.
 
 Bp file support this feature, we provide 2 field layout. `natural` is natural align layout, if you choose this layout, bp compiler will do the same things as C compiler. `narrow` is a narrow layout. It should be called *no align* actually, because it will place field in order without any useless bytes.  
@@ -212,9 +215,11 @@ Bp file support 2 types array, static array and dynamic array.
 Static array, we call it **tuple**, have a unchangeable length which has been determined in programming. You can use `[NUM]` to mark a field as a tuple. `NUM` is a non-zero positive number.  
 Dynamic array, we call it **list**. Its length can be resized to fulfill items storage. You can use `[]` to mark a field as a list.
 
-What you should know is that array modifier should be placed after data type identifier, not the name of entry. It is different with C language. It is more like C#.
+What you should know is that array modifier should be placed after data type identifier, not the name of entry. It is different with C language. It is more like C\#.
 
 #### Field Align
+
+Aka. Variable Align.
 
 We have talked about field layout before. Field Align is another method to align your field. Align syntax allow you align fields on your hand, not compiler automatic determination.
 You can add `#NUM` to the tail of any fields declarations to notice compiler add specific padding to your chosen fields. `NUM` is a non-zero positive number indicating the count of padding bytes.
@@ -260,6 +265,5 @@ So, bp file provide this feature to indicate this message's reliability.
 
 Now you have a basic understanding of bp file. However, you may still confused about how to write a perfect bp file. Don't worry about that. This project provide some good bp file examples in folder `examples`.
 
-* `example.bp`: This file describe the whole format of BP file and it also can be accepted by compiler and output correct code file.
+* `test.bp`: The test Bp file referred by compiler testing project, including correct and incorrect syntax to test the robustness of compiler.
 * `bmmo.bp`: This file is the description of BMMO protocol. You can gain some complex and productive techniques from this file.
-* `errors.bp`: The error test for compilr, you should not read it if you are not the developer of this compiler. However you may find some common syntax error in this file and learn from it.

@@ -67,21 +67,39 @@ For how to use generated code files, please read [Generated Code Manual](docs/Ge
 
 ## Compile
 
+This compiler support Windows and Linux platform and use different compile steps. I do not have any plan about supporting any Apple platform.
+
+### Project Constitution
+
+* `bmmo-protocol-compiler`: The core compiler. All code are placed in `src`.
+* `bpc_test`: The test of compiler. All code are placed in `tests`.
+
 ### Requirements
 
 * Flex 2.5.6(at least)
 * Bison 3.2(at least)
-* GLib 2.6x(at least)
+* GLib 2.7x(at least)
 
-Tips: The version of required Flex and Bison could not be fetched from GnuWin32 project. I suggest you use MSYS2 or any other Linux distro, such as WSL etc, to get correct version of Flex and Bison. Also, required GLib can not be gotten from official GLib Windows binary release. I suggest you compile GLib by yourself or use any other pre-compiled GLib Windows binary release.
-
-### Steps
+### Windows Build
 
 * Modify `LibRef.props` and point macro to your GLib binary path.
 * Open Visual Studio solution.
 * Compile this project with your favorite architecture, such as Debug, Release, Win32 and x64.
 
-CMake and Linux support are on the way. I do not have any plan about supporting any Apple platform.
+Tips: The version of required Flex and Bison could not be fetched from GnuWin32 project. I suggest you use MSYS2 or any other Linux distro, such as WSL etc, to get correct version of Flex and Bison. Also, required GLib can not be gotten from official GLib Windows binary release. I suggest you compile GLib by yourself or use any other pre-compiled GLib Windows binary release.
+
+### Linux Build
+
+Navigate to root directory of this project and execute following command.
+
+```bash
+mkdir out
+cd out
+cmake ..
+make
+```
+
+Tips: Also works on Termux.
 
 ## Related project:
 
