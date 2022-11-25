@@ -36,18 +36,149 @@ void bpcgen_free_code_file() {
 	g_free(hpp_reference);
 }
 
-//GSList* bpcgen_pick_msg_slist(GSList* full_list) {
-//	GSList* picked = NULL;
-//	GSList* cursor;
-//	for (cursor = full_list; cursor != NULL; cursor = cursor->next) {
-//		BPCSMTV_PROTOCOL_BODY* data = (BPCSMTV_PROTOCOL_BODY*)cursor->data;
-//		if (data->node_type == BPCSMTV_DEFINED_IDENTIFIER_TYPE_MSG) {
-//			picked = g_slist_append(picked, data->node_data.msg_data);
-//		}
-//	}
-//
-//	return picked;
-//}
+
+/// <summary>
+/// detect BPCGEN_VARTYPE from specific variable
+/// </summary>
+/// <param name="variable"></param>
+/// <returns></returns>
+BPCGEN_VARTYPE get_vartype(BPCSMTV_VARIABLE* variable) {
+	if (variable->variable_type->full_uncover_is_basic_type) {
+		// distinguish string and primitive types
+		if (variable->variable_type->full_uncover_basic_type == BPCSMTV_BASIC_TYPE_STRING) {
+
+			if (variable->variable_array->is_array) {
+				if (variable->variable_array->is_static_array) return BPCGEN_VARTYPE_STATIC_STRING;
+				else return BPCGEN_VARTYPE_DYNAMIC_STRING;
+			} else return BPCGEN_VARTYPE_SINGLE_STRING;
+
+		} else {
+
+			if (variable->variable_array->is_array) {
+				if (variable->variable_array->is_static_array) return BPCGEN_VARTYPE_STATIC_PRIMITIVE;
+				else return BPCGEN_VARTYPE_DYNAMIC_PRIMITIVE;
+			} else return BPCGEN_VARTYPE_SINGLE_PRIMITIVE;
+
+		}
+	} else {
+		// distinguish narrow and natural struct
+		BPCSMTV_PROTOCOL_BODY* ref_struct = bpcsmtv_registery_identifier_get(variable->variable_type->type_data.custom_type);
+		g_assert(ref_struct->node_type == BPCSMTV_DEFINED_IDENTIFIER_TYPE_STRUCT);
+
+		if (ref_struct->node_data.struct_data->struct_modifier->is_narrow) {
+
+			if (variable->variable_array->is_array) {
+				if (variable->variable_array->is_static_array) return BPCGEN_VARTYPE_STATIC_NARROW;
+				else return BPCGEN_VARTYPE_DYNAMIC_NARROW;
+			} else return BPCGEN_VARTYPE_SINGLE_NARROW;
+
+		} else {
+
+			if (variable->variable_array->is_array) {
+				if (variable->variable_array->is_static_array) return BPCGEN_VARTYPE_STATIC_NATURAL;
+				else return BPCGEN_VARTYPE_DYNAMIC_NATURAL;
+			} else return BPCGEN_VARTYPE_SINGLE_NATURAL;
+
+		}
+	}
+}
+
+/// <summary>
+/// 
+/// </summary>
+/// <param name="in_variables"></param>
+/// <param name="in_bond_rules"></param>
+/// <param name="out_bond_vars">a pointer to "BOND_VARS*". set NULL if no data returned. this variables is allocated by this function and should be free by caller.</param>
+/// <returns></returns>
+static GSList* building_bond_vars(GSList* in_variables, BPCGEN_VARTYPE in_bond_rules, BOND_VARS** out_bond_vars) {
+	// preset
+	*out_bond_vars = NULL;
+	if (in_variables == NULL) return NULL;
+
+	// loop data
+	GSList* cursor;
+	uint32_t counter = UINT32_C(0);
+	for (cursor = in_variables; cursor != NULL; cursor = cursor->next) {
+		BPCSMTV_VARIABLE* variable = (BPCSMTV_VARIABLE*)cursor->data;
+
+		// get current variable type
+		BPCGEN_VARTYPE current_var_type = get_vartype(variable);
+
+		// compare with rules
+		if (!BPCGEN_VARTYPE_CONTAIN(in_bond_rules, current_var_type)) {
+			// stop. this variable is not matched
+			break;
+		} else {
+			// goto next one
+			++counter;
+		}
+	}
+
+	// create one
+	BOND_VARS* bond_vars_oper = g_new0(BOND_VARS, 1);
+	*out_bond_vars = bond_vars_oper;
+	if (counter == UINT32_C(0)) {
+		// nothing matched
+		// init bond vars
+		bond_vars_oper->is_bonded = false;
+		bond_vars_oper->bond_vars_len = 1;
+		bond_vars_oper->plist_vars = g_new0(BPCSMTV_VARIABLE*, 1);
+		bond_vars_oper->vars_type = g_new0(BPCGEN_VARTYPE, 1);
+		// set values
+		bond_vars_oper->plist_vars[0] = (BPCSMTV_VARIABLE*)in_variables->data;
+		bond_vars_oper->vars_type[0] = get_vartype((BPCSMTV_VARIABLE*)in_variables->data);
+		// return next
+		return in_variables->next;
+	} else {
+		// matched, is bond_vars
+		// init bond vars
+		bond_vars_oper->is_bonded = true;
+		bond_vars_oper->bond_vars_len = counter;
+		bond_vars_oper->plist_vars = g_new0(BPCSMTV_VARIABLE*, counter);
+		bond_vars_oper->vars_type = g_new0(BPCGEN_VARTYPE, counter);
+		// set values
+		uint32_t p; cursor = in_variables;
+		for (p = 0; p < counter; ++p) {
+			bond_vars_oper->plist_vars[p] = (BPCSMTV_VARIABLE*)cursor->data;
+			bond_vars_oper->vars_type[p] = get_vartype((BPCSMTV_VARIABLE*)cursor->data);
+			cursor = cursor->next;
+		}
+		// return next
+		return cursor;
+	}
+
+}
+
+GSList* bpcgen_constructor_bond_vars(GSList* variables, BPCGEN_VARTYPE bond_rules) {
+	GSList* result = NULL;
+	BOND_VARS* cache_bond_vars = NULL;
+
+	GSList* cursor = variables;
+	while (true) {
+		cursor = building_bond_vars(cursor, bond_rules, &cache_bond_vars);
+		if (cache_bond_vars == NULL) break;
+
+		result = g_slist_append(result, cache_bond_vars);
+	}
+
+	return result;
+}
+
+void bpcgen_destructor_bond_vars(GSList* bond_vars) {
+	if (bond_vars == NULL) return;
+
+	// free every items
+	GSList* cursor;
+	for (cursor = bond_vars; cursor != NULL; cursor = cursor->next) {
+		BOND_VARS* item = (BOND_VARS*)cursor->data;
+
+		g_free(item->plist_vars);
+		g_free(item->vars_type);
+	}
+
+	// free self
+	g_slist_free(bond_vars);
+}
 
 /*
 
@@ -812,7 +943,7 @@ void _bpcgen_gen_struct_msg_body(const char* token_name, GSList* smtv_member_lis
 					g_string_append_c(cpp_type_str, '*');
 				}
 			}
-			
+
 			if (data->semantic_value->is_basic_type) {
 				cpp_type_str = code_cpp_basic_type[data->semantic_value->v_basic_type];
 			} else {
@@ -830,7 +961,7 @@ void _bpcgen_gen_struct_msg_body(const char* token_name, GSList* smtv_member_lis
 				fprintf(fs_cpp_hdr, "%s %s;", cpp_type_str->str, data->semantic_value->vname);
 			}
 		}
-        g_string_free(cpp_type_str, true);
+		g_string_free(cpp_type_str, true);
 
 		// reliable and opcode
 		if (is_msg) {
@@ -919,10 +1050,10 @@ void _bpcgen_write_preset_code(GSList* namespace_list) {
 		}
 
 		// write opcode enum
-		// opcode shoule be written first 
-		// because following code need the define 
-		// of opcode, otherwise, cpp compiler 
-		// will throw a error told it couldn't 
+		// opcode shoule be written first
+		// because following code need the define
+		// of opcode, otherwise, cpp compiler
+		// will throw a error told it couldn't
 		// find the define of opcode
 		bool is_first = true;
 		BPC_CODEGEN_INDENT_RESET(fs_cpp_hdr);

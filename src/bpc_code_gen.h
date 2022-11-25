@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <inttypes.h>
 #include <stdbool.h>
+#include <glib.h>
 
 #define BPCGEN_INDENT_TYPE uint32_t
 #define BPCGEN_INDENT_INIT_NEW(fs) uint32_t _indent_level = UINT32_C(0), _indent_loop = UINT32_C(0); FILE* _indent_fs = fs;
@@ -33,12 +34,43 @@ void bpcgen_init_code_file(BPCCMD_PARSED_ARGS* bpc_args);
 void bpcgen_write_document(BPCSMTV_DOCUMENT* document);
 void bpcgen_free_code_file();
 
-///// <summary>
-///// pick msg struct from protocol body
-///// </summary>
-///// <param name="full_list">the original list, item is `BPCSMTV_PROTOCOL_BODY*`</param>
-///// <returns>the picked list. item is `BPCSMTV_MSG*` and its items should *not* be free. please free slist directly.</returns>
-//GSList* bpcgen_pick_msg_slist(GSList* full_list);
+#define BPCGEN_VARTYPE_CONTAIN(val, probe) (val & probe)
+typedef enum _BPCGEN_VARTYPE {
+	BPCGEN_VARTYPE_SINGLE_PRIMITIVE = 1 << 0,
+	BPCGEN_VARTYPE_STATIC_PRIMITIVE = 1 << 1,
+	BPCGEN_VARTYPE_DYNAMIC_PRIMITIVE = 1 << 2,
+
+	BPCGEN_VARTYPE_SINGLE_STRING = 1 << 3,
+	BPCGEN_VARTYPE_STATIC_STRING = 1 << 4,
+	BPCGEN_VARTYPE_DYNAMIC_STRING = 1 << 5,
+
+	BPCGEN_VARTYPE_SINGLE_NARROW = 1 << 6,
+	BPCGEN_VARTYPE_STATIC_NARROW = 1 << 7,
+	BPCGEN_VARTYPE_DYNAMIC_NARROW = 1 << 8,
+
+	BPCGEN_VARTYPE_SINGLE_NATURAL = 1 << 9,
+	BPCGEN_VARTYPE_STATIC_NATURAL = 1 << 10,
+	BPCGEN_VARTYPE_DYNAMIC_NATURAL = 1 << 11
+}BPCGEN_VARTYPE;
+typedef struct _BOND_VARS {
+	BPCSMTV_VARIABLE** plist_vars;
+	BPCGEN_VARTYPE* vars_type;
+	
+	bool is_bonded;
+	uint32_t bond_vars_len;
+}BOND_VARS;
+/// <summary>
+/// construct bond variables
+/// </summary>
+/// <param name="variables"></param>
+/// <param name="bond_rules">the combination of flag enum, BPCGEN_VARTYPE.</param>
+/// <returns>A GSList, item is "BOND_VARS*"</returns>
+GSList* bpcgen_constructor_bond_vars(GSList* variables, BPCGEN_VARTYPE bond_rules);
+/// <summary>
+/// free bond variables
+/// </summary>
+/// <param name="bond_vars"></param>
+void bpcgen_destructor_bond_vars(GSList* bond_vars);
 
 void codepy_write_document(FILE* fs, BPCSMTV_DOCUMENT* document);
 void codecs_write_document(FILE* fs, BPCSMTV_DOCUMENT* document);
