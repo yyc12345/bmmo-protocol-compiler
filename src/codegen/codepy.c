@@ -6,6 +6,9 @@ static const char python_struct_fmt[] = {
 static const char python_struct_fmt_len[] = {
 	'4', '8', '1', '2', '4', '8', '1', '2', '4', '8'
 };
+static const char* python_struct_default[] = {
+	"0.0", "0.0", "0", "0", "0", "0", "0", "0", "0", "0"
+};
 
 static void write_tuple_series(FILE* fs, GPtrArray* arr) {
 	guint c;
@@ -25,145 +28,37 @@ static void write_args_series(FILE* fs, GPtrArray* arr) {
 	}
 }
 
-/// <summary>
-/// 
-/// </summary>
-/// <param name="in_variables">variable list</param>
-/// <param name="in_is_narrow"></param>
-/// <param name="out_param_list"></param>
-/// <param name="out_pack_fmt"></param>
-/// <returns>the next node need manually process. if it equal with "in_variables", it mean that all output is invalid</returns>
-static GSList* building_pack_param(GSList* in_variables, bool in_is_narrow, const char* in_prefix, GPtrArray* io_param_list, GString* io_pack_fmt) {
-	GSList* cursor;
-	GString* new_prefix = g_string_new(NULL);
+static gchar* generate_pack_fmt(BOND_VARS* bond_vars) {
+	GString* pack_fmt;
+	uint32_t c;
 
-	for (cursor = in_variables; cursor != NULL; cursor = cursor->next) {
-		BPCSMTV_VARIABLE* variable = (BPCSMTV_VARIABLE*)cursor->data;
+	// only bonded vars need calling this functions
+	g_assert(bond_vars->is_bonded);
+	for (c = 0; c < bond_vars->bond_vars_len; ++c) {
+		// only single primitive can be bonded
+		g_assert(bond_vars->vars_type[c] == BPCGEN_VARTYPE_SINGLE_PRIMITIVE);
+		g_assert(bond_vars->plist_vars[c]->variable_type->full_uncover_basic_type != BPCSMTV_BASIC_TYPE_STRING);
 
-		// check requirements
-		if (variable->variable_array->is_array && !variable->variable_array->is_static_array) {
-			// dynamic array is not allowed
-			break;
-		}
-		if (variable->variable_type->full_uncover_is_basic_type) {
-			// string is not allowed
-			if (variable->variable_type->full_uncover_basic_type == BPCSMTV_BASIC_TYPE_STRING) {
-				break;
-			}
-		} else {
-			// struct
-			if (in_is_narrow) {
-				// we order user process struct manually in narrow mode,
-				// because we cannot ensure its can be parsed into natural.
-				break;
-			}
-			// however struct is not a problem in natural mode.
-			// because we can expand it in limited format.
-		}
-
-		// generate data
-		// use do-while to process array and non-array correctly
-		uint32_t c = UINT32_C(0);
-		do {
-			// init prefix
-			g_string_printf(new_prefix, "%s.%s", in_prefix, variable->variable_name);
-			if (variable->variable_array->is_array) {
-				g_string_append_printf(new_prefix, "[%" PRIu32 "]", c);
-			}
-
-			// getting format
-			if (variable->variable_type->full_uncover_is_basic_type) {
-				// basic types
-				g_ptr_array_add(io_param_list, g_strdup(new_prefix->str));
-				g_string_append_c(io_pack_fmt, python_struct_fmt[(size_t)variable->variable_type->full_uncover_basic_type]);
-			} else {
-				// struct types
-				// recursively call this method with new prefix
-				// get corresponding data first
-				BPCSMTV_PROTOCOL_BODY* body = bpcsmtv_registery_identifier_get(variable->variable_type->type_data.custom_type);
-				building_pack_param(body->node_data.struct_data->struct_body, in_is_narrow, new_prefix->str, io_param_list, io_pack_fmt);
-			}
-
-			// non-array immdiate breaker
-			if (!variable->variable_array->is_array)
-				break;
-
-		} while (++c < variable->variable_array->static_array_len);
-
-		// padding placeholder
-		// we do not need consider natural/narrow here.
-		// because in codegen, struct layout has degenerated and
-		// only can describe code style. align is not related to layout. 
-		// it has been processed properly by smtv functions.
-		if (variable->variable_align->use_align) {
-			g_string_append_printf(io_pack_fmt, "%" PRIu32 "x", variable->variable_align->padding_size);
-		}
-
+		g_string_append_c(pack_fmt, python_struct_fmt[bond_vars->plist_vars[c]->variable_type->full_uncover_basic_type]);
 	}
 
-	// free and return
-	g_string_free(new_prefix, true);
-	return cursor;
+	return g_string_free(pack_fmt, false);
 }
+static GPtrArray* constructor_param_list(BOND_VARS* bond_vars) {
+	GPtrArray* param_list = g_ptr_array_new_with_free_func(g_free);
+	uint32_t c;
 
-typedef struct _BOND_VARS {
-	GSList* variables_node;
-	bool is_manual_proc;
-	struct {
-		GPtrArray* param_list;
-		GString* pack_fmt;
-		uint32_t pystruct_index;
-	}auto_proc_data;
-}BOND_VARS;
-static GPtrArray* constructor_bond_vars(GSList* variables, bool is_narrow) {
-	GPtrArray* result = g_ptr_array_new_with_free_func(g_free);
-	GSList* cursor = NULL, * old_cursor = NULL;
-	uint32_t index_counter = UINT32_C(0);
+	g_assert(bond_vars->is_bonded);
+	for (c = 0; c < bond_vars->bond_vars_len; ++c) {
+		g_assert(bond_vars->vars_type[c] == BPCGEN_VARTYPE_SINGLE_PRIMITIVE);
 
-	cursor = variables;
-	if (variables == NULL) return result;
-	do {
-		// init fields
-		BOND_VARS* data = g_new0(BOND_VARS, 1);
-		data->variables_node = cursor;
-		data->auto_proc_data.param_list = g_ptr_array_new_with_free_func(g_free);
-		data->auto_proc_data.pack_fmt = g_string_new(NULL);
-
-		// do parse
-		old_cursor = cursor;
-		cursor = building_pack_param(cursor, is_narrow, "self",
-			data->auto_proc_data.param_list, data->auto_proc_data.pack_fmt);
-
-		// manual proc and auto proc check
-		data->is_manual_proc = old_cursor == cursor;
-		if (data->is_manual_proc) {
-			// manual proc need manually shift to next
-			cursor = cursor->next;
-		} else {
-			// auto proc index register
-			data->auto_proc_data.pystruct_index = index_counter++;
-		}
-		
-		// add array
-		g_ptr_array_add(result, data);
-	} while (cursor != NULL);
-
-	// assert for natural
-	if (!is_narrow)
-		g_assert(result->len == 1u);
-
-	return result;
-}
-static void destructor_bond_vars(GPtrArray* arr) {
-	guint c;
-	for (c = 0u; c < arr->len; ++c) {
-		BOND_VARS* data = (BOND_VARS*)(arr->pdata[c]);
-		// free internal data
-		g_ptr_array_free(data->auto_proc_data.param_list, true);
-		g_string_free(data->auto_proc_data.pack_fmt, true);
+		g_ptr_array_add(param_list, g_strdup(bond_vars->plist_vars[c]->variable_name));
 	}
-	// free self
-	g_ptr_array_free(arr, true);
+
+	return param_list;
+}
+static void destructor_param_list(GPtrArray* param_list) {
+	g_ptr_array_free(param_list, true);
 }
 
 static void write_enum(FILE* fs, BPCSMTV_ENUM* smtv_enum) {
@@ -191,11 +86,10 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 	BPCSMTV_STRUCT_MODIFIER* modifier = (is_msg ? union_data->pMsg->msg_modifier : union_data->pStruct->struct_modifier);
 	char* struct_like_name = (is_msg ? union_data->pMsg->msg_name : union_data->pStruct->struct_name);
 	GString* oper = g_string_new(NULL);
-	guint c = 0u;
 	BPCGEN_INDENT_INIT_NEW(fs);
 
-	// get bond variables, combine possible natural nodes
-	GPtrArray* bond_var = constructor_bond_vars(variables, modifier->is_narrow);
+	// get bond variables. python only allow combineing single primitive variables
+	GSList* bond_vars = bpcgen_constructor_bond_vars(variables, BPCGEN_VARTYPE_SINGLE_PRIMITIVE);
 
 	// class header
 	BPCGEN_INDENT_PRINT;
@@ -203,13 +97,21 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 		(is_msg ? "_BpMessage" : "object"));
 	BPCGEN_INDENT_INC;
 	
-	// static natural struct pack
+	// static struct pack for combined nodes and static_primitive
 	BPCGEN_INDENT_PRINT;
 	fputs("_struct_packer = (", fs);
-	for (c = 0u; c < bond_var->len; ++c) {
-		BOND_VARS* data = (BOND_VARS*)(bond_var->pdata[c]);
-		if (!data->is_manual_proc) {
-			fprintf(fs, "struct.Struct('<%s'), ", data->auto_proc_data.pack_fmt->str);
+	for (cursor = bond_vars; cursor != NULL; cursor = cursor->next) {
+		BOND_VARS* data = (BOND_VARS*)cursor->data;
+		if (data->is_bonded) {
+			gchar* fmt_str = generate_pack_fmt(data);
+			fprintf(fs, "struct.Struct('<%s'), ", fmt_str);
+			g_free(fmt_str);
+		} else {
+			if (data->vars_type[0] == BPCGEN_VARTYPE_STATIC_PRIMITIVE) {
+				fprintf(fs, "struct.Struct('<%" PRIu32 "%c'), ", 
+					data->plist_vars[0]->variable_array->static_array_len, 
+					python_struct_fmt[data->plist_vars[0]->variable_type->full_uncover_basic_type]);
+			}
 		}
 	}
 	fputs(")", fs);
@@ -217,45 +119,59 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 	// class constructor
 	BPCGEN_INDENT_PRINT;
 	fputs("def __init__(self):", fs); BPCGEN_INDENT_INC;
-	for (cursor = variables; cursor != NULL; cursor = cursor->next) {
-		BPCSMTV_VARIABLE* data = (BPCSMTV_VARIABLE*)cursor->data;
+	for (cursor = bond_vars; cursor != NULL; cursor = cursor->next) {
+		BOND_VARS* data = (BOND_VARS*)cursor->data;
+		uint32_t c;
+		for (c = 0; c < data->bond_vars_len; ++c) {
+			BPCSMTV_VARIABLE* vardata = data->plist_vars[c];
+			switch (data->vars_type[c]) {
+				case BPCGEN_VARTYPE_SINGLE_PRIMITIVE:
+					fprintf(fs, "self.%s = %s", vardata->variable_name, python_struct_default[vardata->variable_type->full_uncover_basic_type]);
+					break;
+				case BPCGEN_VARTYPE_STATIC_PRIMITIVE:
+					fprintf(fs, "self.%s = [%s] * %" PRIu32, 
+						vardata->variable_name, 
+						python_struct_default[vardata->variable_type->full_uncover_basic_type],
+						vardata->variable_array->static_array_len);
+					break;
+				case BPCGEN_VARTYPE_DYNAMIC_PRIMITIVE:
+					fprintf(fs, "self.%s = []", vardata->variable_name);
+					break;
 
-		// array loop header and determin oper name
-		if (data->variable_array->is_array) {
-			BPCGEN_INDENT_PRINT;
-			fprintf(fs, "self.%s = []", data->variable_name);
+				case BPCGEN_VARTYPE_SINGLE_STRING:
+					fprintf(fs, "self.%s = \"\"", vardata->variable_name);
+					break;
+				case BPCGEN_VARTYPE_STATIC_STRING:
+					fprintf(fs, "self.%s = [\"\"] * %" PRIu32, vardata->variable_name);
+					break;
+				case BPCGEN_VARTYPE_DYNAMIC_STRING:
+					fprintf(fs, "self.%s = []", vardata->variable_name);
+					break;
 
-			if (data->variable_array->is_static_array) {
-				BPCGEN_INDENT_PRINT;
-				fprintf(fs, "for _i in range(%" PRIu32 "):", data->variable_array->static_array_len); BPCGEN_INDENT_INC;
-			} else {
-				// pass for dynamic list, so we provide a fake for
-				BPCGEN_INDENT_PRINT;
-				fputs("for _i in range(0):", fs); BPCGEN_INDENT_INC;
+				// natural and narrow is shared
+				case BPCGEN_VARTYPE_SINGLE_NARROW:
+				case BPCGEN_VARTYPE_SINGLE_NATURAL:
+					fprintf(fs, "self.%s = %s()", vardata->variable_name, vardata->variable_type->type_data.custom_type);
+					break;
+				case BPCGEN_VARTYPE_STATIC_NARROW:
+				case BPCGEN_VARTYPE_STATIC_NATURAL:
+					fprintf(fs, "self.%s = list(%s() for i in range(%" PRIu32 "))", 
+						vardata->variable_name, 
+						vardata->variable_type->type_data.custom_type,
+						vardata->variable_array->static_array_len);
+					break;
+				case BPCGEN_VARTYPE_DYNAMIC_NARROW:
+				case BPCGEN_VARTYPE_DYNAMIC_NATURAL:
+					fprintf(fs, "self.%s = []", vardata->variable_name);
+					break;
+
+				default:
+					g_assert_not_reached();
 			}
 
-			g_string_assign(oper, "_cache");
-		} else {
-			g_string_printf(oper, "self.%s", data->variable_name);
 		}
-
-		// write body
-		BPCGEN_INDENT_PRINT;
-		if (data->variable_type->full_uncover_is_basic_type) {
-			fprintf(fs, "%s = None", oper->str);
-		} else {
-			fprintf(fs, "%s = %s()", oper->str, data->variable_type->type_data.custom_type);
-		}
-
-		// array tail
-		if (data->variable_array->is_array) {
-			BPCGEN_INDENT_PRINT;
-			fprintf(fs, "self.%s.append(_cache)", data->variable_name);
-			BPCGEN_INDENT_DEC;
-		}
-
 	}
-	if (variables == NULL) {
+	if (bond_vars == NULL) {
 		// if there are no member, wee need write extra `pass`
 		BPCGEN_INDENT_PRINT;
 		fputs("pass", fs);
@@ -478,7 +394,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 
 	// free all cache data
 	g_string_free(oper, true);
-	destructor_bond_vars(bond_var);
+	bpcgen_destructor_bond_vars(bond_vars);
 }
 
 static void write_opcode_enum(FILE* fs, GSList* msg_ls) {

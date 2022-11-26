@@ -121,7 +121,7 @@ static GSList* building_bond_vars(GSList* in_variables, BPCGEN_VARTYPE in_bond_r
 		// nothing matched
 		// init bond vars
 		bond_vars_oper->is_bonded = false;
-		bond_vars_oper->bond_vars_len = 1;
+		bond_vars_oper->bond_vars_len = 1;	// set 1 for convenient loop even in not bounded vars
 		bond_vars_oper->plist_vars = g_new0(BPCSMTV_VARIABLE*, 1);
 		bond_vars_oper->vars_type = g_new0(BPCGEN_VARTYPE, 1);
 		// set values

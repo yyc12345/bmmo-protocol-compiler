@@ -9,7 +9,6 @@
 #include <stdio.h>
 #include <inttypes.h>
 #include <stdbool.h>
-#include <glib.h>
 
 #define BPCGEN_INDENT_TYPE uint32_t
 #define BPCGEN_INDENT_INIT_NEW(fs) uint32_t _indent_level = UINT32_C(0), _indent_loop = UINT32_C(0); FILE* _indent_fs = fs;
