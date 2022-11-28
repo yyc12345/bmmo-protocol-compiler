@@ -111,5 +111,8 @@
     <CopyFileToFolders Include="examples\bmmo.bp">
       <Filter>Resources\examples</Filter>
     </CopyFileToFolders>
+    <CopyFileToFolders Include="examples\codegen.bp">
+      <Filter>Resources\examples</Filter>
+    </CopyFileToFolders>
   </ItemGroup>
 </Project>

@@ -1,0 +1,78 @@
+bpc 1;
+namespace TestNamespace.EmptyName1.EmptyName2;
+
+alias alias_primitive uint32;
+alias alias_nonprimitive string;
+
+enum uint32 enum_primitive {
+    Entry
+}
+
+narrow struct struct_empty_narrow {}
+natural struct struct_empty_natural {}
+
+narrow struct struct_narrow {
+    string data;
+}
+natural struct struct_natural {
+    uint32 data;
+}
+
+reliable natural msg codegen_test_natural {
+    uint32 single_primitive;
+    uint32[3] static_primitive;
+    
+    struct_empty_natural single_natural;
+    struct_empty_natural[3] static_natural;
+}
+
+reliable natural msg codegen_test_natural_alternative {
+    alias_primitive single_primitive1;
+    alias_primitive[3] static_primitive1;
+    
+    enum_primitive single_primitive2;
+    enum_primitive[3] static_primitive2;
+    
+    struct_natural single_natural;
+    struct_natural[3] static_natural;
+}
+
+reliable narrow msg codegen_test_narrow {
+    uint32 single_primitive;
+    uint32[3] static_primitive;
+    uint32[] dynamic_primitive;
+    
+    string single_string;
+    string[3] static_string;
+    string[] dynamic_string;
+    
+    struct_empty_narrow single_narrow;
+    struct_empty_narrow[3] static_narrow;
+    struct_empty_narrow[] dynamic_narrow;
+    
+    struct_empty_natural single_natural;
+    struct_empty_natural[3] static_natural;
+    struct_empty_natural[] dynamic_natural;
+}
+
+reliable narrow msg codegen_test_narrow_alternative {
+    alias_primitive single_primitive1;
+    alias_primitive[3] static_primitive1;
+    alias_primitive[] dynamic_primitive1;
+    
+    enum_primitive single_primitive2;
+    enum_primitive[3] static_primitive2;
+    enum_primitive[] dynamic_primitive2;
+    
+    alias_nonprimitive single_string;
+    alias_nonprimitive[3] static_string;
+    alias_nonprimitive[] dynamic_string;
+    
+    struct_narrow single_narrow;
+    struct_narrow[3] static_narrow;
+    struct_narrow[] dynamic_narrow;
+    
+    struct_natural single_natural;
+    struct_natural[3] static_natural;
+    struct_natural[] dynamic_natural;
+}

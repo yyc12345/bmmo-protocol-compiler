@@ -45,7 +45,7 @@ BPCSMTV_BASIC_TYPE bpcsmtv_parse_basic_type(const char* strl) {
 
 	// error
 	bpcerr_panic(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "Fail to parse a basic type token which definately is a valid basic type token.");
-	return BPCSMTV_BASIC_TYPE_INVALID;
+	g_assert_not_reached();
 }
 bool bpcsmtv_parse_reliability(const char* strl) {
 	return g_str_equal(strl, "reliable");
@@ -620,7 +620,7 @@ void bpcsmtv_analyse_underlaying_type(BPCSMTV_VARIABLE_TYPE* variables) {
 				break;
 			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_STRUCT:
 				variables->full_uncover_is_basic_type = false;
-				variables->full_uncover_basic_type = BPCSMTV_BASIC_TYPE_INVALID;
+				variables->full_uncover_basic_type = -1;
 				variables->semi_uncover_is_basic_type = false;
 				variables->semi_uncover_custom_type = g_strdup(variables->type_data.custom_type);
 				break;

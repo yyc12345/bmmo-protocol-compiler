@@ -1,6 +1,7 @@
 import io
 import struct
 import os
+import enum
 
 _opcode_packer = struct.Struct("<I")
 _listlen_packer = struct.Struct("<I")
@@ -16,7 +17,7 @@ class _BpMessage(object):
 	def Deserialize(self, _ss: io.BytesIO):
 		raise Exception("Abstract function call")
 	def _read_bp_string(self, _ss: io.BytesIO) -> str:
-		_strlen = _strlen_packer.unpack(_ss.read(_strlen_packer.size))[0]
+		(_strlen, ) = _strlen_packer.unpack(_ss.read(_strlen_packer.size))
 		return ss.read(_strlen).decode(encoding='utf-8', errors='ignore')
 	def _write_bp_string(self, _ss: io.BytesIO, strl: str):
 		_binstr = strl.encode(encoding='utf-8', errors='ignore')

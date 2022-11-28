@@ -15,8 +15,6 @@ typedef struct _BPCSMTV_COMPOUND_NUMBER {
 	gint64 num_int;
 }BPCSMTV_COMPOUND_NUMBER;
 
-// Invalid basic type const value
-#define BPCSMTV_BASIC_TYPE_INVALID (-1)
 typedef enum _BPCSMTV_BASIC_TYPE {
 	BPCSMTV_BASIC_TYPE_FLOAT,
 	BPCSMTV_BASIC_TYPE_DOUBLE,

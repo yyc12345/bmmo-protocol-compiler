@@ -11,48 +11,48 @@ static const char* csharp_unmanaged_type[] = {
 	"R4", "R8", "I1", "I2", "I4", "I8", "U1", "U2", "U4", "U8", "LPUTF8Str"	// the unmanaged type of string still is invalid. LPUTF8Str just is a placeholder.
 };
 
-static void write_natural_struct(FILE* fs, BPCSMTV_STRUCT_MODIFIER modifier, GSList* variables, BPCGEN_INDENT_TYPE indent) {
-	// check requirement
-	g_assert(!modifier.is_narrow);
-
-	// generate internal struct
-	// Ref: https://learn.microsoft.com/en-us/dotnet/framework/interop/marshalling-classes-structures-and-unions
-	BPCGEN_INDENT_INIT_REF(fs, indent);
-	GSList* cursor;
-	uint32_t offsets = UINT32_C(0);
-
-	BPCGEN_INDENT_PRINT;
-	fprintf(fs, "[StructLayout(LayoutKind.Explicit, Size = %" PRIu32 ")]", modifier.struct_size);
-	BPCGEN_INDENT_PRINT;
-	fputs("public struct _NaturalStruct {", fs);
-	
-	BPCGEN_INDENT_INC;
-	for (cursor = variables; cursor != NULL; cursor = cursor->next) {
-		BPCSMTV_VARIABLE* variable = (BPCSMTV_VARIABLE*)cursor->data;
-
-		// offset assign
-		BPCGEN_INDENT_PRINT;
-		fprintf(fs, "[FieldOffset(%" PRIu32 ")]", offsets);
-
-		// variable spec
-		BPCGEN_INDENT_PRINT;
-		if (variable->variable_array->is_array) {
-			// check requirement
-			g_assert(variable->variable_array->is_static_array);
-
-			fprintf(fs, "[MarshalAs(UnmanagedType.ByValArray, SizeConst = %" PRIu32 ")]", variable->variable_array->static_array_len);
-		} else {
-			if (variable->variable_type->full_uncover_is_basic_type) {
-				fprintf(fs, "[MarshalAs(UnmanagedType.%s)]", csharp_unmanaged_type[(size_t)variable->variable_type->full_uncover_basic_type]);
-			} else {
-
-			}
-		}
-	}
-	BPCGEN_INDENT_DEC;
-	BPCGEN_INDENT_PRINT;
-	fputc('}', fs);
-}
+//static void write_natural_struct(FILE* fs, BPCSMTV_STRUCT_MODIFIER modifier, GSList* variables, BPCGEN_INDENT_TYPE indent) {
+//	// check requirement
+//	g_assert(!modifier.is_narrow);
+//
+//	// generate internal struct
+//	// Ref: https://learn.microsoft.com/en-us/dotnet/framework/interop/marshalling-classes-structures-and-unions
+//	BPCGEN_INDENT_INIT_REF(fs, indent);
+//	GSList* cursor;
+//	uint32_t offsets = UINT32_C(0);
+//
+//	BPCGEN_INDENT_PRINT;
+//	fprintf(fs, "[StructLayout(LayoutKind.Explicit, Size = %" PRIu32 ")]", modifier.struct_size);
+//	BPCGEN_INDENT_PRINT;
+//	fputs("public struct _NaturalStruct {", fs);
+//	
+//	BPCGEN_INDENT_INC;
+//	for (cursor = variables; cursor != NULL; cursor = cursor->next) {
+//		BPCSMTV_VARIABLE* variable = (BPCSMTV_VARIABLE*)cursor->data;
+//
+//		// offset assign
+//		BPCGEN_INDENT_PRINT;
+//		fprintf(fs, "[FieldOffset(%" PRIu32 ")]", offsets);
+//
+//		// variable spec
+//		BPCGEN_INDENT_PRINT;
+//		if (variable->variable_array->is_array) {
+//			// check requirement
+//			g_assert(variable->variable_array->is_static_array);
+//
+//			fprintf(fs, "[MarshalAs(UnmanagedType.ByValArray, SizeConst = %" PRIu32 ")]", variable->variable_array->static_array_len);
+//		} else {
+//			if (variable->variable_type->full_uncover_is_basic_type) {
+//				fprintf(fs, "[MarshalAs(UnmanagedType.%s)]", csharp_unmanaged_type[(size_t)variable->variable_type->full_uncover_basic_type]);
+//			} else {
+//
+//			}
+//		}
+//	}
+//	BPCGEN_INDENT_DEC;
+//	BPCGEN_INDENT_PRINT;
+//	fputc('}', fs);
+//}
 
 static void write_enum(FILE* fs, BPCSMTV_ENUM* smtv_enum, BPCGEN_INDENT_TYPE indent) {
 	BPCGEN_INDENT_INIT_REF(fs, indent);
