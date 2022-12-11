@@ -209,7 +209,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 	if (is_msg) {
 		// reliable
 		BPCGEN_INDENT_PRINT;
-		fputs("def GetReliable(self) -> bool:", fs); BPCGEN_INDENT_INC;
+		fputs("def GetIsReliable(self) -> bool:", fs); BPCGEN_INDENT_INC;
 
 		BPCGEN_INDENT_PRINT;
 		if (modifier->is_reliable) fputs("return True", fs);
@@ -571,7 +571,7 @@ static void write_opcode_enum(FILE* fs, GSList* msg_ls) {
 
 	// write opcode enum
 	BPCGEN_INDENT_PRINT;
-	fputs("class opcode():", fs); BPCGEN_INDENT_INC;
+	fputs("class _OpCode(enum.IntEnum):", fs); BPCGEN_INDENT_INC;
 	for (cursor = msg_ls; cursor != NULL; cursor = cursor->next) {
 		BPCSMTV_MSG* data = (BPCSMTV_MSG*)cursor->data;
 
@@ -602,7 +602,7 @@ static void write_uniform_deserialize(FILE* fs, GSList* msg_ls) {
 		// print if or elif statements
 		if (is_first) is_first = false;
 		else fputs("el", fs);
-		fprintf(fs, "if _opcode == opcode.%s:", data->msg_name);
+		fprintf(fs, "if _opcode == _OpCode.%s:", data->msg_name);
 
 		// write if body
 		BPCGEN_INDENT_INC;

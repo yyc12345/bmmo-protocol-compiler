@@ -8,7 +8,7 @@ _listlen_packer = struct.Struct("<I")
 _strlen_packer = struct.Struct("<I")
 
 class _BpMessage(object):
-	def GetReliable(self) -> bool:
+	def GetIsReliable(self) -> bool:
 		raise Exception("Abstract function call")
 	def GetOpcode(self) -> int:
 		raise Exception("Abstract function call")

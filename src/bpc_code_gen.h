@@ -35,6 +35,8 @@ void bpcgen_free_code_file();
 
 #define BPCGEN_VARTYPE_CONTAIN(val, probe) (val & probe)
 typedef enum _BPCGEN_VARTYPE {
+	BPCGEN_VARTYPE_NONE = 0,
+
 	BPCGEN_VARTYPE_SINGLE_PRIMITIVE = 1 << 0,
 	BPCGEN_VARTYPE_STATIC_PRIMITIVE = 1 << 1,
 	BPCGEN_VARTYPE_DYNAMIC_PRIMITIVE = 1 << 2,
