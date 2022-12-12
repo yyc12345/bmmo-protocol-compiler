@@ -1,10 +1,11 @@
-
 public static partial class _Helper {
     public static _OpCode _BpPeekOpCode(this BinaryReader br) {
         _OpCode code = (_OpCode)br.ReadUInt32();
         br.BaseStream.Seek(sizeof(UInt32), SeekOrigin.Current);
         return code;
     }
+    public static _OpCode _BpReadOpCode(this BinaryReader br) => (_OpCode)br.ReadUInt32();
+    public static void _BpWriteOpCode(this BinaryWriter bw, _OpCode code) => bw.Write((UInt32)code);
 
     public static TInt[] _CastEnumArray2IntArray<TEnum, TInt>(TEnum[] d) where TInt : struct
         where TEnum : Enum => d.Cast<TInt>().ToArray();

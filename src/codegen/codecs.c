@@ -19,26 +19,26 @@ static char* get_primitive_type_name(BPCSMTV_VARIABLE* variable) {
 		csharp_basic_type[variable->variable_type->full_uncover_basic_type] :
 		variable->variable_type->semi_uncover_custom_type);
 }
-static char* generate_primitive_type_default(BPCSMTV_VARIABLE* variable) {
-	if (variable->variable_type->is_basic_type) {
-		return g_strdup(csharp_default_basic_type[variable->variable_type->type_data.basic_type]);
-	} else {
-		BPCSMTV_PROTOCOL_BODY* body = bpcsmtv_registery_identifier_get(variable->variable_type->semi_uncover_custom_type);
-
-		switch (body->node_type) {
-			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_ALIAS:
-				return g_strdup(csharp_default_basic_type[body->node_data.alias_data->basic_type]);
-			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_ENUM:
-				return g_strdup_printf("%s.%s",		// get first member as default value
-					body->node_data.enum_data->enum_name,
-					((BPCSMTV_ENUM_MEMBER*)body->node_data.enum_data->enum_body->data)->enum_member_name);
-			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_STRUCT:
-			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_MSG:
-			default:
-				g_assert_not_reached();
-		}
-	}
-}
+//static char* generate_primitive_type_default(BPCSMTV_VARIABLE* variable) {
+//	if (variable->variable_type->is_basic_type) {
+//		return g_strdup(csharp_default_basic_type[variable->variable_type->type_data.basic_type]);
+//	} else {
+//		BPCSMTV_PROTOCOL_BODY* body = bpcsmtv_registery_identifier_get(variable->variable_type->semi_uncover_custom_type);
+//
+//		switch (body->node_type) {
+//			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_ALIAS:
+//				return g_strdup(csharp_default_basic_type[body->node_data.alias_data->basic_type]);
+//			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_ENUM:
+//				return g_strdup_printf("%s.%s",		// get first member as default value
+//					body->node_data.enum_data->enum_name,
+//					((BPCSMTV_ENUM_MEMBER*)body->node_data.enum_data->enum_body->data)->enum_member_name);
+//			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_STRUCT:
+//			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_MSG:
+//			default:
+//				g_assert_not_reached();
+//		}
+//	}
+//}
 
 //static void write_natural_struct(FILE* fs, BPCSMTV_STRUCT_MODIFIER modifier, GSList* variables, BPCGEN_INDENT_TYPE indent) {
 //	// check requirement
@@ -184,9 +184,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 				case BPCGEN_VARTYPE_SINGLE_STRING:
 				{
 					BPCGEN_INDENT_PRINT;
-					char* type_default = generate_primitive_type_default(vardata);
-					fprintf(fs, "this.%s = %s;", vardata->variable_name, type_default);
-					g_free(type_default);
+					fprintf(fs, "this.%s = default(%s);", vardata->variable_name, get_primitive_type_name(vardata));
 					break;
 				}
 				case BPCGEN_VARTYPE_STATIC_PRIMITIVE:
@@ -212,7 +210,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 				case BPCGEN_VARTYPE_SINGLE_NATURAL:
 				{
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "this.%s = new %s();", vardata->variable_name, get_primitive_type_name(vardata));
+					fprintf(fs, "this.%s = new %s();", vardata->variable_name, vardata->variable_type->type_data.custom_type);
 					break;
 				}
 				case BPCGEN_VARTYPE_STATIC_NARROW:
@@ -228,7 +226,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 					BPCGEN_INDENT_PRINT;
 					fprintf(fs, "for (int _i = 0; i < this.%s.Length; ++i) {", vardata->variable_name); BPCGEN_INDENT_INC;
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "this.%s[_i] = new %s();");
+					fprintf(fs, "this.%s[_i] = new %s();", vardata->variable_name, vardata->variable_type->type_data.custom_type);
 					BPCGEN_INDENT_DEC;
 					BPCGEN_INDENT_PRINT;
 					fputc('}', fs);
@@ -239,7 +237,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 				case BPCGEN_VARTYPE_DYNAMIC_NATURAL:
 				{
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "this.%s = new List<%s>();", vardata->variable_name, get_primitive_type_name(vardata));
+					fprintf(fs, "this.%s = new List<%s>();", vardata->variable_name, vardata->variable_type->type_data.custom_type);
 					break;
 				}
 
@@ -269,10 +267,10 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 	// deserialize func
 	uint32_t preset_struct_index = UINT32_C(0);
 	BPCGEN_INDENT_PRINT;
-	fputs("public override void Deserialize(BinaryReader _ms) {", fs); BPCGEN_INDENT_INC;
+	fputs("public override void Deserialize(BinaryReader _br) {", fs); BPCGEN_INDENT_INC;
 	if (is_msg) {
 		BPCGEN_INDENT_PRINT;
-		fprintf(fs, "if (_ms._BpReadUInt32() != %" PRIu32 ") {", union_data->pMsg->msg_index); BPCGEN_INDENT_INC;
+		fprintf(fs, "if (_br._BpReadOpCode() != _OpCode.%s) {", struct_like_name); BPCGEN_INDENT_INC;
 		BPCGEN_INDENT_PRINT;
 		fputs("throw new Exception(\"Invalid OpCode!\");", fs);
 		BPCGEN_INDENT_DEC;
@@ -292,68 +290,95 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 			// body
 			switch (data->vars_type[0]) {
 				case BPCGEN_VARTYPE_SINGLE_PRIMITIVE:
-				case BPCGEN_VARTYPE_SINGLE_STRING:
 				{
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "_ms._BpRead%s();",
-						vardata->variable_name,
-						csharp_formal_basic_type[vardata->variable_type->full_uncover_basic_type],
-						python_struct_fmt_len[vardata->variable_type->full_uncover_basic_type]);
+					if (vardata->variable_type->semi_uncover_is_basic_type) {
+						// basic type, alias
+						fprintf(fs, "this.%s = _br._BpRead%s();",
+							vardata->variable_name,
+							csharp_formal_basic_type[vardata->variable_type->full_uncover_basic_type]);
+					} else {
+						// enum
+						fprintf(fs, "this.%s = (%s)_br._BpRead%s();",
+							vardata->variable_name,
+							vardata->variable_type->semi_uncover_custom_type,
+							csharp_formal_basic_type[vardata->variable_type->full_uncover_basic_type]);
+					}
 					break;
 				}
 				case BPCGEN_VARTYPE_STATIC_PRIMITIVE:
-				case BPCGEN_VARTYPE_STATIC_STRING:
 				{
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "self.%s = list(struct.unpack('<%" PRIu32 "%c', _ss.read(%" PRIu32 ")))",
-						vardata->variable_name,
-						vardata->variable_array->static_array_len,
-						python_struct_fmt[vardata->variable_type->full_uncover_basic_type],
-						python_struct_fmt_len[vardata->variable_type->full_uncover_basic_type] * vardata->variable_array->static_array_len);
+					if (vardata->variable_type->semi_uncover_is_basic_type) {
+						// basic type, alias
+						fprintf(fs, "this.%s = _br._BpRead%sArray(%" PRIu32 ");",
+							vardata->variable_name,
+							csharp_formal_basic_type[vardata->variable_type->full_uncover_basic_type],
+							vardata->variable_array->static_array_len);
+					} else {
+						// enum
+						fprintf(fs, "this.%s = _Helper._CastIntArray2EnumArray<%s, %s>(_br._BpRead%sArray(%" PRIu32 "));",
+							vardata->variable_name,
+							vardata->variable_type->semi_uncover_custom_type,
+							csharp_formal_basic_type[vardata->variable_type->full_uncover_basic_type],
+							csharp_formal_basic_type[vardata->variable_type->full_uncover_basic_type],
+							vardata->variable_array->static_array_len);
+					}
 					break;
 				}
 				case BPCGEN_VARTYPE_DYNAMIC_PRIMITIVE:
+				{
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "this.%s.Clear();", vardata->variable_name);
+
+					BPCGEN_INDENT_PRINT;
+					if (vardata->variable_type->semi_uncover_is_basic_type) {
+						// basic type, alias
+						fprintf(fs, "this.%s.AddRange(_br._BpRead%sArray((int)_br._BpReadUInt32()));",
+							vardata->variable_name,
+							csharp_formal_basic_type[vardata->variable_type->full_uncover_basic_type]);
+					} else {
+						// enum
+						fprintf(fs, "this.%s.AddRange(_Helper._CastIntArray2EnumArray<%s, %s>(_br._BpRead%sArray((int)_br._BpReadUInt32())));",
+							vardata->variable_name,
+							vardata->variable_type->semi_uncover_custom_type,
+							csharp_formal_basic_type[vardata->variable_type->full_uncover_basic_type],
+							csharp_formal_basic_type[vardata->variable_type->full_uncover_basic_type]);
+					}
+					break;
+				}
+
+				case BPCGEN_VARTYPE_SINGLE_STRING:
+				{
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "this.%s =_br._BpReadString();", vardata->variable_name);
+					break;
+				}
+				case BPCGEN_VARTYPE_STATIC_STRING:
+				{
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "for (int _i = 0; _i < %" PRIu32 "; ++_i) {", vardata->variable_array->static_array_len); BPCGEN_INDENT_INC;
+
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "this.%s[_i] = _br._BpReadString();", vardata->variable_name);
+
+					BPCGEN_INDENT_DEC;
+					BPCGEN_INDENT_PRINT;
+					fputc('}', fs);
+					break;
+				}
 				case BPCGEN_VARTYPE_DYNAMIC_STRING:
 				{
 					BPCGEN_INDENT_PRINT;
-					fputs("(_count, ) = _listlen_packer.unpack(_ss.read(_listlen_packer.size))", fs);
+					fprintf(fs, "this.%s.Clear();", vardata->variable_name);
 
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "self.%s = list(struct.unpack(f'<{_count:d}%c', _ss.read(%" PRIu32 " * _count)))",
-						vardata->variable_name,
-						python_struct_fmt[vardata->variable_type->full_uncover_basic_type],
-						python_struct_fmt_len[vardata->variable_type->full_uncover_basic_type]);
-
-					break;
-				}
-
-				{
+					fputs("for (int _i = 0, _count = (int)_br._BpReadUInt32(); _i < _count; ++_i) {", fs); BPCGEN_INDENT_INC;
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "self.%s = self._read_bp_string(_ss)", vardata->variable_name);
-					break;
-				}
-				{
-					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "for _i in range(%" PRIu32 "):", vardata->variable_array->static_array_len); BPCGEN_INDENT_INC;
-
-					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "self.%s[_i] = self._read_bp_string(_ss)", vardata->variable_name);
-
+					fprintf(fs, "this.%s.Add(_br._BpReadString());", vardata->variable_name);
 					BPCGEN_INDENT_DEC;
-					break;
-				}
-				{
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "self.%s.clear()", vardata->variable_name);
-					BPCGEN_INDENT_PRINT;
-					fputs("(_count, ) = _listlen_packer.unpack(_ss.read(_listlen_packer.size))", fs);
-
-					BPCGEN_INDENT_PRINT;
-					fputs("for _i in range(_count):", fs); BPCGEN_INDENT_INC;
-					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "self.%s.append(self._read_bp_string(_ss))", vardata->variable_name);
-					BPCGEN_INDENT_DEC;
-
+					fputc('}', fs);
 					break;
 				}
 
@@ -362,7 +387,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 				case BPCGEN_VARTYPE_SINGLE_NATURAL:
 				{
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "self.%s.Deserialize(_ss)", vardata->variable_name);
+					fprintf(fs, "this.%s.Deserialize(_br)", vardata->variable_name);
 
 					break;
 				}
@@ -370,30 +395,31 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 				case BPCGEN_VARTYPE_STATIC_NATURAL:
 				{
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "for _i in range(%" PRIu32 "):", vardata->variable_array->static_array_len); BPCGEN_INDENT_INC;
+					fprintf(fs, "for (int _i = 0; _i < %" PRIu32 "; ++_i) {", vardata->variable_array->static_array_len); BPCGEN_INDENT_INC;
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "self.%s[_i].Deserialize(_ss)", vardata->variable_name);
+					fprintf(fs, "this.%s[_i].Deserialize(_br);", vardata->variable_name);
 					BPCGEN_INDENT_DEC;
+					BPCGEN_INDENT_PRINT;
+					fputc('}', fs);
 					break;
 				}
 				case BPCGEN_VARTYPE_DYNAMIC_NARROW:
 				case BPCGEN_VARTYPE_DYNAMIC_NATURAL:
 				{
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "self.%s.clear()", vardata->variable_name);
-					BPCGEN_INDENT_PRINT;
-					fputs("(_count, ) = _listlen_packer.unpack(_ss.read(_listlen_packer.size))", fs);
-					BPCGEN_INDENT_PRINT;
-					fputs("for _i in range(_count):", fs); BPCGEN_INDENT_INC;
+					fprintf(fs, "this.%s.Clear();", vardata->variable_name);
 
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "_cache = %s()", vardata->variable_type->type_data.custom_type);
+					fputs("for (int _i = 0, _count = (int)_br._BpReadUInt32(); _i < _count; ++_i) {", fs); BPCGEN_INDENT_INC;
 					BPCGEN_INDENT_PRINT;
-					fputs("_cache.Deserialize(_ss)", fs);
+					fprintf(fs, "var _cache = new %s();", vardata->variable_type->type_data.custom_type);
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "self.%s.append(_cache)", vardata->variable_name);
-
+					fputs("cache.Deserialize(_br);", fs);
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "this.%s.Add(_cache);", vardata->variable_name);
 					BPCGEN_INDENT_DEC;
+					BPCGEN_INDENT_PRINT;
+					fputc('}', fs);
 					break;
 				}
 
@@ -404,7 +430,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 			// align data
 			if (vardata->variable_align->use_align) {
 				BPCGEN_INDENT_PRINT;
-				fprintf(fs, "_ss.read(%" PRIu32 ")", vardata->variable_align->padding_size);
+				fprintf(fs, "br.BaseStream.Seek(%" PRIu32 ", SeekOrigin.Current);", vardata->variable_align->padding_size);
 			}
 		}
 	}
@@ -416,103 +442,111 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 	// serialize func
 	preset_struct_index = UINT32_C(0);
 	BPCGEN_INDENT_PRINT;
-	fprintf(fs, "def Serialize(self, _ss: io.BytesIO):"); BPCGEN_INDENT_INC;
+	fputs("public override void Serialize(BinaryWriter _bw) {", fs); BPCGEN_INDENT_INC;
 	if (is_msg) {
 		BPCGEN_INDENT_PRINT;
-		fprintf(fs, "_ss.write(_opcode_packer.pack(%" PRIu32 "))", union_data->pMsg->msg_index);
+		fprintf(fs, "_bw._BpWriteOpCode(_OpCode.%s)", struct_like_name);
 	}
 	for (cursor = bond_vars; cursor != NULL; cursor = cursor->next) {
 		BOND_VARS* data = (BOND_VARS*)cursor->data;
-
-
-		if (data->is_bonded) {
-			GPtrArray* param_list = constructor_param_list(data);
-
-			// annotation
-			BPCGEN_INDENT_PRINT;
-			fputs("# ", fs);
-			write_args_series(fs, param_list);
-
-			// binary writer
-			BPCGEN_INDENT_PRINT;
-			fprintf(fs, "_ss.write(%s._struct_packer[%" PRIu32 "].pack(", struct_like_name, preset_struct_index);
-			write_args_series(fs, param_list);
-			fputs("))", fs);
-
-			destructor_param_list(param_list);
-			++preset_struct_index;
-
-		} else {
-			// normal process
-			BPCSMTV_VARIABLE* vardata = data->plist_vars[0];
+		uint32_t c;
+		for (c = 0; c < data->bond_vars_len; ++c) {
+			BPCSMTV_VARIABLE* vardata = data->plist_vars[c];
 
 			// annotation
 			BPCGEN_INDENT_PRINT;
-			fprintf(fs, "# %s", vardata->variable_name);
+			fprintf(fs, "// %s", vardata->variable_name);
 
 			// body
 			switch (data->vars_type[0]) {
 				case BPCGEN_VARTYPE_SINGLE_PRIMITIVE:
 				{
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "_ss.write(struct.pack('<%c', self.%s))",
-						python_struct_fmt[vardata->variable_type->full_uncover_basic_type],
-						vardata->variable_name);
+					if (vardata->variable_type->semi_uncover_is_basic_type) {
+						// basic type, alias
+						fprintf(fs, "_bw._BpWrite%s(this.%s);",
+							csharp_formal_basic_type[vardata->variable_type->full_uncover_basic_type],
+							vardata->variable_name);
+					} else {
+						//enum
+						fprintf(fs, "_bw._BpWrite%s((%s)this.%s);",
+							csharp_formal_basic_type[vardata->variable_type->full_uncover_basic_type],
+							csharp_formal_basic_type[vardata->variable_type->full_uncover_basic_type],
+							vardata->variable_name);
+					}
 					break;
 				}
 				case BPCGEN_VARTYPE_STATIC_PRIMITIVE:
 				{
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "_ss.write(struct.pack('<%" PRIu32 "%c', *self.%s))",
-						vardata->variable_array->static_array_len,
-						python_struct_fmt[vardata->variable_type->full_uncover_basic_type],
-						vardata->variable_name);
+					if (vardata->variable_type->semi_uncover_is_basic_type) {
+						// basic type, alias
+						fprintf(fs, "_bw._BpWrite%sArray(ref this.%s);",
+							csharp_formal_basic_type[vardata->variable_type->full_uncover_basic_type],
+							vardata->variable_name);
+					} else {
+						//enum
+						fprintf(fs, "_bw._BpWrite%sArray(ref _Helper._CastEnumArray2IntArray<%s, %s>(this.%s));",
+							csharp_formal_basic_type[vardata->variable_type->full_uncover_basic_type],
+							vardata->variable_type->semi_uncover_custom_type,
+							csharp_formal_basic_type[vardata->variable_type->full_uncover_basic_type],
+							vardata->variable_name);
+					}
 					break;
 				}
 				case BPCGEN_VARTYPE_DYNAMIC_PRIMITIVE:
 				{
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "_count = len(self.%s)", vardata->variable_name);
-					BPCGEN_INDENT_PRINT;
-					fputs("_ss.write(_listlen_packer.pack(_count))", fs);
+					fprintf(fs, "_bw._BpWriteUInt32((UInt32)this.%s.Count);", vardata->variable_name);
 
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "_ss.write(struct.pack(f'<{_count:d}%c', *self.%s))",
-						python_struct_fmt[vardata->variable_type->full_uncover_basic_type],
-						vardata->variable_name);
-
+					if (vardata->variable_type->semi_uncover_is_basic_type) {
+						// basic type, alias
+						fprintf(fs, "_bw._BpWrite%sArray(ref this.%s.ToArray());",
+							csharp_formal_basic_type[vardata->variable_type->full_uncover_basic_type],
+							vardata->variable_name);
+					} else {
+						//enum
+						fprintf(fs, "_bw._BpWrite%sArray(ref _Helper._CastEnumArray2IntArray<%s, %s>(this.%s.ToArray()));",
+							csharp_formal_basic_type[vardata->variable_type->full_uncover_basic_type],
+							vardata->variable_type->semi_uncover_custom_type,
+							csharp_formal_basic_type[vardata->variable_type->full_uncover_basic_type],
+							vardata->variable_name);
+					}
 					break;
 				}
 
 				case BPCGEN_VARTYPE_SINGLE_STRING:
 				{
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "self._write_bp_string(_ss, self.%s)", vardata->variable_name);
+					fprintf(fs, "_bw._BpWriteString(this.%s);", vardata->variable_name);
 					break;
 				}
 				case BPCGEN_VARTYPE_STATIC_STRING:
 				{
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "for _i in range(%" PRIu32 "):", vardata->variable_array->static_array_len); BPCGEN_INDENT_INC;
-
+					fprintf(fs, "for (int _i = 0; _i < %" PRIu32 "; ++_i) {", vardata->variable_array->static_array_len); BPCGEN_INDENT_INC;
+					
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "self._write_bp_string(_ss, self.%s[_i])", vardata->variable_name);
+					fprintf(fs, "_bw._BpWriteString(this.%s[_i]);", vardata->variable_name);
 
 					BPCGEN_INDENT_DEC;
+					BPCGEN_INDENT_PRINT;
+					fputc('}', fs);
 					break;
 				}
 				case BPCGEN_VARTYPE_DYNAMIC_STRING:
 				{
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "_count = len(self.%s)", vardata->variable_name);
-					BPCGEN_INDENT_PRINT;
-					fputs("_ss.write(_listlen_packer.pack(_count))", fs);
+					fprintf(fs, "_bw._BpWriteUInt32((UInt32)this.%s.Count);", vardata->variable_name);
 
 					BPCGEN_INDENT_PRINT;
-					fputs("for _i in range(_count):", fs); BPCGEN_INDENT_INC;
+					fprintf(fs, "for (int _i = 0; _i < this.%s.Count; ++_i) {", vardata->variable_name); BPCGEN_INDENT_INC;
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "self._write_bp_string(_ss, self.%s[_i])", vardata->variable_name);
+					fprintf(fs, "_bw._BpWriteString(this.%s[_i]);", vardata->variable_name);
 					BPCGEN_INDENT_DEC;
+					BPCGEN_INDENT_PRINT;
+					fputc('}', fs);
 
 					break;
 				}
@@ -522,7 +556,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 				case BPCGEN_VARTYPE_SINGLE_NATURAL:
 				{
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "self.%s.Serialize(_ss)", vardata->variable_name);
+					fprintf(fs, "this.%s.Serialize(_bw);", vardata->variable_name);
 
 					break;
 				}
@@ -530,25 +564,29 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 				case BPCGEN_VARTYPE_STATIC_NATURAL:
 				{
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "for _i in range(%" PRIu32 "):", vardata->variable_array->static_array_len); BPCGEN_INDENT_INC;
+					fprintf(fs, "for (int _i = 0; _i < %" PRIu32 "; ++_i) {", vardata->variable_array->static_array_len); BPCGEN_INDENT_INC;
+
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "self.%s[_i].Serialize(_ss)", vardata->variable_name);
+					fprintf(fs, "this.%s[_i].Serialize(_bw);", vardata->variable_name);
+
 					BPCGEN_INDENT_DEC;
+					BPCGEN_INDENT_PRINT;
+					fputc('}', fs);
 					break;
 				}
 				case BPCGEN_VARTYPE_DYNAMIC_NARROW:
 				case BPCGEN_VARTYPE_DYNAMIC_NATURAL:
 				{
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "_count = len(self.%s)", vardata->variable_name);
-					BPCGEN_INDENT_PRINT;
-					fputs("_ss.write(_listlen_packer.pack(_count))", fs);
+					fprintf(fs, "_bw._BpWriteUInt32((UInt32)this.%s.Count);", vardata->variable_name);
 
 					BPCGEN_INDENT_PRINT;
-					fputs("for _i in range(_count):", fs); BPCGEN_INDENT_INC;
+					fprintf(fs, "for (int _i = 0; _i < this.%s.Count; ++_i) {", vardata->variable_name); BPCGEN_INDENT_INC;
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "self.%s[_i].Serialize(_ss)", vardata->variable_name);
+					fprintf(fs, "this.%s[_i].Serialize(_bw);", vardata->variable_name);
 					BPCGEN_INDENT_DEC;
+					BPCGEN_INDENT_PRINT;
+					fputc('}', fs);
 					break;
 				}
 
@@ -559,7 +597,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 			// align padding
 			if (vardata->variable_align->use_align) {
 				BPCGEN_INDENT_PRINT;
-				fprintf(fs, "_ss.write(b'\\0' * %" PRIu32 ")", vardata->variable_align->padding_size);
+				fprintf(fs, "bw.BaseStream.Seek(%" PRIu32 ", SeekOrigin.Current);", vardata->variable_align->padding_size);
 			}
 		}
 
