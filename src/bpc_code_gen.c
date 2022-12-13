@@ -180,6 +180,30 @@ void bpcgen_destructor_bond_vars(GSList* bond_vars) {
 	g_slist_free(bond_vars);
 }
 
+GSList* bpcgen_constructor_msg_list(GSList* protocol_body) {
+	GSList* cursor = NULL, * msg_ls = NULL;
+	for (cursor = protocol_body; cursor != NULL; cursor = cursor->next) {
+		BPCSMTV_PROTOCOL_BODY* data = (BPCSMTV_PROTOCOL_BODY*)cursor->data;
+
+		switch (data->node_type) {
+			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_MSG:
+				msg_ls = g_slist_append(msg_ls, data->node_data.msg_data);
+				break;
+			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_ALIAS:
+			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_ENUM:
+			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_STRUCT:
+			default:
+				break;
+		}
+	}
+
+	return msg_ls;
+}
+void bpcgen_destructor_msg_list(GSList* msg_ls) {
+	if (msg_ls == NULL) return;
+	g_slist_free(msg_ls);
+}
+
 /*
 
 //const uint32_t bpc_codegen_basic_type_size[] = {

@@ -628,7 +628,7 @@ void codepy_write_document(FILE* fs, BPCSMTV_DOCUMENT* document) {
 
 	// iterate list to get data
 	// and pick msg
-	GSList* cursor = NULL, * msg_ls = NULL;
+	GSList* cursor = NULL;
 	BPCGEN_STRUCT_LIKE struct_like = { 0 };
 	for (cursor = document->protocol_body; cursor != NULL; cursor = cursor->next) {
 		BPCSMTV_PROTOCOL_BODY* data = (BPCSMTV_PROTOCOL_BODY*)cursor->data;
@@ -644,22 +644,20 @@ void codepy_write_document(FILE* fs, BPCSMTV_DOCUMENT* document) {
 			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_MSG:
 				struct_like.pMsg = data->node_data.msg_data;
 				write_struct_or_msg(fs, &struct_like, true);
-
-				msg_ls = g_slist_append(msg_ls, data->node_data.msg_data);
 				break;
 			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_ALIAS:
-			default:
-				// do nothing for alias and invalid type
 				break;
+			default:
+				g_assert_not_reached();
 		}
 	}
 
 	// write some tails
+	GSList* msg_ls = bpcgen_constructor_msg_list(document->protocol_body);
 	write_opcode_enum(fs, msg_ls);
 	write_uniform_deserialize(fs, msg_ls);
 
 	// free msg list
-	if (msg_ls != NULL)
-		g_slist_free(msg_ls);
+	bpcgen_destructor_msg_list(msg_ls);
 
 }

@@ -19,69 +19,6 @@ static char* get_primitive_type_name(BPCSMTV_VARIABLE* variable) {
 		csharp_basic_type[variable->variable_type->full_uncover_basic_type] :
 		variable->variable_type->semi_uncover_custom_type);
 }
-//static char* generate_primitive_type_default(BPCSMTV_VARIABLE* variable) {
-//	if (variable->variable_type->is_basic_type) {
-//		return g_strdup(csharp_default_basic_type[variable->variable_type->type_data.basic_type]);
-//	} else {
-//		BPCSMTV_PROTOCOL_BODY* body = bpcsmtv_registery_identifier_get(variable->variable_type->semi_uncover_custom_type);
-//
-//		switch (body->node_type) {
-//			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_ALIAS:
-//				return g_strdup(csharp_default_basic_type[body->node_data.alias_data->basic_type]);
-//			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_ENUM:
-//				return g_strdup_printf("%s.%s",		// get first member as default value
-//					body->node_data.enum_data->enum_name,
-//					((BPCSMTV_ENUM_MEMBER*)body->node_data.enum_data->enum_body->data)->enum_member_name);
-//			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_STRUCT:
-//			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_MSG:
-//			default:
-//				g_assert_not_reached();
-//		}
-//	}
-//}
-
-//static void write_natural_struct(FILE* fs, BPCSMTV_STRUCT_MODIFIER modifier, GSList* variables, BPCGEN_INDENT_TYPE indent) {
-//	// check requirement
-//	g_assert(!modifier.is_narrow);
-//
-//	// generate internal struct
-//	// Ref: https://learn.microsoft.com/en-us/dotnet/framework/interop/marshalling-classes-structures-and-unions
-//	BPCGEN_INDENT_INIT_REF(fs, indent);
-//	GSList* cursor;
-//	uint32_t offsets = UINT32_C(0);
-//
-//	BPCGEN_INDENT_PRINT;
-//	fprintf(fs, "[StructLayout(LayoutKind.Explicit, Size = %" PRIu32 ")]", modifier.struct_size);
-//	BPCGEN_INDENT_PRINT;
-//	fputs("public struct _NaturalStruct {", fs);
-//	
-//	BPCGEN_INDENT_INC;
-//	for (cursor = variables; cursor != NULL; cursor = cursor->next) {
-//		BPCSMTV_VARIABLE* variable = (BPCSMTV_VARIABLE*)cursor->data;
-//
-//		// offset assign
-//		BPCGEN_INDENT_PRINT;
-//		fprintf(fs, "[FieldOffset(%" PRIu32 ")]", offsets);
-//
-//		// variable spec
-//		BPCGEN_INDENT_PRINT;
-//		if (variable->variable_array->is_array) {
-//			// check requirement
-//			g_assert(variable->variable_array->is_static_array);
-//
-//			fprintf(fs, "[MarshalAs(UnmanagedType.ByValArray, SizeConst = %" PRIu32 ")]", variable->variable_array->static_array_len);
-//		} else {
-//			if (variable->variable_type->full_uncover_is_basic_type) {
-//				fprintf(fs, "[MarshalAs(UnmanagedType.%s)]", csharp_unmanaged_type[(size_t)variable->variable_type->full_uncover_basic_type]);
-//			} else {
-//
-//			}
-//		}
-//	}
-//	BPCGEN_INDENT_DEC;
-//	BPCGEN_INDENT_PRINT;
-//	fputc('}', fs);
-//}
 
 static void write_enum(FILE* fs, BPCSMTV_ENUM* smtv_enum, BPCGEN_INDENT_TYPE indent) {
 	BPCGEN_INDENT_INIT_REF(fs, indent);
@@ -201,7 +138,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 				case BPCGEN_VARTYPE_DYNAMIC_STRING:
 				{
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "this.%s = new List<%s>()", vardata->variable_name, get_primitive_type_name(vardata));
+					fprintf(fs, "this.%s = new List<%s>();", vardata->variable_name, get_primitive_type_name(vardata));
 					break;
 				}
 
@@ -387,7 +324,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 				case BPCGEN_VARTYPE_SINGLE_NATURAL:
 				{
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "this.%s.Deserialize(_br)", vardata->variable_name);
+					fprintf(fs, "this.%s.Deserialize(_br);", vardata->variable_name);
 
 					break;
 				}
@@ -445,7 +382,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 	fputs("public override void Serialize(BinaryWriter _bw) {", fs); BPCGEN_INDENT_INC;
 	if (is_msg) {
 		BPCGEN_INDENT_PRINT;
-		fprintf(fs, "_bw._BpWriteOpCode(_OpCode.%s)", struct_like_name);
+		fprintf(fs, "_bw._BpWriteOpCode(_OpCode.%s);", struct_like_name);
 	}
 	for (cursor = bond_vars; cursor != NULL; cursor = cursor->next) {
 		BOND_VARS* data = (BOND_VARS*)cursor->data;
@@ -617,7 +554,144 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 	bpcgen_destructor_bond_vars(bond_vars);
 }
 
+static void write_opcode_enum(FILE* fs, GSList* msg_ls, BPCGEN_INDENT_TYPE indent) {
+	GSList* cursor;
+	BPCGEN_INDENT_INIT_REF(fs, indent);
+
+	// write opcode enum
+	BPCGEN_INDENT_PRINT;
+	fputs("public enum _OpCode : uint {", fs); BPCGEN_INDENT_INC;
+	for (cursor = msg_ls; cursor != NULL; cursor = cursor->next) {
+		BPCSMTV_MSG* data = (BPCSMTV_MSG*)cursor->data;
+
+		BPCGEN_INDENT_PRINT;
+		fprintf(fs, "%s = %" PRIu32, data->msg_name, data->msg_index);
+		if (cursor->next != NULL) {
+			fputc(',', fs);
+		}
+	}
+
+	// class opcode is over
+	BPCGEN_INDENT_DEC;
+	BPCGEN_INDENT_PRINT;
+	fputc('}', fs);
+}
+
+static void write_uniform_deserialize(FILE* fs, GSList* msg_ls, BPCGEN_INDENT_TYPE indent) {
+	GSList* cursor;
+	BPCGEN_INDENT_INIT_REF(fs, indent);
+
+	// write uniformed deserialize func
+	BPCGEN_INDENT_PRINT;
+	fputs("public static partial class _Helper {", fs); BPCGEN_INDENT_INC;
+	BPCGEN_INDENT_PRINT;
+	fputs("public static _BpMessage UniformDeserialize(BinaryReader _br) {", fs); BPCGEN_INDENT_INC;
+	BPCGEN_INDENT_PRINT;
+	fputs("var _opcode = _br._BpPeekOpCode();", fs);
+	for (cursor = msg_ls; cursor != NULL; cursor = cursor->next) {
+		BPCSMTV_MSG* data = (BPCSMTV_MSG*)cursor->data;
+
+		BPCGEN_INDENT_PRINT;
+		fprintf(fs, "case _OpCode.%s: {", data->msg_name);
+
+		// write if body
+		BPCGEN_INDENT_INC;
+		BPCGEN_INDENT_PRINT;
+		fprintf(fs, "var _data = new %s();", data->msg_name);
+		BPCGEN_INDENT_PRINT;
+		fputs("_data.Deserialize(br);", fs);
+		BPCGEN_INDENT_PRINT;
+		fputs("return _data;", fs);
+
+		BPCGEN_INDENT_DEC;
+		BPCGEN_INDENT_PRINT;
+		fputc('}', fs);
+	}
+	BPCGEN_INDENT_DEC;
+	BPCGEN_INDENT_PRINT;
+	fputc('}', fs);
+
+	// default return
+	BPCGEN_INDENT_PRINT;
+	fprintf(fs, "return null;");
+
+	// uniform func is over
+	BPCGEN_INDENT_DEC;
+	BPCGEN_INDENT_PRINT;
+	fputc('}', fs);
+	BPCGEN_INDENT_DEC;
+	BPCGEN_INDENT_PRINT;
+	fputc('}', fs);
+
+}
+
+char* generate_namespaces(GSList* ns_list) {
+	GString* strl = g_string_new(NULL);
+	GSList* cursor = NULL;
+
+	for (cursor = ns_list; cursor != NULL; cursor = cursor->next) {
+		g_string_append(strl, (gchar*)cursor->data);
+		if (cursor->next != NULL) {
+			g_string_append_c(strl, '.');
+		}
+	}
+
+	return g_string_free(strl, false);
+}
 
 void codecs_write_document(FILE* fs, BPCSMTV_DOCUMENT* document) {
+	BPCGEN_INDENT_INIT_NEW(fs);
+
+	// write header
+	bpcfs_write_snippets(fs, &bpcsnp_cs_header);
+
+	// write namespace
+	char* ns = generate_namespaces(document->namespace_data);
+	BPCGEN_INDENT_PRINT;
+	fprintf(fs, "namespace %s {", ns); BPCGEN_INDENT_INC;
+	g_free(ns);
+
+	// write opcode
+	GSList* msg_ls = bpcgen_constructor_msg_list(document->protocol_body);
+	write_opcode_enum(fs, msg_ls, BPCGEN_INDENT_REF);
+
+	// write functions snippets
+	bpcfs_write_snippets(fs, &bpcsnp_cs_functions);
+
+	// iterate list to get data
+	GSList* cursor = NULL;
+	BPCGEN_STRUCT_LIKE struct_like = { 0 };
+	for (cursor = document->protocol_body; cursor != NULL; cursor = cursor->next) {
+		BPCSMTV_PROTOCOL_BODY* data = (BPCSMTV_PROTOCOL_BODY*)cursor->data;
+
+		switch (data->node_type) {
+			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_ENUM:
+				write_enum(fs, data->node_data.enum_data, BPCGEN_INDENT_REF);
+				break;
+			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_STRUCT:
+				struct_like.pStruct = data->node_data.struct_data;
+				write_struct_or_msg(fs, &struct_like, false, BPCGEN_INDENT_REF);
+				break;
+			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_MSG:
+				struct_like.pMsg = data->node_data.msg_data;
+				write_struct_or_msg(fs, &struct_like, true, BPCGEN_INDENT_REF);
+				break;
+			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_ALIAS:
+				break;
+			default:
+				g_assert_not_reached();
+		}
+	}
+
+	// write uniformed deserializer
+	write_uniform_deserialize(fs, msg_ls, BPCGEN_INDENT_REF);
+
+	// free msg list
+	bpcgen_destructor_msg_list(msg_ls);
+
+	// namespace over
+	BPCGEN_INDENT_DEC;
+	BPCGEN_INDENT_PRINT;
+	fputc('}', fs);
 
 }

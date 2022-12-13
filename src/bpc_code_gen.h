@@ -16,6 +16,7 @@
 #define BPCGEN_INDENT_RESET _indent_level = _indent_loop = UINT32_C(0);
 #define BPCGEN_INDENT_INC ++_indent_level;
 #define BPCGEN_INDENT_DEC --_indent_level;
+#define BPCGEN_INDENT_REF (_indent_level)
 #define BPCGEN_INDENT_PRINT fputc('\n', _indent_fs); \
 for (_indent_loop = UINT32_C(0); _indent_loop < _indent_level; ++_indent_loop) \
 fputc('\t', _indent_fs);
@@ -72,6 +73,18 @@ GSList* bpcgen_constructor_bond_vars(GSList* variables, BPCGEN_VARTYPE bond_rule
 /// </summary>
 /// <param name="bond_vars"></param>
 void bpcgen_destructor_bond_vars(GSList* bond_vars);
+
+/// <summary>
+/// pick msg structure from protocol body
+/// </summary>
+/// <param name="protocol_body">A GSList, item is "BPCSMTV_PROTOCOL_BODY*"</param>
+/// <returns>A GSList, item is "BPCSMTV_MSG*"</returns>
+GSList* bpcgen_constructor_msg_list(GSList* protocol_body);
+/// <summary>
+/// free picked msg list safely.
+/// </summary>
+/// <param name="msg_ls">A GSList, item is "BPCSMTV_MSG*"</param>
+void bpcgen_destructor_msg_list(GSList* msg_ls);
 
 void codepy_write_document(FILE* fs, BPCSMTV_DOCUMENT* document);
 void codecs_write_document(FILE* fs, BPCSMTV_DOCUMENT* document);
