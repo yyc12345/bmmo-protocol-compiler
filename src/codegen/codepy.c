@@ -91,7 +91,6 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 	GSList* cursor = NULL, * variables = (is_msg ? union_data->pMsg->msg_body : union_data->pStruct->struct_body);
 	BPCSMTV_STRUCT_MODIFIER* modifier = (is_msg ? union_data->pMsg->msg_modifier : union_data->pStruct->struct_modifier);
 	char* struct_like_name = (is_msg ? union_data->pMsg->msg_name : union_data->pStruct->struct_name);
-	GString* oper = g_string_new(NULL);
 	BPCGEN_INDENT_INIT_NEW(fs);
 
 	// get bond variables. python only allow combineing single primitive variables
@@ -561,7 +560,6 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 	BPCGEN_INDENT_DEC;
 
 	// free all cache data
-	g_string_free(oper, true);
 	bpcgen_destructor_bond_vars(bond_vars);
 }
 
