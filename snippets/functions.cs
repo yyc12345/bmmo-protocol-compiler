@@ -199,10 +199,12 @@ public static partial class _Helper {
     }
 }
 
-public abstract class _BpMessage {
-    public virtual _OpCode GetOpCode() { throw new NotImplementedException(); }
-    public virtual bool GetIsReliable() { throw new NotImplementedException(); }
+public abstract class _BpStruct {
     public virtual void Serialize(BinaryWriter _bw) { throw new NotImplementedException(); }
     public virtual void Deserialize(BinaryReader _br) { throw new NotImplementedException(); }
+}
 
+public abstract class _BpMessage : _BpStruct {
+    public virtual _OpCode GetOpCode() { throw new NotImplementedException(); }
+    public virtual bool GetIsReliable() { throw new NotImplementedException(); }
 }

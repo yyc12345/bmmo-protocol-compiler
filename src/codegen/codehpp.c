@@ -44,7 +44,6 @@ static void write_enum(FILE* fs, BPCSMTV_ENUM* smtv_enum, BPCGEN_INDENT_TYPE ind
 
 static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool is_msg, BPCGEN_INDENT_TYPE indent) {
 	GSList* cursor = NULL, * variables = (is_msg ? union_data->pMsg->msg_body : union_data->pStruct->struct_body);
-	BPCSMTV_STRUCT_MODIFIER* modifier = (is_msg ? union_data->pMsg->msg_modifier : union_data->pStruct->struct_modifier);
 	char* struct_like_name = (is_msg ? union_data->pMsg->msg_name : union_data->pStruct->struct_name);
 	BPCGEN_INDENT_INIT_REF(fs, indent);
 
@@ -56,10 +55,10 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 	if (is_msg) {
 		fprintf(fs, "class %s : public _BpMessage {", struct_like_name);
 	} else {
-		fprintf(fs, "class %s {", struct_like_name);
+		fprintf(fs, "class %s : public _BpStruct {", struct_like_name);
 	}
-	fputs("public:", fs);
-	BPCGEN_INDENT_INC;
+	BPCGEN_INDENT_PRINT;
+	fputs("public:", fs); BPCGEN_INDENT_INC;
 
 	// internal data define
 	BPCGEN_INDENT_PRINT;
@@ -72,21 +71,34 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 			switch (data->vars_type[c]) {
 				case BPCGEN_VARTYPE_SINGLE_PRIMITIVE:
 				case BPCGEN_VARTYPE_SINGLE_STRING:
-				case BPCGEN_VARTYPE_SINGLE_NARROW:
-				case BPCGEN_VARTYPE_SINGLE_NATURAL:
 				{
 					BPCGEN_INDENT_PRINT;
 					fprintf(fs, "%s %s;", get_primitive_type_name(vardata), vardata->variable_name);
 					break;
 				}
+				case BPCGEN_VARTYPE_SINGLE_NARROW:
+				case BPCGEN_VARTYPE_SINGLE_NATURAL:
+				{
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "%s::_InternalDataType %s;", get_primitive_type_name(vardata), vardata->variable_name);
+					break;
+				}
 
 				case BPCGEN_VARTYPE_STATIC_PRIMITIVE:
 				case BPCGEN_VARTYPE_STATIC_STRING:
+				{
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "%s %s[%" PRIu32 "];",
+						get_primitive_type_name(vardata),
+						vardata->variable_name,
+						vardata->variable_array->static_array_len);
+					break;
+				}
 				case BPCGEN_VARTYPE_STATIC_NARROW:
 				case BPCGEN_VARTYPE_STATIC_NATURAL:
 				{
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "%s %s[%" PRIu32 "];", 
+					fprintf(fs, "%s::_InternalDataType %s[%" PRIu32 "];", 
 						get_primitive_type_name(vardata), 
 						vardata->variable_name, 
 						vardata->variable_array->static_array_len);
@@ -100,11 +112,16 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 					break;
 				}
 				case BPCGEN_VARTYPE_DYNAMIC_STRING:
+				{
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "std::vector<%s*> %s;", get_primitive_type_name(vardata), vardata->variable_name);
+					break;
+				}
 				case BPCGEN_VARTYPE_DYNAMIC_NARROW:
 				case BPCGEN_VARTYPE_DYNAMIC_NATURAL:
 				{
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "std::vector<%s*> %s;", get_primitive_type_name(vardata), vardata->variable_name);
+					fprintf(fs, "std::vector<(%s::_InternalDataType)*> %s;", get_primitive_type_name(vardata), vardata->variable_name);
 					break;
 				}
 
@@ -127,16 +144,16 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 	fprintf(fs, "%s();", struct_like_name);
 	BPCGEN_INDENT_PRINT;
 	fprintf(fs, "virtual ~%s();", struct_like_name);
-	fputs("virtual bool Serialize(std::stringstream* data) override;", fs);
 	BPCGEN_INDENT_PRINT;
-	fputs("virtual bool Deserialize(std::stringstream* data) override;", fs);
+	fputs("virtual bool Serialize(std::stringstream* _ss) override;", fs);
+	BPCGEN_INDENT_PRINT;
+	fputs("virtual bool Deserialize(std::stringstream* _ss) override;", fs);
 	BPCGEN_INDENT_PRINT;
 	fputs("static void _InnerFree(_InternalDataType* _p);", fs);
 	BPCGEN_INDENT_PRINT;
-	fputs("static bool _InnerSerialize(_InternalDataType* _p, std::stringstream* data);", fs);
+	fputs("static bool _InnerSerialize(_InternalDataType* _p, std::stringstream* _ss);", fs);
 	BPCGEN_INDENT_PRINT;
-	fputs("static bool _InnerDeserialize(_InternalDataType* _p, std::stringstream* data);", fs);
-	BPCGEN_INDENT_PRINT;
+	fputs("static bool _InnerDeserialize(_InternalDataType* _p, std::stringstream* _ss);", fs);
 
 	// msg unique functions
 	if (is_msg) {
@@ -152,6 +169,82 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 	fputs("};", fs);
 }
 
+static void write_opcode_enum(FILE* fs, GSList* msg_ls, BPCGEN_INDENT_TYPE indent) {
+	GSList* cursor;
+	BPCGEN_INDENT_INIT_REF(fs, indent);
+
+	// write opcode enum
+	BPCGEN_INDENT_PRINT;
+	fputs("enum class _OpCode : uint32_t {", fs); BPCGEN_INDENT_INC;
+	for (cursor = msg_ls; cursor != NULL; cursor = cursor->next) {
+		BPCSMTV_MSG* data = (BPCSMTV_MSG*)cursor->data;
+
+		BPCGEN_INDENT_PRINT;
+		fprintf(fs, "%s = %" PRIu32, data->msg_name, data->msg_index);
+		if (cursor->next != NULL) {
+			fputc(',', fs);
+		}
+	}
+
+	// class opcode is over
+	BPCGEN_INDENT_DEC;
+	BPCGEN_INDENT_PRINT;
+	fputs("};", fs);
+}
+
 void codehpp_write_document(FILE* fs, BPCSMTV_DOCUMENT* document) {
+	BPCGEN_INDENT_INIT_NEW(fs);
+
+	// write header
+	bpcfs_write_snippets(fs, &bpcsnp_hpp_header);
+
+	// write namespace
+	GSList* cursor = NULL;
+	for (cursor = document->namespace_data; cursor != NULL; cursor = cursor->next) {
+		BPCGEN_INDENT_PRINT;
+		fprintf(fs, "namespace %s {", (char*)cursor->data); BPCGEN_INDENT_INC;
+	}
+
+	// write opcode
+	GSList* msg_ls = bpcgen_constructor_msg_list(document->protocol_body);
+	write_opcode_enum(fs, msg_ls, BPCGEN_INDENT_REF);
+
+	// write functions snippets
+	bpcfs_write_snippets(fs, &bpcsnp_hpp_functions);
+
+	// iterate list to get data
+	BPCGEN_STRUCT_LIKE struct_like = { 0 };
+	for (cursor = document->protocol_body; cursor != NULL; cursor = cursor->next) {
+		BPCSMTV_PROTOCOL_BODY* data = (BPCSMTV_PROTOCOL_BODY*)cursor->data;
+
+		switch (data->node_type) {
+			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_ALIAS:
+				write_alias(fs, data->node_data.alias_data, BPCGEN_INDENT_REF);
+				break;
+			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_ENUM:
+				write_enum(fs, data->node_data.enum_data, BPCGEN_INDENT_REF);
+				break;
+			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_STRUCT:
+				struct_like.pStruct = data->node_data.struct_data;
+				write_struct_or_msg(fs, &struct_like, false, BPCGEN_INDENT_REF);
+				break;
+			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_MSG:
+				struct_like.pMsg = data->node_data.msg_data;
+				write_struct_or_msg(fs, &struct_like, true, BPCGEN_INDENT_REF);
+				break;
+			default:
+				g_assert_not_reached();
+		}
+	}
+
+	// free msg list
+	bpcgen_destructor_msg_list(msg_ls);
+
+	// namespace over
+	for (cursor = document->namespace_data; cursor != NULL; cursor = cursor->next) {
+		BPCGEN_INDENT_DEC;
+		BPCGEN_INDENT_PRINT;
+		fputc('}', fs);
+	}
 
 }

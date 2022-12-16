@@ -99,7 +99,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 	// class header
 	BPCGEN_INDENT_PRINT;
 	fprintf(fs, "class %s(%s):", struct_like_name,
-		(is_msg ? "_BpMessage" : "object"));
+		(is_msg ? "_BpMessage" : "_BpStruct"));
 	BPCGEN_INDENT_INC;
 
 	// static struct pack for combined nodes

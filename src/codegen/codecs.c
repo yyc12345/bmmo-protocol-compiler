@@ -61,7 +61,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 	if (is_msg) {
 		fprintf(fs, "public class %s : _BpMessage {", struct_like_name);
 	} else {
-		fprintf(fs, "public class %s {", struct_like_name);
+		fprintf(fs, "public class %s : _BpStruct {", struct_like_name);
 	}
 	BPCGEN_INDENT_INC;
 

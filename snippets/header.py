@@ -7,11 +7,7 @@ _opcode_packer = struct.Struct("<I")
 _listlen_packer = struct.Struct("<I")
 _strlen_packer = struct.Struct("<I")
 
-class _BpMessage(object):
-	def GetIsReliable(self) -> bool:
-		raise Exception("Abstract function call")
-	def GetOpcode(self) -> int:
-		raise Exception("Abstract function call")
+class _BpStruct(object):
 	def Serialize(self, _ss: io.BytesIO):
 		raise Exception("Abstract function call")
 	def Deserialize(self, _ss: io.BytesIO):
@@ -23,3 +19,9 @@ class _BpMessage(object):
 		_binstr = strl.encode(encoding='utf-8', errors='ignore')
 		_ss.write(_strlen_packer.pack(len(_binstr)))
 		_ss.write(_binstr)
+
+class _BpMessage(_BpStruct):
+	def GetIsReliable(self) -> bool:
+		raise Exception("Abstract function call")
+	def GetOpcode(self) -> int:
+		raise Exception("Abstract function call")
