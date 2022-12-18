@@ -44,6 +44,7 @@ static void write_enum(FILE* fs, BPCSMTV_ENUM* smtv_enum, BPCGEN_INDENT_TYPE ind
 
 static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool is_msg, BPCGEN_INDENT_TYPE indent) {
 	GSList* cursor = NULL, * variables = (is_msg ? union_data->pMsg->msg_body : union_data->pStruct->struct_body);
+	BPCSMTV_STRUCT_MODIFIER* modifier = (is_msg ? union_data->pMsg->msg_modifier : union_data->pStruct->struct_modifier);
 	char* struct_like_name = (is_msg ? union_data->pMsg->msg_name : union_data->pStruct->struct_name);
 	BPCGEN_INDENT_INIT_REF(fs, indent);
 
@@ -61,8 +62,16 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 	fputs("public:", fs); BPCGEN_INDENT_INC;
 
 	// internal data define
+	// pack specific
+	BPCGEN_INDENT_PRINT;
+	if (modifier->is_narrow) {
+		fputs("#pragma pack(1)", fs);	// narrow is always 1 byte align
+	} else {
+		fprintf(fs, "#pragma pack(%" PRIu32 ")", modifier->struct_unit_size);	// use calculated align size
+	}
 	BPCGEN_INDENT_PRINT;
 	fputs("typedef struct {", fs); BPCGEN_INDENT_INC;
+	uint32_t ph_counter = UINT32_C(0);
 	for (cursor = bond_vars; cursor != NULL; cursor = cursor->next) {
 		BOND_VARS* data = (BOND_VARS*)cursor->data;
 		uint32_t c;
@@ -128,12 +137,23 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 				default:
 					g_assert_not_reached();
 			}
+
+			// padding, only applied in narrow struct.
+			// because align always reflect variable align even in natural mode.
+			// (for the convenience other languages, python and etc)
+			if (modifier->is_narrow && vardata->variable_align->use_align) {
+				BPCGEN_INDENT_PRINT;
+				fprintf(fs, "char _placeholder%" PRIu32 "[%" PRIu32 "];", ph_counter++, vardata->variable_align->padding_size);
+			}
 		}
 	}
 	// internal data define is over
 	BPCGEN_INDENT_DEC;
 	BPCGEN_INDENT_PRINT;
 	fputs("}_InternalDataType;", fs);
+	// restore pack
+	BPCGEN_INDENT_PRINT;
+	fputs("#pragma pack()", fs);
 
 	// declare internal data
 	BPCGEN_INDENT_PRINT;
