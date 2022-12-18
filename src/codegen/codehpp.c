@@ -169,7 +169,9 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 	BPCGEN_INDENT_PRINT;
 	fputs("virtual bool Deserialize(std::stringstream* _ss) override;", fs);
 	BPCGEN_INDENT_PRINT;
-	fputs("static void _InnerFree(_InternalDataType* _p);", fs);
+	fputs("static void _InnerConstructor(_InternalDataType* _p);", fs);
+	BPCGEN_INDENT_PRINT;
+	fputs("static void _InnerDestructor(_InternalDataType* _p);", fs);
 	BPCGEN_INDENT_PRINT;
 	fputs("static bool _InnerSerialize(_InternalDataType* _p, std::stringstream* _ss);", fs);
 	BPCGEN_INDENT_PRINT;
@@ -180,7 +182,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 		BPCGEN_INDENT_PRINT;
 		fputs("virtual _OpCode GetOpCode() override;", fs);
 		BPCGEN_INDENT_PRINT;
-		fputs("virtual bool IsReliable() override;", fs);
+		fputs("virtual bool GetIsReliable() override;", fs);
 	}
 
 	// class is over

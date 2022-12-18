@@ -6,13 +6,6 @@ public:
 
     virtual bool Serialize(std::stringstream* data) = 0;
     virtual bool Deserialize(std::stringstream* data) = 0;
-    
-    bool _PeekOpCode(std::stringstream* ss, _OpCode* code);
-    bool _ReadOpCode(std::stringstream* ss, _OpCode* code);
-    bool _WriteOpCode(std::stringstream* ss, _OpCode code);
-
-    bool _ReadString(std::stringstream* ss, std::string* strl);
-    bool _WriteString(std::stringstream* ss, std::string* strl);
 };
 
 class _BpMessage : public _BpStruct {
@@ -27,4 +20,11 @@ public:
 class _Helper {
 public:
     static _BpMessage* UniformDeserializer(std::stringstream* ss);
+        
+    static bool PeekOpCode(std::stringstream* ss, _OpCode* code);
+    static bool ReadOpCode(std::stringstream* ss, _OpCode* code);
+    static bool WriteOpCode(std::stringstream* ss, _OpCode code);
+
+    static bool ReadString(std::stringstream* ss, std::string* strl);
+    static bool WriteString(std::stringstream* ss, std::string* strl);
 };
