@@ -3,6 +3,15 @@
 static const uint32_t cpp_basic_type_size[] = {
 	UINT32_C(4), UINT32_C(8), UINT32_C(1), UINT32_C(2), UINT32_C(4), UINT32_C(8), UINT32_C(1), UINT32_C(2), UINT32_C(4), UINT32_C(8)
 };
+static const char* cpp_basic_type[] = {
+	"float", "double", "int8_t", "int16_t", "int32_t", "int64_t", "uint8_t", "uint16_t", "uint32_t", "uint64_t", "std::string"
+};
+
+static char* get_primitive_type_name(BPCSMTV_VARIABLE* variable) {
+	return (variable->variable_type->is_basic_type ?
+		cpp_basic_type[variable->variable_type->type_data.basic_type] :
+		variable->variable_type->type_data.custom_type);
+}
 
 static void print_bond_vars_annotation(FILE* fs, BOND_VARS* data) {
 	fputs("// ", fs);
@@ -146,32 +155,60 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 			BPCSMTV_VARIABLE* vardata = data->plist_vars[c];
 			switch (data->vars_type[c]) {
 				case BPCGEN_VARTYPE_SINGLE_PRIMITIVE:
+				case BPCGEN_VARTYPE_SINGLE_NATURAL:
 				{
-
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "memset(&(_p->%s), 0, sizeof(%s));", vardata->variable_name, get_primitive_type_name(vardata));
 					break;
 				}
 				case BPCGEN_VARTYPE_STATIC_PRIMITIVE:
+				case BPCGEN_VARTYPE_STATIC_NATURAL:
 				{
-
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "memset(&(_p->%s), 0, sizeof(%s) * %" PRIu32 ");", 
+						vardata->variable_name, 
+						get_primitive_type_name(vardata),
+						vardata->variable_array->static_array_len);
 					break;
 				}
 
 				case BPCGEN_VARTYPE_SINGLE_STRING:
 				{
-
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "_p->%s = \"\";", vardata->variable_name);
 					break;
 				}
 				case BPCGEN_VARTYPE_STATIC_STRING:
 				{
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "for (uint32_t c = 0; c < UINT32_C(%" PRIu32 "); ++c) {", vardata->variable_array->static_array_len); BPCGEN_INDENT_INC;
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "_p->%s[c] = \"\";", vardata->variable_name);
+					BPCGEN_INDENT_DEC;
+					BPCGEN_INDENT_PRINT;
+					fputc('}', fs);
+					break;
+				}
 
+				case BPCGEN_VARTYPE_SINGLE_NARROW:
+				{
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "%s::_InnerConstructor(&(_p->%s));", vardata->variable_type->type_data.custom_type, vardata->variable_name);
+					break;
+				}
+				case BPCGEN_VARTYPE_STATIC_NARROW:
+				{
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "for (uint32_t c = 0; c < UINT32_C(%" PRIu32 "); ++c) {", vardata->variable_array->static_array_len); BPCGEN_INDENT_INC;
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "%s::_InnerConstructor(&(_p->%s[c]));", vardata->variable_type->type_data.custom_type, vardata->variable_name);
+					BPCGEN_INDENT_DEC;
+					BPCGEN_INDENT_PRINT;
+					fputc('}', fs);
 					break;
 				}
 
 				// these variables do not need init
-				case BPCGEN_VARTYPE_SINGLE_NARROW:
-				case BPCGEN_VARTYPE_SINGLE_NATURAL:
-				case BPCGEN_VARTYPE_STATIC_NARROW:
-				case BPCGEN_VARTYPE_STATIC_NATURAL:
 				case BPCGEN_VARTYPE_DYNAMIC_PRIMITIVE:
 				case BPCGEN_VARTYPE_DYNAMIC_STRING:
 				case BPCGEN_VARTYPE_DYNAMIC_NARROW:
@@ -196,31 +233,53 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 		for (c = 0; c < data->bond_vars_len; ++c) {
 			BPCSMTV_VARIABLE* vardata = data->plist_vars[c];
 			switch (data->vars_type[c]) {
+				// non-primitive variable need manual free
+				case BPCGEN_VARTYPE_SINGLE_NARROW:
+				case BPCGEN_VARTYPE_SINGLE_NATURAL:
+				{
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "%s::_InnerDetructor(&(_p->%s));", vardata->variable_type->type_data.custom_type, vardata->variable_name);
+					break;
+				}
+				case BPCGEN_VARTYPE_STATIC_NARROW:
+				case BPCGEN_VARTYPE_STATIC_NATURAL:
+				{
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "%s::_InnerDestructor(&(_p->%s[c]));", vardata->variable_type->type_data.custom_type, vardata->variable_name);
+					break;
+				}
+
+				// dynamic array need manual free
 				case BPCGEN_VARTYPE_DYNAMIC_STRING:
 				{
-
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "for (auto it = _p->%s.begin(); it != _ps->%s.end(); ++it) {", vardata->variable_name, vardata->variable_name); BPCGEN_INDENT_INC;
+					BPCGEN_INDENT_PRINT;
+					fputs("delete (*it);", fs);
+					BPCGEN_INDENT_DEC;
+					BPCGEN_INDENT_PRINT;
+					fputc('}', fs);
 					break;
 				}
 				case BPCGEN_VARTYPE_DYNAMIC_NARROW:
-				{
-
-					break;
-				}
 				case BPCGEN_VARTYPE_DYNAMIC_NATURAL:
 				{
-
-					break;
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "for (auto it = _p->%s.begin(); it != _p->%s.end(); ++it) {", vardata->variable_name, vardata->variable_name); BPCGEN_INDENT_INC;
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "%s::_InnerDestructor(it);", vardata->variable_type->type_data.custom_type);
+					BPCGEN_INDENT_PRINT;
+					fputs("delete (*it);", fs);
+					BPCGEN_INDENT_DEC;
+					BPCGEN_INDENT_PRINT;
+					fputc('}', fs);
 				}
 
 				// these variables do not need free
 				case BPCGEN_VARTYPE_SINGLE_PRIMITIVE:
 				case BPCGEN_VARTYPE_SINGLE_STRING:
-				case BPCGEN_VARTYPE_SINGLE_NARROW:
-				case BPCGEN_VARTYPE_SINGLE_NATURAL:
 				case BPCGEN_VARTYPE_STATIC_PRIMITIVE:
 				case BPCGEN_VARTYPE_STATIC_STRING:
-				case BPCGEN_VARTYPE_STATIC_NARROW:
-				case BPCGEN_VARTYPE_STATIC_NATURAL:
 				case BPCGEN_VARTYPE_DYNAMIC_PRIMITIVE:
 					break;
 				default:
@@ -236,6 +295,18 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 	// real deserializer
 	BPCGEN_INDENT_PRINT;
 	fprintf(fs, "bool %s::_InnerDeserialize(_InternalDataType* _p, std::stringstream* _ss) {", struct_like_name); BPCGEN_INDENT_INC;
+	// msg specific stmt
+	if (is_msg) {
+		BPCGEN_INDENT_PRINT;
+		fputs("_OpCode _opcode_checker;", fs);
+		BPCGEN_INDENT_PRINT;
+		fputs("_Helper::ReadOpCode(_ss, &_opcode_checker);", fs);
+		BPCGEN_INDENT_PRINT;
+		fprintf(fs, "if (_opcode_checker != _OpCode.%s) return false;", struct_like_name);
+	}
+	// may be used variables
+	BPCGEN_INDENT_PRINT;
+	fputs("uint32_t _len, _count;", fs);
 	for (cursor = bond_vars; cursor != NULL; cursor = cursor->next) {
 		BOND_VARS* data = (BOND_VARS*)cursor->data;
 
@@ -243,9 +314,65 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 		print_bond_vars_annotation(fs, data);
 
 		if (data->is_bonded) {
+			// bond vars
+			BPCGEN_INDENT_PRINT;
+			fprintf(fs, "SSTREAM_RD_STRUCT(_ss, %" PRIu32 ", &(_p->%s));", 
+				calc_bond_vars_size(data),
+				data->plist_vars[0]->variable_name);
 
 		} else {
+			// normal process
+			BPCSMTV_VARIABLE* vardata = data->plist_vars[0];
 
+			// body
+			switch (data->vars_type[0]) {
+				case BPCGEN_VARTYPE_DYNAMIC_PRIMITIVE:
+				{
+
+					break;
+				}
+
+				case BPCGEN_VARTYPE_SINGLE_STRING:
+				{
+
+					break;
+				}
+				case BPCGEN_VARTYPE_STATIC_STRING:
+				{
+
+					break;
+				}
+				case BPCGEN_VARTYPE_DYNAMIC_STRING:
+				{
+
+					break;
+				}
+
+				// natural and narrow is shared
+				case BPCGEN_VARTYPE_SINGLE_NARROW:
+				{
+
+					break;
+				}
+				case BPCGEN_VARTYPE_STATIC_NARROW:
+				{
+
+					break;
+				}
+				case BPCGEN_VARTYPE_DYNAMIC_NARROW:
+				case BPCGEN_VARTYPE_DYNAMIC_NATURAL:
+				{
+
+					break;
+				}
+
+				case BPCGEN_VARTYPE_SINGLE_PRIMITIVE:
+				case BPCGEN_VARTYPE_STATIC_PRIMITIVE:
+				case BPCGEN_VARTYPE_SINGLE_NATURAL:
+				case BPCGEN_VARTYPE_STATIC_NATURAL:
+				default:
+					g_assert_not_reached();
+			}
 		}
 	}
 	BPCGEN_INDENT_DEC;

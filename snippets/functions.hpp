@@ -14,7 +14,7 @@ public:
     virtual ~_BpMessage() {};
 
     virtual _OpCode GetOpCode() = 0;
-    virtual bool IsReliable() = 0;
+    virtual bool GetIsReliable() = 0;
 };
 
 class _Helper {
