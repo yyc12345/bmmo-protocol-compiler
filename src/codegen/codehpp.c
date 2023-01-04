@@ -173,6 +173,8 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 	BPCGEN_INDENT_PRINT;
 	fputs("static void _InnerDestructor(_InternalDataType* _p);", fs);
 	BPCGEN_INDENT_PRINT;
+	fputs("static void _InnerSwap(_InternalDataType* _p);", fs);
+	BPCGEN_INDENT_PRINT;
 	fputs("static bool _InnerSerialize(_InternalDataType* _p, std::stringstream* _ss);", fs);
 	BPCGEN_INDENT_PRINT;
 	fputs("static bool _InnerDeserialize(_InternalDataType* _p, std::stringstream* _ss);", fs);

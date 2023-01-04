@@ -99,7 +99,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 	BPCGEN_INDENT_INIT_REF(fs, indent);
 
 	// in c++, we put single primitive and static primitive together
-	GSList* bond_vars = bpcgen_constructor_bond_vars(variables, 
+	GSList* bond_vars = bpcgen_constructor_bond_vars(variables,
 		BPCGEN_VARTYPE_SINGLE_PRIMITIVE | BPCGEN_VARTYPE_SINGLE_NATURAL | BPCGEN_VARTYPE_STATIC_PRIMITIVE | BPCGEN_VARTYPE_STATIC_NATURAL);
 
 	// some fake functions, which are just calling real functions
@@ -119,10 +119,16 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 	BPCGEN_INDENT_PRINT;
 	fputc('}', fs);
 
+	// class fake Serialize and Deserialize need do extra swap to make sure all data is little endian
+	// before real serialize and destrialize. the real worker will only process data as little endian.
 	BPCGEN_INDENT_PRINT;
 	fprintf(fs, "bool %s::Serialize(std::stringstream* _ss) {", struct_like_name); BPCGEN_INDENT_INC;
 	BPCGEN_INDENT_PRINT;
+	fprintf(fs, "%s::_InnerSwap(&(this->_InternalData));", struct_like_name);	// swap to LE
+	BPCGEN_INDENT_PRINT;
 	fprintf(fs, "%s::_InnerSerialize(&(this->_InternalData), _ss);", struct_like_name);
+	BPCGEN_INDENT_PRINT;
+	fprintf(fs, "%s::_InnerSwap(&(this->_InternalData));", struct_like_name);	// swap back to host endian
 	BPCGEN_INDENT_DEC;
 	BPCGEN_INDENT_PRINT;
 	fputc('}', fs);
@@ -131,6 +137,8 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 	fprintf(fs, "bool %s::Deserialize(std::stringstream* _ss) {", struct_like_name); BPCGEN_INDENT_INC;
 	BPCGEN_INDENT_PRINT;
 	fprintf(fs, "%s::_InnerDeserialize(&(this->_InternalData), _ss);", struct_like_name);
+	BPCGEN_INDENT_PRINT;
+	fprintf(fs, "%s::_InnerSwap(&(this->_InternalData));", struct_like_name);	// swap to host endian
 	BPCGEN_INDENT_DEC;
 	BPCGEN_INDENT_PRINT;
 	fputc('}', fs);
@@ -141,7 +149,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 		fprintf(fs, "_OpCode %s::GetOpCode() { return _OpCode.%s; }", struct_like_name, struct_like_name);
 
 		BPCGEN_INDENT_PRINT;
-		fprintf(fs, "bool %s::GetIsReliable() { return %s; }", struct_like_name, 
+		fprintf(fs, "bool %s::GetIsReliable() { return %s; }", struct_like_name,
 			(modifier->is_reliable ? "true" : "false"));
 	}
 
@@ -165,8 +173,8 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 				case BPCGEN_VARTYPE_STATIC_NATURAL:
 				{
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "memset(&(_p->%s), 0, sizeof(%s) * %" PRIu32 ");", 
-						vardata->variable_name, 
+					fprintf(fs, "memset(&(_p->%s), 0, sizeof(%s) * %" PRIu32 ");",
+						vardata->variable_name,
 						get_primitive_type_name(vardata),
 						vardata->variable_array->static_array_len);
 					break;
@@ -181,12 +189,10 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 				case BPCGEN_VARTYPE_STATIC_STRING:
 				{
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "for (uint32_t c = 0; c < UINT32_C(%" PRIu32 "); ++c) {", vardata->variable_array->static_array_len); BPCGEN_INDENT_INC;
-					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "_p->%s[c] = \"\";", vardata->variable_name);
-					BPCGEN_INDENT_DEC;
-					BPCGEN_INDENT_PRINT;
-					fputc('}', fs);
+					fprintf(fs, "for (uint32_t c = 0; c < UINT32_C(%" PRIu32 "); ++c) { _p->%s[c] = \"\"; }",
+						vardata->variable_array->static_array_len,
+						vardata->variable_name
+					);
 					break;
 				}
 
@@ -199,12 +205,12 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 				case BPCGEN_VARTYPE_STATIC_NARROW:
 				{
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "for (uint32_t c = 0; c < UINT32_C(%" PRIu32 "); ++c) {", vardata->variable_array->static_array_len); BPCGEN_INDENT_INC;
-					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "%s::_InnerConstructor(&(_p->%s[c]));", vardata->variable_type->type_data.custom_type, vardata->variable_name);
-					BPCGEN_INDENT_DEC;
-					BPCGEN_INDENT_PRINT;
-					fputc('}', fs);
+					fprintf(fs, "for (uint32_t c = 0; c < UINT32_C(%" PRIu32 "); ++c) { %s::_InnerConstructor(&(_p->%s[c])); }",
+						vardata->variable_array->static_array_len,
+
+						vardata->variable_type->type_data.custom_type,
+						vardata->variable_name
+					);
 					break;
 				}
 
@@ -233,54 +239,160 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 		for (c = 0; c < data->bond_vars_len; ++c) {
 			BPCSMTV_VARIABLE* vardata = data->plist_vars[c];
 			switch (data->vars_type[c]) {
-				// non-primitive variable need manual free
+				// dynamic array need manual free
+				case BPCGEN_VARTYPE_DYNAMIC_STRING:
+				{
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "for (auto it = _p->%s.begin(); it != _ps->%s.end(); ++it) { delete (*it); }", 
+						vardata->variable_name, 
+						vardata->variable_name
+					);
+					break;
+				}
+
+				case BPCGEN_VARTYPE_DYNAMIC_NATURAL:
+				{
+					// dynamic natural do not need call any destructor. bucause nothing need to destructor.
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "for (auto it = _p->%s.begin(); it != _p->%s.end(); ++it) { delete (*it); }", 
+						vardata->variable_name, 
+						vardata->variable_name
+					);
+					break;
+				}
+
+				// narrow struct variable need manual free
 				case BPCGEN_VARTYPE_SINGLE_NARROW:
-				case BPCGEN_VARTYPE_SINGLE_NATURAL:
 				{
 					BPCGEN_INDENT_PRINT;
 					fprintf(fs, "%s::_InnerDetructor(&(_p->%s));", vardata->variable_type->type_data.custom_type, vardata->variable_name);
 					break;
 				}
 				case BPCGEN_VARTYPE_STATIC_NARROW:
-				case BPCGEN_VARTYPE_STATIC_NATURAL:
 				{
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "%s::_InnerDestructor(&(_p->%s[c]));", vardata->variable_type->type_data.custom_type, vardata->variable_name);
+					fprintf(fs, "for (uint32_t c = 0; c < UINT32_C(%" PRIu32 "); ++c) { %s::_InnerDestructor(&(_p->%s[c])); }", 
+						vardata->variable_array->static_array_len,
+
+						vardata->variable_type->type_data.custom_type, 
+						vardata->variable_name
+					);
+					break;
+				}
+				case BPCGEN_VARTYPE_DYNAMIC_NARROW:
+				{
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "for (auto it = _p->%s.begin(); it != _p->%s.end(); ++it) { %s::_InnerDestructor(*it); delete (*it); }", 
+						vardata->variable_name, 
+						vardata->variable_name,
+					
+						vardata->variable_type->type_data.custom_type
+					);
 					break;
 				}
 
-				// dynamic array need manual free
-				case BPCGEN_VARTYPE_DYNAMIC_STRING:
+
+				// these variables do not need free
+				case BPCGEN_VARTYPE_SINGLE_PRIMITIVE:
+				case BPCGEN_VARTYPE_SINGLE_STRING:
+				case BPCGEN_VARTYPE_SINGLE_NATURAL:
+				case BPCGEN_VARTYPE_STATIC_PRIMITIVE:
+				case BPCGEN_VARTYPE_STATIC_STRING:
+				case BPCGEN_VARTYPE_STATIC_NATURAL:
+				case BPCGEN_VARTYPE_DYNAMIC_PRIMITIVE:
+					break;
+				default:
+					g_assert_not_reached();
+			}
+
+		}
+	}
+	BPCGEN_INDENT_DEC;
+	BPCGEN_INDENT_PRINT;
+	fputc('}', fs);
+
+
+	// real destructor
+	BPCGEN_INDENT_PRINT;
+	fprintf(fs, "void %s::_InnerSwap(_InternalDataType* _p) {", struct_like_name); BPCGEN_INDENT_INC;
+	// avoid unecessary swap
+	BPCGEN_INDENT_PRINT;
+	fputs("if (_EndianHelper::IsLittleEndian()) return;", fs);
+	// swap each variables
+	for (cursor = bond_vars; cursor != NULL; cursor = cursor->next) {
+		BOND_VARS* data = (BOND_VARS*)cursor->data;
+		uint32_t c;
+		for (c = 0; c < data->bond_vars_len; ++c) {
+			BPCSMTV_VARIABLE* vardata = data->plist_vars[c];
+			switch (data->vars_type[c]) {
+				case BPCGEN_VARTYPE_SINGLE_PRIMITIVE:
 				{
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "for (auto it = _p->%s.begin(); it != _ps->%s.end(); ++it) {", vardata->variable_name, vardata->variable_name); BPCGEN_INDENT_INC;
+					fprintf(fs, "_EndianHelper::SwapEndian%" PRIu32 "(&(_p->%s));", 
+						cpp_basic_type_size[vardata->variable_type->full_uncover_basic_type] * 8,
+						vardata->variable_name
+					);
+					break;
+				}
+				case BPCGEN_VARTYPE_STATIC_PRIMITIVE:
+				{
 					BPCGEN_INDENT_PRINT;
-					fputs("delete (*it);", fs);
-					BPCGEN_INDENT_DEC;
+					fprintf(fs, "_EndianHelper::SwapEndianArray%" PRIu32 "(&(_p->%s), UINT32_C(%" PRIu32 "));",
+						cpp_basic_type_size[vardata->variable_type->full_uncover_basic_type] * 8,
+						vardata->variable_name,
+						vardata->variable_array->static_array_len
+					);
+					break;
+				}
+				case BPCGEN_VARTYPE_DYNAMIC_PRIMITIVE:
+				{
 					BPCGEN_INDENT_PRINT;
-					fputc('}', fs);
+					fprintf(fs, "_EndianHelper::SwapEndianArray%" PRIu32 "(_p->%s.data(), (uint32_t)_p->%s.size());",
+						cpp_basic_type_size[vardata->variable_type->full_uncover_basic_type] * 8,
+						vardata->variable_name,
+						vardata->variable_name
+					);
+					break;
+				}
+
+				// narrow and natural share same swap code
+				case BPCGEN_VARTYPE_SINGLE_NARROW:
+				case BPCGEN_VARTYPE_SINGLE_NATURAL:
+				{
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "%s::_InnerSwap(&(_p->%s));", vardata->variable_type->type_data.custom_type, vardata->variable_name);
+					break;
+				}
+				case BPCGEN_VARTYPE_STATIC_NARROW:
+				case BPCGEN_VARTYPE_STATIC_NATURAL:
+				{
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "for (uint32_t c = 0; c < UINT32_C(%" PRIu32 "); ++c) { %s::_InnerSwap(&(_p->%s[c])); }",
+						vardata->variable_array->static_array_len,
+
+						vardata->variable_type->type_data.custom_type,
+						vardata->variable_name
+					);
 					break;
 				}
 				case BPCGEN_VARTYPE_DYNAMIC_NARROW:
 				case BPCGEN_VARTYPE_DYNAMIC_NATURAL:
 				{
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "for (auto it = _p->%s.begin(); it != _p->%s.end(); ++it) {", vardata->variable_name, vardata->variable_name); BPCGEN_INDENT_INC;
-					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "%s::_InnerDestructor(it);", vardata->variable_type->type_data.custom_type);
-					BPCGEN_INDENT_PRINT;
-					fputs("delete (*it);", fs);
-					BPCGEN_INDENT_DEC;
-					BPCGEN_INDENT_PRINT;
-					fputc('}', fs);
+					fprintf(fs, "for (auto it = _p->%s.begin(); it != _p->%s.end(); ++it) { %s::_InnerSwap(*it); }",
+						vardata->variable_name,
+						vardata->variable_name,
+
+						vardata->variable_type->type_data.custom_type
+					);
+					break;
 				}
 
-				// these variables do not need free
-				case BPCGEN_VARTYPE_SINGLE_PRIMITIVE:
+
+				// string variables do not need swap
 				case BPCGEN_VARTYPE_SINGLE_STRING:
-				case BPCGEN_VARTYPE_STATIC_PRIMITIVE:
 				case BPCGEN_VARTYPE_STATIC_STRING:
-				case BPCGEN_VARTYPE_DYNAMIC_PRIMITIVE:
+				case BPCGEN_VARTYPE_DYNAMIC_STRING:
 					break;
 				default:
 					g_assert_not_reached();
@@ -306,7 +418,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 	}
 	// may be used variables
 	BPCGEN_INDENT_PRINT;
-	fputs("uint32_t _len, _count;", fs);
+	fputs("uint32_t _count;", fs);
 	for (cursor = bond_vars; cursor != NULL; cursor = cursor->next) {
 		BOND_VARS* data = (BOND_VARS*)cursor->data;
 
@@ -316,7 +428,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 		if (data->is_bonded) {
 			// bond vars
 			BPCGEN_INDENT_PRINT;
-			fprintf(fs, "SSTREAM_RD_STRUCT(_ss, %" PRIu32 ", &(_p->%s));", 
+			fprintf(fs, "SSTREAM_RD_STRUCT(_ss, %" PRIu32 ", &(_p->%s));",
 				calc_bond_vars_size(data),
 				data->plist_vars[0]->variable_name);
 
@@ -328,50 +440,101 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 			switch (data->vars_type[0]) {
 				case BPCGEN_VARTYPE_DYNAMIC_PRIMITIVE:
 				{
-
+					BPCGEN_INDENT_PRINT;
+					fputs("SSTREAM_RD_STRUCT(_ss, sizeof(uint32_t), &_count);", fs);
+					BPCGEN_INDENT_PRINT;
+					fputs("_EndianHelper::SwapEndian32(&_count);", fs);
+					BPCGEN_INDENT_PRINT;
+					fputs("_p->%s.resize(_count);", fs);
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "SSTREAM_RD_STRUCT(_ss, _count * sizeof(%s), _p->%s.data());", 
+						get_primitive_type_name(vardata), 
+						vardata->variable_name
+					);
 					break;
 				}
 
 				case BPCGEN_VARTYPE_SINGLE_STRING:
 				{
-
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "_Helper::ReadString(_ss, &(_p->%s));", vardata->variable_name);
 					break;
 				}
 				case BPCGEN_VARTYPE_STATIC_STRING:
 				{
-
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "for (uint32_t c = 0; c < UINT32_C(%" PRIu32 "); ++c) { _Helper::ReadString(_ss, &(_p->%s[c])); }", 
+						vardata->variable_array->static_array_len,
+					
+						vardata->variable_name
+					);
 					break;
 				}
 				case BPCGEN_VARTYPE_DYNAMIC_STRING:
 				{
+					BPCGEN_INDENT_PRINT;
+					fputs("SSTREAM_RD_STRUCT(_ss, sizeof(uint32_t), &_count);", fs);
+					BPCGEN_INDENT_PRINT;
+					fputs("_EndianHelper::SwapEndian32(&_count);", fs);
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "_Helper::ResizePtrVector<std::string>(&(_p->%s), _count, NULL, NULL);", vardata->variable_name);
 
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "for (uint32_t c = 0; c < _count; ++c) { _Helper::ReadString(_ss, &(_p->%s[c])); }",
+						vardata->variable_name
+					);
 					break;
 				}
 
 				// natural and narrow is shared
 				case BPCGEN_VARTYPE_SINGLE_NARROW:
 				{
-
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "%s::_InnerDeserialize(&(_p->%s), _ss);", vardata->variable_type->type_data.custom_type, vardata->variable_name);
 					break;
 				}
 				case BPCGEN_VARTYPE_STATIC_NARROW:
 				{
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "for (uint32_t c = 0; c < UINT32_C(%" PRIu32 "); ++c) { %s::_InnerDeserialize(&(_p->%s[c]), _ss); }",
+						vardata->variable_array->static_array_len,
 
+						vardata->variable_type->type_data.custom_type,
+						vardata->variable_name
+					);
 					break;
 				}
 				case BPCGEN_VARTYPE_DYNAMIC_NARROW:
 				case BPCGEN_VARTYPE_DYNAMIC_NATURAL:
 				{
+					BPCGEN_INDENT_PRINT;
+					fputs("SSTREAM_RD_STRUCT(_ss, sizeof(uint32_t), &_count);", fs);
+					BPCGEN_INDENT_PRINT;
+					fputs("_EndianHelper::SwapEndian32(&_count);", fs);
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "_Helper::ResizePtrVector<std::string>(&(_p->%s), _count, NULL, NULL);", vardata->variable_name);
 
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "for (uint32_t c = 0; c < _count; ++c) { %s::_InnerDeserialize(&(_p->%s[c]), _ss); }",
+						vardata->variable_type->type_data.custom_type,
+						vardata->variable_name
+					);
 					break;
 				}
 
+				// these variable has been processed
 				case BPCGEN_VARTYPE_SINGLE_PRIMITIVE:
 				case BPCGEN_VARTYPE_STATIC_PRIMITIVE:
 				case BPCGEN_VARTYPE_SINGLE_NATURAL:
 				case BPCGEN_VARTYPE_STATIC_NATURAL:
 				default:
 					g_assert_not_reached();
+			}
+
+			// align data
+			if (vardata->variable_align->use_align) {
+				BPCGEN_INDENT_PRINT;
+				fprintf(fs, "_ss->seekg(%" PRIu32 ", std::ios_base::cur);", vardata->variable_align->padding_size);
 			}
 		}
 	}
@@ -382,6 +545,14 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 	// real serializer
 	BPCGEN_INDENT_PRINT;
 	fprintf(fs, "bool %s::_InnerSerialize(_InternalDataType* _p, std::stringstream* _ss) {", struct_like_name); BPCGEN_INDENT_INC;
+	// msg specific stmt
+	if (is_msg) {
+		BPCGEN_INDENT_PRINT;
+		fprintf(fs, "_Helper::WriteOpCode(_ss, _OpCode.%s);", struct_like_name);
+	}
+	// may be used variables
+	BPCGEN_INDENT_PRINT;
+	fputs("uint32_t _count;", fs);
 	for (cursor = bond_vars; cursor != NULL; cursor = cursor->next) {
 		BOND_VARS* data = (BOND_VARS*)cursor->data;
 
@@ -389,9 +560,116 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 		print_bond_vars_annotation(fs, data);
 
 		if (data->is_bonded) {
+			// bond vars
+			BPCGEN_INDENT_PRINT;
+			fprintf(fs, "SSTREAM_WR_STRUCT(_ss, %" PRIu32 ", &(_p->%s));",
+				calc_bond_vars_size(data),
+				data->plist_vars[0]->variable_name);
 
 		} else {
+			// normal process
+			BPCSMTV_VARIABLE* vardata = data->plist_vars[0];
 
+			// body
+			switch (data->vars_type[0]) {
+				case BPCGEN_VARTYPE_DYNAMIC_PRIMITIVE:
+				{
+					BPCGEN_INDENT_PRINT;
+					fputs("_count = _p->%s.size();", fs);
+					BPCGEN_INDENT_PRINT;
+					fputs("_EndianHelper::SwapEndian32(&_count);", fs);
+					BPCGEN_INDENT_PRINT;
+					fputs("SSTREAM_WR_STRUCT(_ss, sizeof(uint32_t), &_count);", fs);
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "SSTREAM_WR_STRUCT(_ss, _count * sizeof(%s), _p->%s.data());",
+						get_primitive_type_name(vardata),
+						vardata->variable_name
+					);
+					break;
+				}
+
+				case BPCGEN_VARTYPE_SINGLE_STRING:
+				{
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "_Helper::WriteString(_ss, &(_p->%s));", vardata->variable_name);
+					break;
+				}
+				case BPCGEN_VARTYPE_STATIC_STRING:
+				{
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "for (uint32_t c = 0; c < UINT32_C(%" PRIu32 "); ++c) { _Helper::WriteString(_ss, &(_p->%s[c])); }",
+						vardata->variable_array->static_array_len,
+
+						vardata->variable_name
+					);
+					break;
+				}
+				case BPCGEN_VARTYPE_DYNAMIC_STRING:
+				{
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "_count = _p->%s.size();", vardata->variable_name);
+					BPCGEN_INDENT_PRINT;
+					fputs("_EndianHelper::SwapEndian32(&_count);", fs);
+					BPCGEN_INDENT_PRINT;
+					fputs("SSTREAM_WR_STRUCT(_ss, sizeof(uint32_t), &_count);", fs);
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "for (uint32_t c = 0; c < _p->%s.size(); ++c) { _Helper::WriteString(_ss, &(_p->%s[c])); }",
+						vardata->variable_name,
+						vardata->variable_name
+					);
+					break;
+				}
+
+				// natural and narrow is shared
+				case BPCGEN_VARTYPE_SINGLE_NARROW:
+				{
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "%s::_InnerSerialize(&(_p->%s), _ss);", vardata->variable_type->type_data.custom_type, vardata->variable_name);
+					break;
+				}
+				case BPCGEN_VARTYPE_STATIC_NARROW:
+				{
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "for (uint32_t c = 0; c < UINT32_C(%" PRIu32 "); ++c) { %s::_InnerSerialize(&(_p->%s[c]), _ss); }",
+						vardata->variable_array->static_array_len,
+
+						vardata->variable_type->type_data.custom_type,
+						vardata->variable_name
+					);
+					break;
+				}
+				case BPCGEN_VARTYPE_DYNAMIC_NARROW:
+				case BPCGEN_VARTYPE_DYNAMIC_NATURAL:
+				{
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "_count = _p->%s.size();", vardata->variable_name);
+					BPCGEN_INDENT_PRINT;
+					fputs("_EndianHelper::SwapEndian32(&_count);", fs);
+					BPCGEN_INDENT_PRINT;
+					fputs("SSTREAM_WR_STRUCT(_ss, sizeof(uint32_t), &_count);", fs);
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "for (uint32_t c = 0; c < _p->%s.size(); ++c) { %s::_InnerSerialize(&(_p->%s[c]), _ss); }",
+						vardata->variable_name,
+						vardata->variable_type->type_data.custom_type,
+						vardata->variable_name
+					);
+					break;
+				}
+
+				// these variable has been processed
+				case BPCGEN_VARTYPE_SINGLE_PRIMITIVE:
+				case BPCGEN_VARTYPE_STATIC_PRIMITIVE:
+				case BPCGEN_VARTYPE_SINGLE_NATURAL:
+				case BPCGEN_VARTYPE_STATIC_NATURAL:
+				default:
+					g_assert_not_reached();
+			}
+
+			// align data
+			if (vardata->variable_align->use_align) {
+				BPCGEN_INDENT_PRINT;
+				fprintf(fs, "_ss->seekp(%" PRIu32 ", std::ios_base::cur);", vardata->variable_align->padding_size);
+			}
 		}
 	}
 	BPCGEN_INDENT_DEC;
@@ -400,6 +678,106 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 
 }
 
+static void write_uniform_deserialize(FILE* fs, GSList* msg_ls, BPCGEN_INDENT_TYPE indent) {
+	GSList* cursor;
+	BPCGEN_INDENT_INIT_REF(fs, indent);
+
+	// write uniformed deserialize func
+	BPCGEN_INDENT_PRINT;
+	fputs("_BpMessage* _Helper::UniformDeserializer(std::stringstream* ss) {", fs); BPCGEN_INDENT_INC;
+	BPCGEN_INDENT_PRINT;
+	fputs("_OpCode code; PeekOpCode(ss, &code);", fs);
+	BPCGEN_INDENT_PRINT;
+	fputs("switch (code) {", fs); BPCGEN_INDENT_INC;
+	for (cursor = msg_ls; cursor != NULL; cursor = cursor->next) {
+		BPCSMTV_MSG* data = (BPCSMTV_MSG*)cursor->data;
+
+		BPCGEN_INDENT_PRINT;
+		fprintf(fs, "case _OpCode.%s: {", data->msg_name);
+
+		// write if body
+		BPCGEN_INDENT_INC;
+		BPCGEN_INDENT_PRINT;
+		fprintf(fs, "auto _data = new %s();", data->msg_name);
+		BPCGEN_INDENT_PRINT;
+		fputs("_data.Deserialize(br);", fs);
+		BPCGEN_INDENT_PRINT;
+		fputs("return _data;", fs);
+
+		BPCGEN_INDENT_DEC;
+		BPCGEN_INDENT_PRINT;
+		fputc('}', fs);
+	}
+	// default return
+	BPCGEN_INDENT_PRINT;
+	fprintf(fs, "default: return NULL;");
+	// switch over
+	BPCGEN_INDENT_DEC;
+	BPCGEN_INDENT_PRINT;
+	fputc('}', fs);
+
+
+	// uniform func is over
+	BPCGEN_INDENT_DEC;
+	BPCGEN_INDENT_PRINT;
+	fputc('}', fs);
+	BPCGEN_INDENT_DEC;
+	BPCGEN_INDENT_PRINT;
+	fputc('}', fs);
+
+}
+
 void codecpp_write_document(FILE* fs, BPCSMTV_DOCUMENT* document, const gchar* hpp_reference) {
+	BPCGEN_INDENT_INIT_NEW(fs);
+
+	// write hpp reference
+	BPCGEN_INDENT_PRINT;
+	fprintf(fs, "#include \"%s\"", hpp_reference);
+
+	// write namespace
+	GSList* cursor = NULL;
+	for (cursor = document->namespace_data; cursor != NULL; cursor = cursor->next) {
+		BPCGEN_INDENT_PRINT;
+		fprintf(fs, "namespace %s {", (char*)cursor->data); BPCGEN_INDENT_INC;
+	}
+
+	// write functions snippets
+	bpcfs_write_snippets(fs, &bpcsnp_cpp_functions);
+
+	// iterate list to get data
+	BPCGEN_STRUCT_LIKE struct_like = { 0 };
+	for (cursor = document->protocol_body; cursor != NULL; cursor = cursor->next) {
+		BPCSMTV_PROTOCOL_BODY* data = (BPCSMTV_PROTOCOL_BODY*)cursor->data;
+
+		switch (data->node_type) {
+			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_STRUCT:
+				struct_like.pStruct = data->node_data.struct_data;
+				write_struct_or_msg(fs, &struct_like, false, BPCGEN_INDENT_REF);
+				break;
+			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_MSG:
+				struct_like.pMsg = data->node_data.msg_data;
+				write_struct_or_msg(fs, &struct_like, true, BPCGEN_INDENT_REF);
+				break;
+			
+			// alias and enum has been written in header, skip
+			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_ALIAS:
+			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_ENUM:
+				break;
+			default:
+				g_assert_not_reached();
+		}
+	}
+
+	// write uniform_deserializer
+	GSList* msg_ls = bpcgen_constructor_msg_list(document->protocol_body);
+	write_uniform_deserialize(fs, msg_ls, BPCGEN_INDENT_REF);
+	bpcgen_destructor_msg_list(msg_ls);
+
+	// namespace over
+	for (cursor = document->namespace_data; cursor != NULL; cursor = cursor->next) {
+		BPCGEN_INDENT_DEC;
+		BPCGEN_INDENT_PRINT;
+		fputc('}', fs);
+	}
 
 }
