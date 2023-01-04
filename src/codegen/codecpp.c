@@ -126,9 +126,11 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 	BPCGEN_INDENT_PRINT;
 	fprintf(fs, "%s::_InnerSwap(&(this->_InternalData));", struct_like_name);	// swap to LE
 	BPCGEN_INDENT_PRINT;
-	fprintf(fs, "%s::_InnerSerialize(&(this->_InternalData), _ss);", struct_like_name);
+	fprintf(fs, "bool hr = %s::_InnerSerialize(&(this->_InternalData), _ss);", struct_like_name);
 	BPCGEN_INDENT_PRINT;
 	fprintf(fs, "%s::_InnerSwap(&(this->_InternalData));", struct_like_name);	// swap back to host endian
+	BPCGEN_INDENT_PRINT;
+	fputs("return hr;", fs);
 	BPCGEN_INDENT_DEC;
 	BPCGEN_INDENT_PRINT;
 	fputc('}', fs);
@@ -136,9 +138,11 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 	BPCGEN_INDENT_PRINT;
 	fprintf(fs, "bool %s::Deserialize(std::stringstream* _ss) {", struct_like_name); BPCGEN_INDENT_INC;
 	BPCGEN_INDENT_PRINT;
-	fprintf(fs, "%s::_InnerDeserialize(&(this->_InternalData), _ss);", struct_like_name);
+	fprintf(fs, "bool hr = %s::_InnerDeserialize(&(this->_InternalData), _ss);", struct_like_name);
 	BPCGEN_INDENT_PRINT;
 	fprintf(fs, "%s::_InnerSwap(&(this->_InternalData));", struct_like_name);	// swap to host endian
+	BPCGEN_INDENT_PRINT;
+	fputs("return hr;", fs);
 	BPCGEN_INDENT_DEC;
 	BPCGEN_INDENT_PRINT;
 	fputc('}', fs);
@@ -146,7 +150,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 	// msg specific functions
 	if (is_msg) {
 		BPCGEN_INDENT_PRINT;
-		fprintf(fs, "_OpCode %s::GetOpCode() { return _OpCode.%s; }", struct_like_name, struct_like_name);
+		fprintf(fs, "_OpCode %s::GetOpCode() { return _OpCode::%s; }", struct_like_name, struct_like_name);
 
 		BPCGEN_INDENT_PRINT;
 		fprintf(fs, "bool %s::GetIsReliable() { return %s; }", struct_like_name,
@@ -243,7 +247,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 				case BPCGEN_VARTYPE_DYNAMIC_STRING:
 				{
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "for (auto it = _p->%s.begin(); it != _ps->%s.end(); ++it) { delete (*it); }", 
+					fprintf(fs, "for (auto it = _p->%s.begin(); it != _p->%s.end(); ++it) { delete (*it); }", 
 						vardata->variable_name, 
 						vardata->variable_name
 					);
@@ -265,7 +269,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 				case BPCGEN_VARTYPE_SINGLE_NARROW:
 				{
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "%s::_InnerDetructor(&(_p->%s));", vardata->variable_type->type_data.custom_type, vardata->variable_name);
+					fprintf(fs, "%s::_InnerDestructor(&(_p->%s));", vardata->variable_type->type_data.custom_type, vardata->variable_name);
 					break;
 				}
 				case BPCGEN_VARTYPE_STATIC_NARROW:
@@ -312,7 +316,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 	fputc('}', fs);
 
 
-	// real destructor
+	// real swap
 	BPCGEN_INDENT_PRINT;
 	fprintf(fs, "void %s::_InnerSwap(_InternalDataType* _p) {", struct_like_name); BPCGEN_INDENT_INC;
 	// avoid unecessary swap
@@ -414,7 +418,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 		BPCGEN_INDENT_PRINT;
 		fputs("_Helper::ReadOpCode(_ss, &_opcode_checker);", fs);
 		BPCGEN_INDENT_PRINT;
-		fprintf(fs, "if (_opcode_checker != _OpCode.%s) return false;", struct_like_name);
+		fprintf(fs, "if (_opcode_checker != _OpCode::%s) return false;", struct_like_name);
 	}
 	// may be used variables
 	BPCGEN_INDENT_PRINT;
@@ -445,7 +449,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 					BPCGEN_INDENT_PRINT;
 					fputs("_EndianHelper::SwapEndian32(&_count);", fs);
 					BPCGEN_INDENT_PRINT;
-					fputs("_p->%s.resize(_count);", fs);
+					fprintf(fs, "_p->%s.resize(_count);", vardata->variable_name);
 					BPCGEN_INDENT_PRINT;
 					fprintf(fs, "SSTREAM_RD_STRUCT(_ss, _count * sizeof(%s), _p->%s.data());", 
 						get_primitive_type_name(vardata), 
@@ -480,7 +484,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 					fprintf(fs, "_Helper::ResizePtrVector<std::string>(&(_p->%s), _count, NULL, NULL);", vardata->variable_name);
 
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "for (uint32_t c = 0; c < _count; ++c) { _Helper::ReadString(_ss, &(_p->%s[c])); }",
+					fprintf(fs, "for (uint32_t c = 0; c < _count; ++c) { _Helper::ReadString(_ss, _p->%s[c]); }",
 						vardata->variable_name
 					);
 					break;
@@ -512,10 +516,15 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 					BPCGEN_INDENT_PRINT;
 					fputs("_EndianHelper::SwapEndian32(&_count);", fs);
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "_Helper::ResizePtrVector<std::string>(&(_p->%s), _count, NULL, NULL);", vardata->variable_name);
+					fprintf(fs, "_Helper::ResizePtrVector<%s::_InternalDataType>(&(_p->%s), _count, &%s::_InnerConstructor, &%s::_InnerDestructor);", 
+						vardata->variable_type->type_data.custom_type,
+						vardata->variable_name,
+						vardata->variable_type->type_data.custom_type,
+						vardata->variable_type->type_data.custom_type
+					);
 
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "for (uint32_t c = 0; c < _count; ++c) { %s::_InnerDeserialize(&(_p->%s[c]), _ss); }",
+					fprintf(fs, "for (uint32_t c = 0; c < _count; ++c) { %s::_InnerDeserialize(_p->%s[c], _ss); }",
 						vardata->variable_type->type_data.custom_type,
 						vardata->variable_name
 					);
@@ -538,6 +547,8 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 			}
 		}
 	}
+	BPCGEN_INDENT_PRINT;
+	fputs("return true;", fs);
 	BPCGEN_INDENT_DEC;
 	BPCGEN_INDENT_PRINT;
 	fputc('}', fs);
@@ -548,7 +559,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 	// msg specific stmt
 	if (is_msg) {
 		BPCGEN_INDENT_PRINT;
-		fprintf(fs, "_Helper::WriteOpCode(_ss, _OpCode.%s);", struct_like_name);
+		fprintf(fs, "_Helper::WriteOpCode(_ss, _OpCode::%s);", struct_like_name);
 	}
 	// may be used variables
 	BPCGEN_INDENT_PRINT;
@@ -575,7 +586,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 				case BPCGEN_VARTYPE_DYNAMIC_PRIMITIVE:
 				{
 					BPCGEN_INDENT_PRINT;
-					fputs("_count = _p->%s.size();", fs);
+					fprintf(fs, "_count = _p->%s.size();", vardata->variable_name);
 					BPCGEN_INDENT_PRINT;
 					fputs("_EndianHelper::SwapEndian32(&_count);", fs);
 					BPCGEN_INDENT_PRINT;
@@ -613,7 +624,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 					BPCGEN_INDENT_PRINT;
 					fputs("SSTREAM_WR_STRUCT(_ss, sizeof(uint32_t), &_count);", fs);
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "for (uint32_t c = 0; c < _p->%s.size(); ++c) { _Helper::WriteString(_ss, &(_p->%s[c])); }",
+					fprintf(fs, "for (uint32_t c = 0; c < _p->%s.size(); ++c) { _Helper::WriteString(_ss, _p->%s[c]); }",
 						vardata->variable_name,
 						vardata->variable_name
 					);
@@ -648,7 +659,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 					BPCGEN_INDENT_PRINT;
 					fputs("SSTREAM_WR_STRUCT(_ss, sizeof(uint32_t), &_count);", fs);
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "for (uint32_t c = 0; c < _p->%s.size(); ++c) { %s::_InnerSerialize(&(_p->%s[c]), _ss); }",
+					fprintf(fs, "for (uint32_t c = 0; c < _p->%s.size(); ++c) { %s::_InnerSerialize(_p->%s[c], _ss); }",
 						vardata->variable_name,
 						vardata->variable_type->type_data.custom_type,
 						vardata->variable_name
@@ -672,6 +683,8 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 			}
 		}
 	}
+	BPCGEN_INDENT_PRINT;
+	fputs("return true;", fs);
 	BPCGEN_INDENT_DEC;
 	BPCGEN_INDENT_PRINT;
 	fputc('}', fs);
@@ -693,14 +706,14 @@ static void write_uniform_deserialize(FILE* fs, GSList* msg_ls, BPCGEN_INDENT_TY
 		BPCSMTV_MSG* data = (BPCSMTV_MSG*)cursor->data;
 
 		BPCGEN_INDENT_PRINT;
-		fprintf(fs, "case _OpCode.%s: {", data->msg_name);
+		fprintf(fs, "case _OpCode::%s: {", data->msg_name);
 
 		// write if body
 		BPCGEN_INDENT_INC;
 		BPCGEN_INDENT_PRINT;
 		fprintf(fs, "auto _data = new %s();", data->msg_name);
 		BPCGEN_INDENT_PRINT;
-		fputs("_data.Deserialize(br);", fs);
+		fputs("_data->Deserialize(ss);", fs);
 		BPCGEN_INDENT_PRINT;
 		fputs("return _data;", fs);
 
@@ -718,9 +731,6 @@ static void write_uniform_deserialize(FILE* fs, GSList* msg_ls, BPCGEN_INDENT_TY
 
 
 	// uniform func is over
-	BPCGEN_INDENT_DEC;
-	BPCGEN_INDENT_PRINT;
-	fputc('}', fs);
 	BPCGEN_INDENT_DEC;
 	BPCGEN_INDENT_PRINT;
 	fputc('}', fs);

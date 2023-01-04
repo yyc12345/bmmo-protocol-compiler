@@ -69,19 +69,19 @@ namespace _Helper {
 
     // ==================== Vector Assist Functions ====================
     template<typename T> void ResizePtrVector(
-        const std::vector<T*>* vec, uint32_t new_size, 
+        std::vector<T*>* vec, uint32_t new_size, 
         void (*pfunc_init)(T* _p), 
         void (*pfunc_free)(T* _p)
     ) {
         size_t old_size = vec->size();
-        int c;
+        size_t c;
         if (new_size > old_size) {
             vec->resize(new_size);
-            for(c = old_size; c < n; ++c) {
+            for(c = old_size; c < new_size; ++c) {
                 (*vec)[c] = new T();
                 if (pfunc_init != NULL) pfunc_init((*vec)[c]);
             }
-        } else if (new_size < oldsize) {
+        } else if (new_size < old_size) {
             for(c = new_size; c < old_size; ++c) {
                 if (pfunc_free != NULL) pfunc_free((*vec)[c]);
                 delete ((*vec)[c]);

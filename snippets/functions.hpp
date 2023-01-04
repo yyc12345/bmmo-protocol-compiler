@@ -19,14 +19,14 @@ public:
 
 class _EndianHelper {
 private:
-    static uint16_t mEndianProbe = UINT16_C(0xFEFF);
+    static const uint16_t mEndianProbe = UINT16_C(0xFEFF);
     
 public:
     static inline bool IsLittleEndian(){
-        return ((_EndianHelper::mEndianProbe >> 8) == UINT16_C(0xFF))
+        return (((uint8_t*)(&_EndianHelper::mEndianProbe))[0] == UINT8_C(0xFF));
     }
     
-    #define XOR_SWAP(val, ia, ib)  (val)[(ia)] ^= (val)[(ib)];  (val)[(ib)] ^= (val)[(ia)]; (val)[(ia)] ^= (val)[(ib)];
+    #define XOR_SWAP(val, ia, ib) (val)[(ia)] ^= (val)[(ib)]; (val)[(ib)] ^= (val)[(ia)]; (val)[(ia)] ^= (val)[(ib)];
     static inline void SwapEndian8(void* val) {
         return; // 8bit data do not need swap
     }
@@ -85,7 +85,7 @@ namespace _Helper {
     bool WriteString(std::stringstream* ss, std::string* strl);
     
     template<typename T> void ResizePtrVector(
-        const std::vector<T*>* vec, uint32_t new_size, 
+        std::vector<T*>* vec, uint32_t new_size, 
         void (*pfunc_init)(T* _p), 
         void (*pfunc_free)(T* _p)
     );

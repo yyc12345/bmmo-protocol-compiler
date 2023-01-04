@@ -130,7 +130,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 				case BPCGEN_VARTYPE_DYNAMIC_NATURAL:
 				{
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "std::vector<(%s::_InternalDataType)*> %s;", get_primitive_type_name(vardata), vardata->variable_name);
+					fprintf(fs, "std::vector<%s::_InternalDataType*> %s;", get_primitive_type_name(vardata), vardata->variable_name);
 					break;
 				}
 
