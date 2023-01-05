@@ -10,7 +10,7 @@ static char* get_primitive_type_name(BPCSMTV_VARIABLE* variable, const char* par
 
 			case BPCSMTV_BASIC_TYPE_INT8:
 			case BPCSMTV_BASIC_TYPE_INT16:
-				bpcerr_warning(BPCERR_ERROR_SOURCE_CODEGEN, "For msg/struct %s, variable %s, Protobuf do not support INT8 and INT16, so compiler upgrade them to INT32.",
+				bpcerr_warning(BPCERR_ERROR_SOURCE_CODEGEN, "For msg/struct \"%s\", variable \"%s\", Protobuf do not support INT8 and INT16, so compiler upgrade them to INT32.",
 					parent_name, variable->variable_name);
 			case BPCSMTV_BASIC_TYPE_INT32:
 				return "int32";
@@ -19,7 +19,7 @@ static char* get_primitive_type_name(BPCSMTV_VARIABLE* variable, const char* par
 
 			case BPCSMTV_BASIC_TYPE_UINT8:
 			case BPCSMTV_BASIC_TYPE_UINT16:
-				bpcerr_warning(BPCERR_ERROR_SOURCE_CODEGEN, "For msg/struct %s, variable %s, Protobuf do not support UINT8 and UINT16, so compiler upgrade them to UINT32.",
+				bpcerr_warning(BPCERR_ERROR_SOURCE_CODEGEN, "For msg/struct \"%s\", variable \"%s\", Protobuf do not support UINT8 and UINT16, so compiler upgrade them to UINT32.",
 					parent_name, variable->variable_name);
 			case BPCSMTV_BASIC_TYPE_UINT32:
 				return "uint32";
@@ -42,7 +42,7 @@ static void write_enum(FILE* fs, BPCSMTV_ENUM* smtv_enum) {
 
 	BPCGEN_INDENT_PRINT;
 	fprintf(fs, "enum %s {", smtv_enum->enum_name); BPCGEN_INDENT_INC;
-	bpcerr_warning(BPCERR_ERROR_SOURCE_CODEGEN, "For enum %s, Protobuf do not support the implicit type of enum.", smtv_enum->enum_name);
+	bpcerr_warning(BPCERR_ERROR_SOURCE_CODEGEN, "For enum \"%s\", Protobuf do not support the implicit type of enum.", smtv_enum->enum_name);
 	for (cursor = smtv_enum->enum_body; cursor != NULL; cursor = cursor->next) {
 		BPCSMTV_ENUM_MEMBER* data = (BPCSMTV_ENUM_MEMBER*)cursor->data;
 
@@ -50,7 +50,7 @@ static void write_enum(FILE* fs, BPCSMTV_ENUM* smtv_enum) {
 		if (cursor == smtv_enum->enum_body) {
 			if ((data->distributed_value_is_uint && data->distributed_value.value_uint != UINT64_C(0)) ||
 				(!data->distributed_value_is_uint && data->distributed_value.value_int != INT64_C(0))) {
-				bpcerr_warning(BPCERR_ERROR_SOURCE_CODEGEN, "For enum %s, Protobuf do not allow non-zero value for the first member.", smtv_enum->enum_name);
+				bpcerr_warning(BPCERR_ERROR_SOURCE_CODEGEN, "For enum \"%s\", Protobuf do not allow non-zero value for the first member.", smtv_enum->enum_name);
 			}
 		}
 
@@ -78,7 +78,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data) {
 
 	// info for struct convertion
 	if (!is_msg) {
-		bpcerr_info(BPCERR_ERROR_SOURCE_CODEGEN, "Struct %s has been migrated as message.", struct_like_name);
+		bpcerr_info(BPCERR_ERROR_SOURCE_CODEGEN, "Struct \"%s\" has been migrated as message.", struct_like_name);
 	}
 
 	// message body
@@ -105,7 +105,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data) {
 				case BPCGEN_VARTYPE_STATIC_NATURAL:
 				{
 					bpcerr_warning(BPCERR_ERROR_SOURCE_CODEGEN,
-						"For msg/struct %s, variable %s, Protobuf do not support static array. We use \"repeated\" instead.",
+						"For msg/struct \"%s\", variable \"%s\", Protobuf do not support static array. We use \"repeated\" instead.",
 						struct_like_name, vardata->variable_name
 					);
 					// break;	// disable break to go through by design.
@@ -127,7 +127,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data) {
 			// padding warning
 			if (vardata->variable_align->use_align) {
 				bpcerr_warning(BPCERR_ERROR_SOURCE_CODEGEN,
-					"For msg/struct %s, variable %s, Protobuf do not support align.",
+					"For msg/struct \"%s\", variable \"%s\", Protobuf do not support align.",
 					struct_like_name, vardata->variable_name
 				);
 			}
@@ -137,6 +137,9 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data) {
 	BPCGEN_INDENT_DEC;
 	BPCGEN_INDENT_PRINT;
 	fputc('}', fs);
+
+	// free all cache data
+	bpcgen_destructor_bond_vars(bond_vars);
 
 }
 

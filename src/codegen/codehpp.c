@@ -188,6 +188,9 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 	BPCGEN_INDENT_DEC;
 	BPCGEN_INDENT_PRINT;
 	fputs("};", fs);
+
+	// free all cache data
+	bpcgen_destructor_bond_vars(bond_vars);
 }
 
 static void write_opcode_enum(FILE* fs, GSList* msg_ls, BPCGEN_INDENT_TYPE indent) {

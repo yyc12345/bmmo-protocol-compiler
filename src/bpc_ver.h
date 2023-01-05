@@ -1,8 +1,8 @@
 #pragma once
 #define BPCVER_COMPILER_VERSION 1u
 
-#define BPCVER_MAJOR 0
-#define BPCVER_MINOR 1
+#define BPCVER_MAJOR 1
+#define BPCVER_MINOR 0
 #define BPCVER_BUILD 0
 
 #define BPCVER_TOSTRING2(arg) #arg

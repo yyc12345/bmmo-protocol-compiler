@@ -89,7 +89,7 @@ static BPCGEN_VARTYPE get_vartype(BPCSMTV_VARIABLE* variable) {
 }
 
 /// <summary>
-/// 
+/// create bond vars recursively. internally use only.
 /// </summary>
 /// <param name="in_variables"></param>
 /// <param name="in_bond_rules"></param>
@@ -177,8 +177,11 @@ void bpcgen_destructor_bond_vars(GSList* bond_vars) {
 	for (cursor = bond_vars; cursor != NULL; cursor = cursor->next) {
 		BOND_VARS* item = (BOND_VARS*)cursor->data;
 
+		// free sub item
 		g_free(item->plist_vars);
 		g_free(item->vars_type);
+		// free item self
+		g_free(item);
 	}
 
 	// free self

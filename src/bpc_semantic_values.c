@@ -45,7 +45,6 @@ BPCSMTV_BASIC_TYPE bpcsmtv_parse_basic_type(const char* strl) {
 
 	// error
 	bpcerr_panic(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "Fail to parse a basic type token which definately is a valid basic type token.");
-	g_assert_not_reached();
 }
 bool bpcsmtv_parse_reliability(const char* strl) {
 	return g_str_equal(strl, "reliable");
@@ -266,6 +265,8 @@ void bpcsmtv_destructor_protocol_body(gpointer data) {
 		case BPCSMTV_DEFINED_IDENTIFIER_TYPE_MSG:
 			bpcsmtv_destructor_msg(rdata->node_data.msg_data);
 			break;
+		default:
+			g_assert_not_reached();
 	}
 
 	g_free(rdata);
@@ -369,6 +370,8 @@ void bpcsmtv_registery_identifier_add(BPCSMTV_PROTOCOL_BODY* data) {
 		case BPCSMTV_DEFINED_IDENTIFIER_TYPE_MSG:
 			identifier_name = data->node_data.msg_data->msg_name;
 			break;
+		default:
+			g_assert_not_reached();
 	}
 
 	// add for hashtable
@@ -407,8 +410,9 @@ bool bpcsmtv_is_basic_type_suit_for_enum(BPCSMTV_BASIC_TYPE bt) {
 		case BPCSMTV_BASIC_TYPE_FLOAT:
 		case BPCSMTV_BASIC_TYPE_DOUBLE:
 		case BPCSMTV_BASIC_TYPE_STRING:
-		default:
 			return false;
+		default:
+			g_assert_not_reached();
 	}
 }
 

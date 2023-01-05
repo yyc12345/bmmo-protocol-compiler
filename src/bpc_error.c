@@ -1,5 +1,6 @@
 #include "bpc_error.h"
 #include <stdbool.h>
+#include <stdio.h>
 
 #ifdef G_OS_WIN32
 #include <Windows.h>
@@ -7,82 +8,66 @@
 #include <signal.h>
 #endif
 
+static FILE* _bpcerr_error_type_to_stream(BPCERR_ERROR_TYPE err_type) {
+	switch (err_type) {
+		case BPCERR_ERROR_TYPE_INFO:
+			return stdout;
+		case BPCERR_ERROR_TYPE_WARNING:
+		case BPCERR_ERROR_TYPE_ERROR:
+			return stderr;
+		default:
+			g_assert_not_reached();
+	}
+}
+
 static void _bpcerr_printf(BPCERR_ERROR_SOURCE src, BPCERR_ERROR_TYPE err_type, const char* format, va_list ap) {
-	/*
-	GString* disp = g_string_new(NULL);
-	g_string_vprintf(disp, format, ap);
+	FILE* stream = _bpcerr_error_type_to_stream(err_type);
+	g_assert(stream != NULL);
+	bool use_color = g_log_writer_supports_color(fileno(stream));
 
-	gchar* str_src = NULL, * str_type = NULL;
+	// display err type
 	switch (err_type) {
 		case BPCERR_ERROR_TYPE_INFO:
-			str_type = "[Info]";
+			if (use_color) fputs("\033[1;32m", stream);	// green
+			fputs("[Info ] ", stream);
 			break;
 		case BPCERR_ERROR_TYPE_WARNING:
-			str_type = "[Warning]";
+			if (use_color) fputs("\033[1;33m", stream);	// yellow
+			fputs("[Warn ] ", stream);
 			break;
 		case BPCERR_ERROR_TYPE_ERROR:
-			str_type = "[Error]";
+			if (use_color) fputs("\033[1;31m", stream);	// red
+			fputs("[Error] ", stream);
 			break;
 		default:
 			g_assert_not_reached();
 	}
+	if (use_color) fputs("\033[0m", stream);
 
+	// display source
+	if (use_color) fputs("\033[1;35m", stream);	// magenta
 	switch (src) {
 		case BPCERR_ERROR_SOURCE_LEX:
-			str_src = "[Lex]";
+			fputs("[Lexer  ] ", stream);
 			break;
 		case BPCERR_ERROR_SOURCE_PARSER:
-			str_src = "[Parser]";
+			fputs("[Parser ] ", stream);
 			break;
 		case BPCERR_ERROR_SOURCE_SEMANTIC_VALUE:
-			str_src = "[Semantic Value]";
+			fputs("[Smt.Val] ", stream);
 			break;
 		case BPCERR_ERROR_SOURCE_CODEGEN:
-			str_src = "[Code Gen]";
+			fputs("[CodeGen] ", stream);
 			break;
 		default:
 			g_assert_not_reached();
 	}
+	if (use_color) fputs("\033[0m", stream);
 
-	g_print("%-10s %-20s %s\n", str_type, str_src, disp->str);
+	// output result
+	vfprintf(stream, format, ap);
+	fputc('\n', stream);
 
-	g_string_free(disp, true);
-	*/
-
-	GLogLevelFlags log_level;
-	switch (err_type) {
-		case BPCERR_ERROR_TYPE_INFO:
-			log_level = G_LOG_LEVEL_MESSAGE;
-			break;
-		case BPCERR_ERROR_TYPE_WARNING:
-			log_level = G_LOG_LEVEL_WARNING;
-			break;
-		case BPCERR_ERROR_TYPE_ERROR:
-			log_level = G_LOG_LEVEL_ERROR;
-			break;
-		default:
-			g_assert_not_reached();
-	}
-
-	const gchar* str_src = NULL;
-	switch (src) {
-		case BPCERR_ERROR_SOURCE_LEX:
-			str_src = "[Lexer]";
-			break;
-		case BPCERR_ERROR_SOURCE_PARSER:
-			str_src = "[Parser]";
-			break;
-		case BPCERR_ERROR_SOURCE_SEMANTIC_VALUE:
-			str_src = "[Semantic Value]";
-			break;
-		case BPCERR_ERROR_SOURCE_CODEGEN:
-			str_src = "[Code Gen]";
-			break;
-		default:
-			g_assert_not_reached();
-	}
-
-	g_logv(str_src, log_level, format, ap);
 }
 
 G_NORETURN static void _bpcerr_nuke_process(int rc) {
