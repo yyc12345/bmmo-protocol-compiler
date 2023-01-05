@@ -1,35 +1,13 @@
 #include "../bpc_code_gen.h"
 
-static const uint32_t cpp_basic_type_size[] = {
-	UINT32_C(4), UINT32_C(8), UINT32_C(1), UINT32_C(2), UINT32_C(4), UINT32_C(8), UINT32_C(1), UINT32_C(2), UINT32_C(4), UINT32_C(8)
-};
 static const char* cpp_basic_type[] = {
 	"float", "double", "int8_t", "int16_t", "int32_t", "int64_t", "uint8_t", "uint16_t", "uint32_t", "uint64_t", "std::string"
 };
 
-static char* get_primitive_type_name(BPCSMTV_VARIABLE* variable) {
+static const char* get_primitive_type_name(BPCSMTV_VARIABLE* variable) {
 	return (variable->variable_type->is_basic_type ?
 		cpp_basic_type[variable->variable_type->type_data.basic_type] :
-		variable->variable_type->type_data.custom_type);
-}
-
-static void print_bond_vars_annotation(FILE* fs, BOND_VARS* data) {
-	fputs("// ", fs);
-
-	if (data->is_bonded) {
-		uint32_t c;
-		for (c = 0; c < data->bond_vars_len; ++c) {
-			if (c != 0) {
-				fputs(", ", fs);
-			}
-
-			BPCSMTV_VARIABLE* vardata = data->plist_vars[c];
-			fputs(vardata->variable_name, fs);
-		}
-	} else {
-		BPCSMTV_VARIABLE* vardata = data->plist_vars[0];
-		fputs(vardata->variable_name, fs);
-	}
+		(const char*)variable->variable_type->type_data.custom_type);
 }
 
 static uint32_t get_struct_size(const char* name) {
@@ -55,12 +33,12 @@ static uint32_t calc_bond_vars_size(BOND_VARS* data) {
 		switch (data->vars_type[c]) {
 			case BPCGEN_VARTYPE_SINGLE_PRIMITIVE:
 			{
-				fullsize += cpp_basic_type_size[vardata->variable_type->full_uncover_basic_type];
+				fullsize += bpcsmtv_get_bt_size(vardata->variable_type->full_uncover_basic_type);
 				break;
 			}
 			case BPCGEN_VARTYPE_STATIC_PRIMITIVE:
 			{
-				fullsize += cpp_basic_type_size[vardata->variable_type->full_uncover_basic_type] *
+				fullsize += bpcsmtv_get_bt_size(vardata->variable_type->full_uncover_basic_type) *
 					vardata->variable_array->static_array_len;
 				break;
 			}
@@ -92,10 +70,10 @@ static uint32_t calc_bond_vars_size(BOND_VARS* data) {
 	return (fullsize == UINT32_C(0) ? UINT32_C(1) : fullsize);
 }
 
-static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool is_msg, BPCGEN_INDENT_TYPE indent) {
-	GSList* cursor = NULL, * variables = (is_msg ? union_data->pMsg->msg_body : union_data->pStruct->struct_body);
-	BPCSMTV_STRUCT_MODIFIER* modifier = (is_msg ? union_data->pMsg->msg_modifier : union_data->pStruct->struct_modifier);
-	char* struct_like_name = (is_msg ? union_data->pMsg->msg_name : union_data->pStruct->struct_name);
+static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN_INDENT_TYPE indent) {
+	GSList* cursor = NULL;
+	bool is_msg;  GSList* variables; BPCSMTV_STRUCT_MODIFIER* modifier; char* struct_like_name;
+	bpcgen_pick_struct_like_data(union_data, &is_msg, &variables, &modifier, &struct_like_name);
 	BPCGEN_INDENT_INIT_REF(fs, indent);
 
 	// in c++, we put single primitive and static primitive together
@@ -333,7 +311,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 				{
 					BPCGEN_INDENT_PRINT;
 					fprintf(fs, "_EndianHelper::SwapEndian%" PRIu32 "(&(_p->%s));", 
-						cpp_basic_type_size[vardata->variable_type->full_uncover_basic_type] * 8,
+						bpcsmtv_get_bt_size(vardata->variable_type->full_uncover_basic_type) * 8,
 						vardata->variable_name
 					);
 					break;
@@ -342,7 +320,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 				{
 					BPCGEN_INDENT_PRINT;
 					fprintf(fs, "_EndianHelper::SwapEndianArray%" PRIu32 "(&(_p->%s), UINT32_C(%" PRIu32 "));",
-						cpp_basic_type_size[vardata->variable_type->full_uncover_basic_type] * 8,
+						bpcsmtv_get_bt_size(vardata->variable_type->full_uncover_basic_type) * 8,
 						vardata->variable_name,
 						vardata->variable_array->static_array_len
 					);
@@ -352,7 +330,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 				{
 					BPCGEN_INDENT_PRINT;
 					fprintf(fs, "_EndianHelper::SwapEndianArray%" PRIu32 "(_p->%s.data(), (uint32_t)_p->%s.size());",
-						cpp_basic_type_size[vardata->variable_type->full_uncover_basic_type] * 8,
+						bpcsmtv_get_bt_size(vardata->variable_type->full_uncover_basic_type) * 8,
 						vardata->variable_name,
 						vardata->variable_name
 					);
@@ -426,8 +404,9 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 	for (cursor = bond_vars; cursor != NULL; cursor = cursor->next) {
 		BOND_VARS* data = (BOND_VARS*)cursor->data;
 
+		// annotations
 		BPCGEN_INDENT_PRINT;
-		print_bond_vars_annotation(fs, data);
+		bpcgen_print_variables_annotation(fs, "// ", data);
 
 		if (data->is_bonded) {
 			// bond vars
@@ -567,8 +546,9 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 	for (cursor = bond_vars; cursor != NULL; cursor = cursor->next) {
 		BOND_VARS* data = (BOND_VARS*)cursor->data;
 
+		// annotations
 		BPCGEN_INDENT_PRINT;
-		print_bond_vars_annotation(fs, data);
+		bpcgen_print_variables_annotation(fs, "// ", data);
 
 		if (data->is_bonded) {
 			// bond vars
@@ -760,12 +740,14 @@ void codecpp_write_document(FILE* fs, BPCSMTV_DOCUMENT* document, const gchar* h
 
 		switch (data->node_type) {
 			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_STRUCT:
-				struct_like.pStruct = data->node_data.struct_data;
-				write_struct_or_msg(fs, &struct_like, false, BPCGEN_INDENT_REF);
+				struct_like.is_msg = false;
+				struct_like.real_ptr.pStruct = data->node_data.struct_data;
+				write_struct_or_msg(fs, &struct_like, BPCGEN_INDENT_REF);
 				break;
 			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_MSG:
-				struct_like.pMsg = data->node_data.msg_data;
-				write_struct_or_msg(fs, &struct_like, true, BPCGEN_INDENT_REF);
+				struct_like.is_msg = true;
+				struct_like.real_ptr.pMsg = data->node_data.msg_data;
+				write_struct_or_msg(fs, &struct_like, BPCGEN_INDENT_REF);
 				break;
 			
 			// alias and enum has been written in header, skip

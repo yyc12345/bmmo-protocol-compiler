@@ -418,9 +418,9 @@ bool bpcsmtv_is_modifier_suit_struct(BPCSMTV_STRUCT_MODIFIER* modifier) {
 
 
 uint32_t bpcsmtv_get_bt_size(BPCSMTV_BASIC_TYPE bt) {
-	if (bt == BPCSMTV_BASIC_TYPE_STRING) return UINT32_C(0);
-	if (bt > basic_type_len) return UINT32_C(0);
-	return basic_type_sizeof[(size_t)bt];
+	size_t v = (size_t)bt;
+	if (v >= basic_type_len) return UINT32_C(0);
+	return basic_type_sizeof[bt];
 }
 
 void bpcsmtv_setup_field_layout(GSList* variables, BPCSMTV_STRUCT_MODIFIER* modifier, const char* hint_name) {

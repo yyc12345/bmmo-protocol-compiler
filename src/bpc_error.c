@@ -7,8 +7,8 @@
 #include <signal.h>
 #endif
 
-
 static void _bpcerr_printf(BPCERR_ERROR_SOURCE src, BPCERR_ERROR_TYPE err_type, const char* format, va_list ap) {
+	/*
 	GString* disp = g_string_new(NULL);
 	g_string_vprintf(disp, format, ap);
 
@@ -24,8 +24,7 @@ static void _bpcerr_printf(BPCERR_ERROR_SOURCE src, BPCERR_ERROR_TYPE err_type, 
 			str_type = "[Error]";
 			break;
 		default:
-			str_type = "";
-			break;
+			g_assert_not_reached();
 	}
 
 	switch (src) {
@@ -42,13 +41,48 @@ static void _bpcerr_printf(BPCERR_ERROR_SOURCE src, BPCERR_ERROR_TYPE err_type, 
 			str_src = "[Code Gen]";
 			break;
 		default:
-			str_type = "";
-			break;
+			g_assert_not_reached();
 	}
 
 	g_print("%-10s %-20s %s\n", str_type, str_src, disp->str);
 
 	g_string_free(disp, true);
+	*/
+
+	GLogLevelFlags log_level;
+	switch (err_type) {
+		case BPCERR_ERROR_TYPE_INFO:
+			log_level = G_LOG_LEVEL_MESSAGE;
+			break;
+		case BPCERR_ERROR_TYPE_WARNING:
+			log_level = G_LOG_LEVEL_WARNING;
+			break;
+		case BPCERR_ERROR_TYPE_ERROR:
+			log_level = G_LOG_LEVEL_ERROR;
+			break;
+		default:
+			g_assert_not_reached();
+	}
+
+	const gchar* str_src = NULL;
+	switch (src) {
+		case BPCERR_ERROR_SOURCE_LEX:
+			str_src = "[Lexer]";
+			break;
+		case BPCERR_ERROR_SOURCE_PARSER:
+			str_src = "[Parser]";
+			break;
+		case BPCERR_ERROR_SOURCE_SEMANTIC_VALUE:
+			str_src = "[Semantic Value]";
+			break;
+		case BPCERR_ERROR_SOURCE_CODEGEN:
+			str_src = "[Code Gen]";
+			break;
+		default:
+			g_assert_not_reached();
+	}
+
+	g_logv(str_src, log_level, format, ap);
 }
 
 G_NORETURN static void _bpcerr_nuke_process(int rc) {

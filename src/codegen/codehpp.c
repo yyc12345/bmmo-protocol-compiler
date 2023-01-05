@@ -4,10 +4,10 @@ static const char* cpp_basic_type[] = {
 	"float", "double", "int8_t", "int16_t", "int32_t", "int64_t", "uint8_t", "uint16_t", "uint32_t", "uint64_t", "std::string"
 };
 
-static char* get_primitive_type_name(BPCSMTV_VARIABLE* variable) {
+static const char* get_primitive_type_name(BPCSMTV_VARIABLE* variable) {
 	return (variable->variable_type->is_basic_type ?
 		cpp_basic_type[variable->variable_type->type_data.basic_type] :
-		variable->variable_type->type_data.custom_type);
+		(const char*)variable->variable_type->type_data.custom_type);
 }
 
 static void write_alias(FILE* fs, BPCSMTV_ALIAS* smtv_alias, BPCGEN_INDENT_TYPE indent) {
@@ -27,11 +27,8 @@ static void write_enum(FILE* fs, BPCSMTV_ENUM* smtv_enum, BPCGEN_INDENT_TYPE ind
 		BPCSMTV_ENUM_MEMBER* data = (BPCSMTV_ENUM_MEMBER*)cursor->data;
 
 		BPCGEN_INDENT_PRINT;
-		if (data->distributed_value_is_uint) {
-			fprintf(fs, "%s = %" PRIu64, data->enum_member_name, data->distributed_value.value_uint);
-		} else {
-			fprintf(fs, "%s = %" PRIi64, data->enum_member_name, data->distributed_value.value_int);
-		}
+		bpcgen_print_enum_member(fs, data);
+
 		if (cursor->next != NULL) {
 			fputc(',', fs);
 		}
@@ -42,10 +39,10 @@ static void write_enum(FILE* fs, BPCSMTV_ENUM* smtv_enum, BPCGEN_INDENT_TYPE ind
 	fputs("};", fs);
 }
 
-static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool is_msg, BPCGEN_INDENT_TYPE indent) {
-	GSList* cursor = NULL, * variables = (is_msg ? union_data->pMsg->msg_body : union_data->pStruct->struct_body);
-	BPCSMTV_STRUCT_MODIFIER* modifier = (is_msg ? union_data->pMsg->msg_modifier : union_data->pStruct->struct_modifier);
-	char* struct_like_name = (is_msg ? union_data->pMsg->msg_name : union_data->pStruct->struct_name);
+static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN_INDENT_TYPE indent) {
+	GSList* cursor = NULL;
+	bool is_msg;  GSList* variables; BPCSMTV_STRUCT_MODIFIER* modifier; char* struct_like_name;
+	bpcgen_pick_struct_like_data(union_data, &is_msg, &variables, &modifier, &struct_like_name);
 	BPCGEN_INDENT_INIT_REF(fs, indent);
 
 	// in hpp file, we do not need bond any variables. cpp will do it.
@@ -249,12 +246,14 @@ void codehpp_write_document(FILE* fs, BPCSMTV_DOCUMENT* document) {
 				write_enum(fs, data->node_data.enum_data, BPCGEN_INDENT_REF);
 				break;
 			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_STRUCT:
-				struct_like.pStruct = data->node_data.struct_data;
-				write_struct_or_msg(fs, &struct_like, false, BPCGEN_INDENT_REF);
+				struct_like.is_msg = false;
+				struct_like.real_ptr.pStruct = data->node_data.struct_data;
+				write_struct_or_msg(fs, &struct_like, BPCGEN_INDENT_REF);
 				break;
 			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_MSG:
-				struct_like.pMsg = data->node_data.msg_data;
-				write_struct_or_msg(fs, &struct_like, true, BPCGEN_INDENT_REF);
+				struct_like.is_msg = true;
+				struct_like.real_ptr.pMsg = data->node_data.msg_data;
+				write_struct_or_msg(fs, &struct_like, BPCGEN_INDENT_REF);
 				break;
 			default:
 				g_assert_not_reached();

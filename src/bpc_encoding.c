@@ -15,6 +15,7 @@ gchar* bpcenc_utf8_to_glibfs(const gchar* src) {
 
 gchar* bpcenc_wchar_to_utf8(const wchar_t* src) {
 	if (src == NULL) return NULL;
+	/*
 	int count, write_result;
 
 	//converter to CHAR
@@ -28,10 +29,13 @@ gchar* bpcenc_wchar_to_utf8(const wchar_t* src) {
 	}
 
 	return dest;
+	*/
+	return g_utf16_to_utf8(src, -1, NULL, NULL, NULL);
 }
 
 wchar_t* bpcenc_utf8_to_wchar(const gchar* src) {
 	if (src == NULL) return NULL;
+	/*
 	int wcount, write_result;
 
 	// convert to WCHAR
@@ -45,6 +49,8 @@ wchar_t* bpcenc_utf8_to_wchar(const gchar* src) {
 	}
 
 	return dest;
+	*/
+	return g_utf8_to_utf16(src, -1, NULL, NULL, NULL);
 }
 
 

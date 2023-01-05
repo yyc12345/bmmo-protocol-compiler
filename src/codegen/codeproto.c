@@ -54,12 +54,10 @@ static void write_enum(FILE* fs, BPCSMTV_ENUM* smtv_enum) {
 			}
 		}
 
+		// print node
 		BPCGEN_INDENT_PRINT;
-		if (data->distributed_value_is_uint) {
-			fprintf(fs, "%s = %" PRIu64 ";", data->enum_member_name, data->distributed_value.value_uint);
-		} else {
-			fprintf(fs, "%s = %" PRIi64 ";", data->enum_member_name, data->distributed_value.value_int);
-		}
+		bpcgen_print_enum_member(fs, data);
+		fputc(';', fs);
 	}
 	// enum is over
 	BPCGEN_INDENT_DEC;
@@ -68,12 +66,12 @@ static void write_enum(FILE* fs, BPCSMTV_ENUM* smtv_enum) {
 
 }
 
-static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool is_msg) {
-	GSList* cursor = NULL, * variables = (is_msg ? union_data->pMsg->msg_body : union_data->pStruct->struct_body);
-	BPCSMTV_STRUCT_MODIFIER* modifier = (is_msg ? union_data->pMsg->msg_modifier : union_data->pStruct->struct_modifier);
-	char* struct_like_name = (is_msg ? union_data->pMsg->msg_name : union_data->pStruct->struct_name);
-	uint32_t index = UINT32_C(1);
+static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data) {
+	GSList* cursor = NULL;
+	bool is_msg;  GSList* variables; char* struct_like_name;
+	bpcgen_pick_struct_like_data(union_data, &is_msg, &variables, NULL, &struct_like_name);
 	BPCGEN_INDENT_INIT_NEW(fs);
+	uint32_t pb_index = UINT32_C(1);
 
 	// we only need iterate all variables, so we do not group them
 	GSList* bond_vars = bpcgen_constructor_bond_vars(variables, BPCGEN_VARTYPE_NONE);
@@ -98,7 +96,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 				case BPCGEN_VARTYPE_SINGLE_NATURAL:
 				{
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "%s %s = %" PRIu32 ";", get_primitive_type_name(vardata, struct_like_name), vardata->variable_name, index++);
+					fprintf(fs, "%s %s = %" PRIu32 ";", get_primitive_type_name(vardata, struct_like_name), vardata->variable_name, pb_index++);
 					break;
 				}
 				case BPCGEN_VARTYPE_STATIC_PRIMITIVE:
@@ -118,7 +116,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 				case BPCGEN_VARTYPE_DYNAMIC_NATURAL:
 				{
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "repeated %s %s = %" PRIu32 ";", get_primitive_type_name(vardata, struct_like_name), vardata->variable_name, index++);
+					fprintf(fs, "repeated %s %s = %" PRIu32 ";", get_primitive_type_name(vardata, struct_like_name), vardata->variable_name, pb_index++);
 					break;
 				}
 
@@ -142,20 +140,6 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 
 }
 
-static char* generate_namespaces(GSList* ns_list) {
-	GString* strl = g_string_new(NULL);
-	GSList* cursor = NULL;
-
-	for (cursor = ns_list; cursor != NULL; cursor = cursor->next) {
-		g_string_append(strl, (gchar*)cursor->data);
-		if (cursor->next != NULL) {
-			g_string_append_c(strl, '.');
-		}
-	}
-
-	return g_string_free(strl, false);
-}
-
 void codeproto_write_document(FILE* fs, BPCSMTV_DOCUMENT* document) {
 	BPCGEN_INDENT_INIT_NEW(fs);
 
@@ -163,10 +147,10 @@ void codeproto_write_document(FILE* fs, BPCSMTV_DOCUMENT* document) {
 	fputs("syntax = \"proto3\";", fs);
 
 	// write package
-	char* ns = generate_namespaces(document->namespace_data);
 	BPCGEN_INDENT_PRINT;
-	fprintf(fs, "package %s;", ns);
-	g_free(ns);
+	fputs("package ", fs);
+	bpcgen_print_join_gslist(fs, ".", true, document->namespace_data);
+	fputc(';', fs);
 
 	// iterate list to get data
 	GSList* cursor = NULL;
@@ -179,12 +163,14 @@ void codeproto_write_document(FILE* fs, BPCSMTV_DOCUMENT* document) {
 				write_enum(fs, data->node_data.enum_data);
 				break;
 			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_STRUCT:
-				struct_like.pStruct = data->node_data.struct_data;
-				write_struct_or_msg(fs, &struct_like, false);
+				struct_like.is_msg = false;
+				struct_like.real_ptr.pStruct = data->node_data.struct_data;
+				write_struct_or_msg(fs, &struct_like);
 				break;
 			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_MSG:
-				struct_like.pMsg = data->node_data.msg_data;
-				write_struct_or_msg(fs, &struct_like, true);
+				struct_like.is_msg = true;
+				struct_like.real_ptr.pMsg = data->node_data.msg_data;
+				write_struct_or_msg(fs, &struct_like);
 				break;
 			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_ALIAS:
 				break;	// protobuf do not support alias

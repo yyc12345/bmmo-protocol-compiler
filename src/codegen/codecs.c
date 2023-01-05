@@ -9,15 +9,11 @@ static const char* csharp_formal_basic_type[] = {
 static const char* csharp_default_basic_type[] = {
 	"0.0f", "0.0", "0", "0", "0", "0", "0", "0", "0", "0", "\"\""
 };
-//// Ref: https://learn.microsoft.com/en-us/dotnet/api/system.runtime.interopservices.unmanagedtype?view=net-6.0
-//static const char* csharp_unmanaged_type[] = {
-//	"R4", "R8", "I1", "I2", "I4", "I8", "U1", "U2", "U4", "U8", "LPUTF8Str"	// the unmanaged type of string still is invalid. LPUTF8Str just is a placeholder.
-//};
 
-static char* get_primitive_type_name(BPCSMTV_VARIABLE* variable) {
+static const char* get_primitive_type_name(BPCSMTV_VARIABLE* variable) {
 	return (variable->variable_type->semi_uncover_is_basic_type ?
 		csharp_basic_type[variable->variable_type->full_uncover_basic_type] :
-		variable->variable_type->semi_uncover_custom_type);
+		(const char*)variable->variable_type->semi_uncover_custom_type);
 }
 
 static void write_enum(FILE* fs, BPCSMTV_ENUM* smtv_enum, BPCGEN_INDENT_TYPE indent) {
@@ -30,11 +26,8 @@ static void write_enum(FILE* fs, BPCSMTV_ENUM* smtv_enum, BPCGEN_INDENT_TYPE ind
 		BPCSMTV_ENUM_MEMBER* data = (BPCSMTV_ENUM_MEMBER*)cursor->data;
 
 		BPCGEN_INDENT_PRINT;
-		if (data->distributed_value_is_uint) {
-			fprintf(fs, "%s = %" PRIu64, data->enum_member_name, data->distributed_value.value_uint);
-		} else {
-			fprintf(fs, "%s = %" PRIi64, data->enum_member_name, data->distributed_value.value_int);
-		}
+		bpcgen_print_enum_member(fs, data);
+
 		if (cursor->next != NULL) {
 			fputc(',', fs);
 		}
@@ -46,11 +39,10 @@ static void write_enum(FILE* fs, BPCSMTV_ENUM* smtv_enum, BPCGEN_INDENT_TYPE ind
 
 }
 
-
-static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool is_msg, BPCGEN_INDENT_TYPE indent) {
-	GSList* cursor = NULL, * variables = (is_msg ? union_data->pMsg->msg_body : union_data->pStruct->struct_body);
-	BPCSMTV_STRUCT_MODIFIER* modifier = (is_msg ? union_data->pMsg->msg_modifier : union_data->pStruct->struct_modifier);
-	char* struct_like_name = (is_msg ? union_data->pMsg->msg_name : union_data->pStruct->struct_name);
+static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN_INDENT_TYPE indent) {
+	GSList* cursor = NULL;
+	bool is_msg;  GSList* variables; BPCSMTV_STRUCT_MODIFIER* modifier; char* struct_like_name;
+	bpcgen_pick_struct_like_data(union_data, &is_msg, &variables, &modifier, &struct_like_name);
 	BPCGEN_INDENT_INIT_REF(fs, indent);
 
 	// get variables detailed type. use NONE to avoid any bonding.
@@ -215,13 +207,14 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 	}
 	for (cursor = bond_vars; cursor != NULL; cursor = cursor->next) {
 		BOND_VARS* data = (BOND_VARS*)cursor->data;
+
+		// annotation
+		BPCGEN_INDENT_PRINT;
+		bpcgen_print_variables_annotation(fs, "// ", data);
+
 		uint32_t c;
 		for (c = 0; c < data->bond_vars_len; ++c) {
 			BPCSMTV_VARIABLE* vardata = data->plist_vars[c];
-
-			// annotation
-			BPCGEN_INDENT_PRINT;
-			fprintf(fs, "// %s", vardata->variable_name);
 
 			// body
 			switch (data->vars_type[0]) {
@@ -385,13 +378,14 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 	}
 	for (cursor = bond_vars; cursor != NULL; cursor = cursor->next) {
 		BOND_VARS* data = (BOND_VARS*)cursor->data;
+
+		// annotation
+		BPCGEN_INDENT_PRINT;
+		bpcgen_print_variables_annotation(fs, "// ", data);
+
 		uint32_t c;
 		for (c = 0; c < data->bond_vars_len; ++c) {
 			BPCSMTV_VARIABLE* vardata = data->plist_vars[c];
-
-			// annotation
-			BPCGEN_INDENT_PRINT;
-			fprintf(fs, "// %s", vardata->variable_name);
 
 			// body
 			switch (data->vars_type[0]) {
@@ -624,20 +618,6 @@ static void write_uniform_deserialize(FILE* fs, GSList* msg_ls, BPCGEN_INDENT_TY
 
 }
 
-static char* generate_namespaces(GSList* ns_list) {
-	GString* strl = g_string_new(NULL);
-	GSList* cursor = NULL;
-
-	for (cursor = ns_list; cursor != NULL; cursor = cursor->next) {
-		g_string_append(strl, (gchar*)cursor->data);
-		if (cursor->next != NULL) {
-			g_string_append_c(strl, '.');
-		}
-	}
-
-	return g_string_free(strl, false);
-}
-
 void codecs_write_document(FILE* fs, BPCSMTV_DOCUMENT* document) {
 	BPCGEN_INDENT_INIT_NEW(fs);
 
@@ -645,10 +625,11 @@ void codecs_write_document(FILE* fs, BPCSMTV_DOCUMENT* document) {
 	bpcfs_write_snippets(fs, &bpcsnp_cs_header);
 
 	// write namespace
-	char* ns = generate_namespaces(document->namespace_data);
 	BPCGEN_INDENT_PRINT;
-	fprintf(fs, "namespace %s {", ns); BPCGEN_INDENT_INC;
-	g_free(ns);
+	fputs("namespace ", fs);
+	bpcgen_print_join_gslist(fs, ".", true, document->namespace_data);
+	fputs(" {", fs);
+	BPCGEN_INDENT_INC;
 
 	// write opcode
 	GSList* msg_ls = bpcgen_constructor_msg_list(document->protocol_body);
@@ -668,12 +649,14 @@ void codecs_write_document(FILE* fs, BPCSMTV_DOCUMENT* document) {
 				write_enum(fs, data->node_data.enum_data, BPCGEN_INDENT_REF);
 				break;
 			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_STRUCT:
-				struct_like.pStruct = data->node_data.struct_data;
-				write_struct_or_msg(fs, &struct_like, false, BPCGEN_INDENT_REF);
+				struct_like.is_msg = false;
+				struct_like.real_ptr.pStruct = data->node_data.struct_data;
+				write_struct_or_msg(fs, &struct_like, BPCGEN_INDENT_REF);
 				break;
 			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_MSG:
-				struct_like.pMsg = data->node_data.msg_data;
-				write_struct_or_msg(fs, &struct_like, true, BPCGEN_INDENT_REF);
+				struct_like.is_msg = true;
+				struct_like.real_ptr.pMsg = data->node_data.msg_data;
+				write_struct_or_msg(fs, &struct_like, BPCGEN_INDENT_REF);
 				break;
 			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_ALIAS:
 				break;

@@ -3,30 +3,9 @@
 static const char python_struct_fmt[] = {
 	'f', 'd', 'b', 'h', 'i', 'q', 'B', 'H', 'I', 'Q'
 };
-static const uint32_t python_struct_fmt_len[] = {
-	UINT32_C(4), UINT32_C(8), UINT32_C(1), UINT32_C(2), UINT32_C(4), UINT32_C(8), UINT32_C(1), UINT32_C(2), UINT32_C(4), UINT32_C(8)
-};
 static const char* python_struct_default[] = {
 	"0.0", "0.0", "0", "0", "0", "0", "0", "0", "0", "0"
 };
-
-static void write_tuple_series(FILE* fs, GPtrArray* arr) {
-	guint c;
-	for (c = 0u; c < arr->len; ++c) {
-		fputs((gchar*)(arr->pdata[c]), fs);
-		fputs(", ", fs);	// in any cases, always append splittor.
-	}
-}
-static void write_args_series(FILE* fs, GPtrArray* arr) {
-	guint c;
-	for (c = 0u; c < arr->len; ++c) {
-		// append splittor before entry only when non-first node.
-		if (c != 0u)
-			fputs(", ", fs);
-
-		fputs((gchar*)(arr->pdata[c]), fs);
-	}
-}
 
 static gchar* generate_pack_fmt(BOND_VARS* bond_vars) {
 	GString* pack_fmt = g_string_new(NULL);
@@ -58,7 +37,7 @@ static GPtrArray* constructor_param_list(BOND_VARS* bond_vars) {
 	for (c = 0; c < bond_vars->bond_vars_len; ++c) {
 		g_assert(bond_vars->vars_type[c] == BPCGEN_VARTYPE_SINGLE_PRIMITIVE);
 
-		g_ptr_array_add(param_list, g_strdup(bond_vars->plist_vars[c]->variable_name));
+		g_ptr_array_add(param_list, g_strdup_printf("self.%s", bond_vars->plist_vars[c]->variable_name));
 	}
 
 	return param_list;
@@ -77,20 +56,16 @@ static void write_enum(FILE* fs, BPCSMTV_ENUM* smtv_enum) {
 		BPCSMTV_ENUM_MEMBER* data = (BPCSMTV_ENUM_MEMBER*)cursor->data;
 
 		BPCGEN_INDENT_PRINT;
-		if (data->distributed_value_is_uint) {
-			fprintf(fs, "%s = %" PRIu64, data->enum_member_name, data->distributed_value.value_uint);
-		} else {
-			fprintf(fs, "%s = %" PRIi64, data->enum_member_name, data->distributed_value.value_int);
-		}
+		bpcgen_print_enum_member(fs, data);
 	}
 	// enum is over
 	BPCGEN_INDENT_DEC;
 }
 
-static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool is_msg) {
-	GSList* cursor = NULL, * variables = (is_msg ? union_data->pMsg->msg_body : union_data->pStruct->struct_body);
-	BPCSMTV_STRUCT_MODIFIER* modifier = (is_msg ? union_data->pMsg->msg_modifier : union_data->pStruct->struct_modifier);
-	char* struct_like_name = (is_msg ? union_data->pMsg->msg_name : union_data->pStruct->struct_name);
+static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data) {
+	GSList* cursor = NULL;
+	bool is_msg;  GSList* variables; BPCSMTV_STRUCT_MODIFIER* modifier; char* struct_like_name;
+	bpcgen_pick_struct_like_data(union_data, &is_msg, &variables, &modifier, &struct_like_name);
 	BPCGEN_INDENT_INIT_NEW(fs);
 
 	// get bond variables. python only allow combineing single primitive variables
@@ -219,7 +194,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 		BPCGEN_INDENT_PRINT;
 		fprintf(fs, "def GetOpcode(self) -> int:"); BPCGEN_INDENT_INC;
 		BPCGEN_INDENT_PRINT;
-		fprintf(fs, "return %" PRIu32, union_data->pMsg->msg_index);
+		fprintf(fs, "return _OpCode.%s", struct_like_name);
 		BPCGEN_INDENT_DEC;
 	}
 
@@ -229,7 +204,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 	fputs("def Deserialize(self, _ss: io.BytesIO):", fs); BPCGEN_INDENT_INC;
 	if (is_msg) {
 		BPCGEN_INDENT_PRINT;
-		fprintf(fs, "if _opcode_packer.unpack(_ss.read(_opcode_packer.size))[0] != %" PRIu32 ":", union_data->pMsg->msg_index); BPCGEN_INDENT_INC;
+		fprintf(fs, "if _opcode_packer.unpack(_ss.read(_opcode_packer.size))[0] != _OpCode.%s:", struct_like_name); BPCGEN_INDENT_INC;
 		BPCGEN_INDENT_PRINT;
 		fputs("raise Exception('Invalid opcode!')", fs);
 		BPCGEN_INDENT_DEC;
@@ -237,20 +212,19 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 	for (cursor = bond_vars; cursor != NULL; cursor = cursor->next) {
 		BOND_VARS* data = (BOND_VARS*)cursor->data;
 
+		// annotation
+		BPCGEN_INDENT_PRINT;
+		bpcgen_print_variables_annotation(fs, "# ", data);
+
 		if (data->is_bonded) {
 			// bonded variables
 			// get param list
 			GPtrArray* param_list = constructor_param_list(data);
 
-			// annotation
-			BPCGEN_INDENT_PRINT;
-			fputs("# ", fs);
-			write_args_series(fs, param_list);
-
 			// binary reader
 			BPCGEN_INDENT_PRINT;
 			fputc('(', fs);
-			write_tuple_series(fs, param_list);
+			bpcgen_print_join_ptrarray(fs, ", ", false, param_list);
 			fprintf(fs, ") = %s._struct_packer[%" PRIu32 "].unpack(_ss.read(%s._struct_packer[%" PRIu32 "].size))",
 				struct_like_name,
 				preset_struct_index,
@@ -267,21 +241,8 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 			// normal process
 			BPCSMTV_VARIABLE* vardata = data->plist_vars[0];
 
-			// annotation
-			BPCGEN_INDENT_PRINT;
-			fprintf(fs, "# %s", vardata->variable_name);
-
 			// body
 			switch (data->vars_type[0]) {
-				case BPCGEN_VARTYPE_SINGLE_PRIMITIVE:
-				{
-					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "(self.%s, ) = struct.unpack('<%c', _ss.read(%" PRIu32 "))",
-						vardata->variable_name,
-						python_struct_fmt[vardata->variable_type->full_uncover_basic_type],
-						python_struct_fmt_len[vardata->variable_type->full_uncover_basic_type]);
-					break;
-				}
 				case BPCGEN_VARTYPE_STATIC_PRIMITIVE:
 				{
 					BPCGEN_INDENT_PRINT;
@@ -289,7 +250,8 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 						vardata->variable_name,
 						vardata->variable_array->static_array_len,
 						python_struct_fmt[vardata->variable_type->full_uncover_basic_type],
-						python_struct_fmt_len[vardata->variable_type->full_uncover_basic_type] * vardata->variable_array->static_array_len);
+						bpcsmtv_get_bt_size(vardata->variable_type->full_uncover_basic_type) * vardata->variable_array->static_array_len
+					);
 					break;
 				}
 				case BPCGEN_VARTYPE_DYNAMIC_PRIMITIVE:
@@ -301,7 +263,8 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 					fprintf(fs, "self.%s = list(struct.unpack(f'<{_count:d}%c', _ss.read(%" PRIu32 " * _count)))",
 						vardata->variable_name,
 						python_struct_fmt[vardata->variable_type->full_uncover_basic_type],
-						python_struct_fmt_len[vardata->variable_type->full_uncover_basic_type]);
+						bpcsmtv_get_bt_size(vardata->variable_type->full_uncover_basic_type)
+					);
 
 					break;
 				}
@@ -379,6 +342,8 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 					break;
 				}
 
+				// these variables has been process in bond_vars
+				case BPCGEN_VARTYPE_SINGLE_PRIMITIVE:
 				default:
 					g_assert_not_reached();
 			}
@@ -403,24 +368,22 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 	fprintf(fs, "def Serialize(self, _ss: io.BytesIO):"); BPCGEN_INDENT_INC;
 	if (is_msg) {
 		BPCGEN_INDENT_PRINT;
-		fprintf(fs, "_ss.write(_opcode_packer.pack(%" PRIu32 "))", union_data->pMsg->msg_index);
+		fprintf(fs, "_ss.write(_opcode_packer.pack(_OpCode.%s))", struct_like_name);
 	}
 	for (cursor = bond_vars; cursor != NULL; cursor = cursor->next) {
 		BOND_VARS* data = (BOND_VARS*)cursor->data;
 
+		// annotation
+		BPCGEN_INDENT_PRINT;
+		bpcgen_print_variables_annotation(fs, "# ", data);
 
 		if (data->is_bonded) {
 			GPtrArray* param_list = constructor_param_list(data);
 
-			// annotation
-			BPCGEN_INDENT_PRINT;
-			fputs("# ", fs);
-			write_args_series(fs, param_list);
-
 			// binary writer
 			BPCGEN_INDENT_PRINT;
 			fprintf(fs, "_ss.write(%s._struct_packer[%" PRIu32 "].pack(", struct_like_name, preset_struct_index);
-			write_args_series(fs, param_list);
+			bpcgen_print_join_ptrarray(fs, ", ", true, param_list);
 			fputs("))", fs);
 
 			destructor_param_list(param_list);
@@ -430,20 +393,8 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 			// normal process
 			BPCSMTV_VARIABLE* vardata = data->plist_vars[0];
 
-			// annotation
-			BPCGEN_INDENT_PRINT;
-			fprintf(fs, "# %s", vardata->variable_name);
-
 			// body
 			switch (data->vars_type[0]) {
-				case BPCGEN_VARTYPE_SINGLE_PRIMITIVE:
-				{
-					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "_ss.write(struct.pack('<%c', self.%s))",
-						python_struct_fmt[vardata->variable_type->full_uncover_basic_type],
-						vardata->variable_name);
-					break;
-				}
 				case BPCGEN_VARTYPE_STATIC_PRIMITIVE:
 				{
 					BPCGEN_INDENT_PRINT;
@@ -536,6 +487,8 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, bool i
 					break;
 				}
 
+				// these variables has been process in bond_vars
+				case BPCGEN_VARTYPE_SINGLE_PRIMITIVE:
 				default:
 					g_assert_not_reached();
 			}
@@ -624,6 +577,10 @@ void codepy_write_document(FILE* fs, BPCSMTV_DOCUMENT* document) {
 	// write header
 	bpcfs_write_snippets(fs, &bpcsnp_py_header);
 
+	// write opcode
+	GSList* msg_ls = bpcgen_constructor_msg_list(document->protocol_body);
+	write_opcode_enum(fs, msg_ls);
+
 	// iterate list to get data
 	// and pick msg
 	GSList* cursor = NULL;
@@ -636,12 +593,14 @@ void codepy_write_document(FILE* fs, BPCSMTV_DOCUMENT* document) {
 				write_enum(fs, data->node_data.enum_data);
 				break;
 			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_STRUCT:
-				struct_like.pStruct = data->node_data.struct_data;
-				write_struct_or_msg(fs, &struct_like, false);
+				struct_like.is_msg = false;
+				struct_like.real_ptr.pStruct = data->node_data.struct_data;
+				write_struct_or_msg(fs, &struct_like);
 				break;
 			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_MSG:
-				struct_like.pMsg = data->node_data.msg_data;
-				write_struct_or_msg(fs, &struct_like, true);
+				struct_like.is_msg = true;
+				struct_like.real_ptr.pMsg = data->node_data.msg_data;
+				write_struct_or_msg(fs, &struct_like);
 				break;
 			case BPCSMTV_DEFINED_IDENTIFIER_TYPE_ALIAS:
 				break;
@@ -650,9 +609,7 @@ void codepy_write_document(FILE* fs, BPCSMTV_DOCUMENT* document) {
 		}
 	}
 
-	// write some tails
-	GSList* msg_ls = bpcgen_constructor_msg_list(document->protocol_body);
-	write_opcode_enum(fs, msg_ls);
+	// write uniform deserialize
 	write_uniform_deserialize(fs, msg_ls);
 
 	// free msg list
