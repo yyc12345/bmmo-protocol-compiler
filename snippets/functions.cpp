@@ -26,7 +26,7 @@ namespace _Helper {
 
     // ==================== RW Assist Functions ====================
 
-    bool _Helper::PeekOpCode(std::stringstream* ss, _OpCode* code) {
+    bool PeekOpCode(std::stringstream* ss, _OpCode* code) {
         SSTREAM_RD_STRUCT(ss, sizeof(uint32_t), code);
         _EndianHelper::SwapEndian32(code);
         
@@ -34,19 +34,19 @@ namespace _Helper {
         return true;
     }
 
-    bool _Helper::ReadOpCode(std::stringstream* ss, _OpCode* code) {
+    bool ReadOpCode(std::stringstream* ss, _OpCode* code) {
         SSTREAM_RD_STRUCT(ss, sizeof(uint32_t), code);
         _EndianHelper::SwapEndian32(code);
         return true;
     }
 
-    bool _Helper::WriteOpCode(std::stringstream* ss, _OpCode code) {
+    bool WriteOpCode(std::stringstream* ss, _OpCode code) {
         _EndianHelper::SwapEndian32(&code);
         SSTREAM_WR_STRUCT(ss, sizeof(uint32_t), &code);
         return true;
     }
 
-    bool _Helper::ReadString(std::stringstream* ss, std::string* strl) {
+    bool ReadString(std::stringstream* ss, std::string* strl) {
         uint32_t length = 0;
         SSTREAM_RD_STRUCT(ss, sizeof(uint32_t), &length);
         _EndianHelper::SwapEndian32(&length);
@@ -58,7 +58,7 @@ namespace _Helper {
         return true;
     }
 
-    bool _Helper::WriteString(std::stringstream* ss, std::string* strl) {
+    bool WriteString(std::stringstream* ss, std::string* strl) {
         uint32_t length = strl->size();
         _EndianHelper::SwapEndian32(&length);
         SSTREAM_WR_STRUCT(ss, sizeof(uint32_t), &length);

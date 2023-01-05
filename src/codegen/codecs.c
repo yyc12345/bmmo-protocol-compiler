@@ -624,7 +624,7 @@ static void write_uniform_deserialize(FILE* fs, GSList* msg_ls, BPCGEN_INDENT_TY
 
 }
 
-char* generate_namespaces(GSList* ns_list) {
+static char* generate_namespaces(GSList* ns_list) {
 	GString* strl = g_string_new(NULL);
 	GSList* cursor = NULL;
 

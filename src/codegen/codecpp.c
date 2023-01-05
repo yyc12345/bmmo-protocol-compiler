@@ -741,7 +741,6 @@ void codecpp_write_document(FILE* fs, BPCSMTV_DOCUMENT* document, const gchar* h
 	BPCGEN_INDENT_INIT_NEW(fs);
 
 	// write hpp reference
-	BPCGEN_INDENT_PRINT;
 	fprintf(fs, "#include \"%s\"", hpp_reference);
 
 	// write namespace
@@ -782,6 +781,9 @@ void codecpp_write_document(FILE* fs, BPCSMTV_DOCUMENT* document, const gchar* h
 	GSList* msg_ls = bpcgen_constructor_msg_list(document->protocol_body);
 	write_uniform_deserialize(fs, msg_ls, BPCGEN_INDENT_REF);
 	bpcgen_destructor_msg_list(msg_ls);
+
+	// write tail snippets
+	bpcfs_write_snippets(fs, &bpcsnp_cpp_tail);
 
 	// namespace over
 	for (cursor = document->namespace_data; cursor != NULL; cursor = cursor->next) {
