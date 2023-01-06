@@ -192,7 +192,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data) {
 
 		// opcode
 		BPCGEN_INDENT_PRINT;
-		fprintf(fs, "def GetOpcode(self) -> int:"); BPCGEN_INDENT_INC;
+		fprintf(fs, "def GetOpCode(self) -> int:"); BPCGEN_INDENT_INC;
 		BPCGEN_INDENT_PRINT;
 		fprintf(fs, "return _OpCode.%s", struct_like_name);
 		BPCGEN_INDENT_DEC;
@@ -272,7 +272,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data) {
 				case BPCGEN_VARTYPE_SINGLE_STRING:
 				{
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "self.%s = self._read_bp_string(_ss)", vardata->variable_name);
+					fprintf(fs, "self.%s = self._ReadBpString(_ss)", vardata->variable_name);
 					break;
 				}
 				case BPCGEN_VARTYPE_STATIC_STRING:
@@ -281,7 +281,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data) {
 					fprintf(fs, "for _i in range(%" PRIu32 "):", vardata->variable_array->static_array_len); BPCGEN_INDENT_INC;
 
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "self.%s[_i] = self._read_bp_string(_ss)", vardata->variable_name);
+					fprintf(fs, "self.%s[_i] = self._ReadBpString(_ss)", vardata->variable_name);
 
 					BPCGEN_INDENT_DEC;
 					break;
@@ -296,7 +296,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data) {
 					BPCGEN_INDENT_PRINT;
 					fputs("for _i in range(_count):", fs); BPCGEN_INDENT_INC;
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "self.%s.append(self._read_bp_string(_ss))", vardata->variable_name);
+					fprintf(fs, "self.%s.append(self._ReadBpString(_ss))", vardata->variable_name);
 					BPCGEN_INDENT_DEC;
 
 					break;
@@ -422,7 +422,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data) {
 				case BPCGEN_VARTYPE_SINGLE_STRING:
 				{
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "self._write_bp_string(_ss, self.%s)", vardata->variable_name);
+					fprintf(fs, "self._WriteBpString(_ss, self.%s)", vardata->variable_name);
 					break;
 				}
 				case BPCGEN_VARTYPE_STATIC_STRING:
@@ -431,7 +431,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data) {
 					fprintf(fs, "for _i in range(%" PRIu32 "):", vardata->variable_array->static_array_len); BPCGEN_INDENT_INC;
 
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "self._write_bp_string(_ss, self.%s[_i])", vardata->variable_name);
+					fprintf(fs, "self._WriteBpString(_ss, self.%s[_i])", vardata->variable_name);
 
 					BPCGEN_INDENT_DEC;
 					break;
@@ -446,7 +446,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data) {
 					BPCGEN_INDENT_PRINT;
 					fputs("for _i in range(_count):", fs); BPCGEN_INDENT_INC;
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "self._write_bp_string(_ss, self.%s[_i])", vardata->variable_name);
+					fprintf(fs, "self._WriteBpString(_ss, self.%s[_i])", vardata->variable_name);
 					BPCGEN_INDENT_DEC;
 
 					break;
@@ -545,7 +545,7 @@ static void write_uniform_deserialize(FILE* fs, GSList* msg_ls) {
 	BPCGEN_INDENT_PRINT;
 	fputs("def _UniformDeserialize(_ss: io.BytesIO) -> _BpMessage:", fs); BPCGEN_INDENT_INC;
 	BPCGEN_INDENT_PRINT;
-	fputs("_opcode = _opcode_packer.unpack(_ss.read(_opcode_packer.size))[0]", fs);
+	fputs("_opcode = _PeekOpCode(_ss)", fs);
 	for (cursor = msg_ls; cursor != NULL; cursor = cursor->next) {
 		BPCSMTV_MSG* data = (BPCSMTV_MSG*)cursor->data;
 

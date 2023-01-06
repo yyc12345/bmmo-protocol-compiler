@@ -16,12 +16,12 @@ narrow reliable msg login_request_msg {
     string nickname;
 }
 
-narrow struct login_accepted {
+narrow struct player_status {
     string nickname;
     gnsid uuid;
 }
 narrow reliable msg login_accepted_msg {
-    login_accepted[] pairs;
+    player_status[] pairs;
 }
 
 enum uint8 action_type {
@@ -109,17 +109,17 @@ narrow reliable msg login_request_v2_msg {
     uint8 cheated;
 }
 
-narrow struct player_status {
+narrow struct player_status_v2 {
     gnsid uuid;
     string nickname;
     uint8 cheated;
 }
 narrow reliable msg login_accepted_v2_msg {
-    player_status[] players;
+    player_status_v2[] players;
 }
 
 narrow reliable msg player_connected_v2_msg {
-    player_status player;
+    player_status_v2 player;
 }
 
 natural struct cheat_state {
@@ -310,7 +310,11 @@ narrow unreliable msg owned_timed_ball_state_msg {
     owned_timestamp[] unchaged_balls;
 }
 
-// ============= v3 enhanced context & misc improvements chapter
+natural reliable msg timestamp_msg {
+    timestamp_t timestamp;
+}
+
+// ============= v3 chat & notification & anticheat improvements chapter
 
 narrow reliable msg private_chat_msg {
     chat_body data;
@@ -334,16 +338,49 @@ narrow reliable msg mod_list_msg {
     mod_pair[] pairs;
 }
 
-narrow reliable msg popup_box_msg {
+narrow struct info_with_title {
     string title;
     string text_content;
 }
+narrow reliable msg popup_box_msg {
+    info_with_title body;
+}
+
+// ============= v3 sector context chapter
 
 natural reliable msg current_sector_msg {
     gnsid player_id;
     int32 sector;
 }
 
-narrow reliable msg current_map_list_msg {
-    current_map_state[] states;
+narrow struct player_status_v3 {
+    gnsid uuid;
+    string nickname;
+    uint8 cheated;
+    map in_map;
+    int32 sector;
+}
+
+narrow reliable msg login_accepted_v3_msg {
+    player_status_v3[] online_players;
+}
+
+// ============= v3 notification improvements chapter
+
+narrow reliable msg permanent_notification_msg {
+    info_with_title body;
+}
+
+narrow struct wave_sound_pair {
+    uint16 freq_hz;
+    uint32 duration_ms;
+}
+narrow reliable msg sound_data_msg {
+    string caption;
+    wave_sound_pair[] wave_desc;
+}
+
+// i don't know what this fucking message do.
+narrow reliable msg public_warning_msg {
+    string text_content;
 }
