@@ -76,9 +76,12 @@ This compiler support Windows and Linux platform and use different compile steps
 
 ### Requirements
 
-* Flex 2.5.6(at least)
-* Bison 3.2(at least)
-* GLib 2.7x(at least)
+* Flex 2.5.6 (at least)
+* Bison 3.2 (at least)
+* GLib 2.7x (at least)
+* Executable [adobe/bin2c](https://github.com/adobe/bin2c) (Commit `4300880a350679a808dc05bdc2840368f5c24d9a`)
+
+Please make sure you have built `adobe/bin2c` and put it into system path, otherwise the compiler can not find a proper program to generate `snippets.h`.
 
 ### Windows Build
 

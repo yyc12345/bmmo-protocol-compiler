@@ -51,7 +51,7 @@ BPCCMD_PARSED_ARGS* bpccmd_get_parsed_args(int argc, char* _argv[]) {
 			_bpccmd_print_help(context);
 		} else if (opt_version) {
 			g_print("bmmo-protocol-compiler %s\n", BPCVER_VERSION);
-			g_print("Under MIT License. Copyright (c) 2013-2022 BearKidsTeam.\n");
+			g_print("Under MIT License. Copyright (c) 2013-2023 BearKidsTeam.\n");
 		} else {
 			if (opt_input == NULL) {
 				g_print("Error: you should specific input file at least.\n\n");
