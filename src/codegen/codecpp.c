@@ -65,6 +65,10 @@ static uint32_t calc_bond_vars_size(BOND_VARS* data) {
 			default:
 				g_assert_not_reached();
 		}
+
+		if (vardata->variable_align->use_align) {
+			fullsize += vardata->variable_align->padding_size;
+		}
 	}
 
 	return (fullsize == UINT32_C(0) ? UINT32_C(1) : fullsize);

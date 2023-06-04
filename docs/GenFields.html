@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<style type="text/css">
+    table {
+        font-family: 'Times New Roman', Times, serif;
+    }
+
+    tr:nth-child(odd) {
+        background-color: #efefef;
+    }
+
+    /* table header */
+    tr:nth-child(1) > th {
+        background-color: #7f7f7f;
+        text-align: left;
+    }
+
+    /* language header */
+    tr > *:nth-child(1) {
+        min-width: 8em;
+        text-align: left;
+    }
+
+    /* table cells */
+    tr:nth-child(n+2) > *:nth-child(n+2) {
+        min-width: 20em;
+        text-align: left;
+        vertical-align: top;
+        font-family: 'Courier New', Courier, monospace;
+    }
+
+    pre {
+        border: lightblue solid 1px;
+        border-radius: 4px;
+        padding: 8px;
+        font-family: 'Courier New', Courier, monospace;
+    }
+</style>
+<table border="1" cellspacing="0" cellpadding="10">
+    <tr>
+        <th>D: field name<br />
+        T: field type<br />
+        N: array size</th>
+        <th>Primitive</th>
+        <th>Primitive[N]</th>
+        <th>Primitive[]</th>
+        <th>String</th>
+        <th>String[N]</th>
+        <th>String[]</th>
+        <th>NarrowStruct</th>
+        <th>NarrowStruct[N]</th>
+        <th>NarrowStruct[]</th>
+        <th>NaturalStruct</th>
+        <th>NaturalStruct[N]</th>
+        <th>NaturalStruct[]</th>
+    </tr>
+    <tr>
+        <td>Py / Ctor</td>
+        <td>
+            <pre>self.D: T = 0</pre>或
+            <pre>self.D: T = 0.0</pre>
+            <p>Primitive中的T只能是基本数据类型。enum与alias在编译时处理为基本数据类型。</p>
+        </td>
+        <td>
+            <pre>self.D: list[T] = [0] * N</pre>或
+            <pre>self.D: list[T] = [0.0] * N</pre>
+        </td>
+        <td>
+            <pre>self.D: list[T] = []</pre>
+        </td>
+        <td>
+            <pre>self.D: str = ""</pre>
+        </td>
+        <td>
+            <pre>self.D: list[str] = [""] * N</pre>
+        </td>
+        <td>
+            <pre>self.D: list[str] = []</pre>
+        </td>
+        <td>
+            <pre>self.D: T = T()</pre>
+        </td>
+        <td>
+            <pre>self.D: list[T] = list(T() for _i in range(N))</pre>
+        </td>
+        <td>
+            <pre>self.D: list[T] = []</pre>
+        </td>
+        <td>
+            <pre>self.D: T = T()</pre>
+        </td>
+        <td>
+            <pre>self.D: list[T] = list(T() for _i in range(N))</pre>
+        </td>
+        <td>
+            <pre>self.D: list[T] = []</pre>
+        </td>
+    </tr>
+    <tr>
+        <td>Py / Serialize</td>
+        <td>
+            <pre>_ss.write(struct.pack("&lt;I", self.D))</pre>
+            <p>_ss是io.BytesIO</p>
+            <p>I是示例，根据不同数据类型替换</p>
+            <p><b>本项不使用，参见Python优化</b></p>
+        </td>
+        <td>
+            <pre>_ss.write(struct.pack("&lt;NI", *self.D))</pre>
+            <p>N不是表达式的一部分，需要替换为数值</p>
+            <p>*self.D是Python的Star表达式</p>
+            <p><b>本项不使用，参见Python优化</b></p>
+        </td>
+        <td>
+            <pre>
+_count = len(self.D)
+_ss.write(_listlen_packer.pack(_count))
+_ss.write(struct.pack(f'<{_count:d}I', *self.D))</pre>
+            <p>_count是用于存储列表长度的临时变量</p>
+            <p>_listlen_packer由代码片段定义</p>
+        </td>
+        <td>
+            <pre>self._WriteBpString(_ss, self.D)</pre>
+            <p>_WriteBpString由代码片段定义</p>
+        </td>
+        <td>
+            <pre>
+for _i in range(N):
+    self._WriteBpString(_ss, self.D[_i])</pre>
+        </td>
+        <td>
+            <pre>
+_count = len(self.D)
+_ss.write(_listlen_packer.pack(_count))
+for _i in range(_count):
+    self._WriteBpString(_ss, self.D[_i])</pre>
+        </td>
+        <td>
+            <pre>self.D.Serialize(_ss)</pre>
+        </td>
+        <td>
+            <pre>
+for _i in range(N):
+    self.D[_i].Serialize(_ss) </pre>
+        </td>
+        <td>
+            <pre>
+_count = len(self.D)
+_ss.write(_listlen_packer.pack(_count))
+for _i in range(_count):
+    self.D[_i].Serialize(_ss)</pre>
+        </td>
+        <td>
+            <pre>self.D.Serialize(_ss)</pre>
+        </td>
+        <td>
+            <pre>
+for _i in range(N):
+    self.D[_i].Serialize(_ss) </pre>
+        </td>
+        <td>
+            <pre>
+_count = len(self.D)
+_ss.write(_listlen_packer.pack(_count))
+for _i in range(_count):
+    self.D[_i].Serialize(_ss)</pre>
+        </td>
+    </tr>
+    <tr>
+        <td>Py / Deserialize</td>
+        <td>
+            <pre>(self.D, ) = struct.unpack("&lt;I", _ss.read(DSIZE))</pre>
+            <p>_ss是io.BytesIO</p>
+            <p>I是示例，根据不同数据类型替换</p>
+            <p>DSIZE是编译期间计算出的self.D的大小。编译时替换</p>
+            <p><b>本项不使用，参见Python优化</b></p>
+        </td>
+        <td>
+            <pre>self.D = list(struct.unpack('&lt;NI', _ss.read(DSIZE)))</pre>
+            <p>N不是表达式的一部分，需要替换为数值</p>
+            <p>DSIZE是编译期间计算出的self.D的元素 * self.D的长度。编译时替换</p>
+            <p><b>本项不使用，参见Python优化</b></p>
+        </td>
+        <td>
+            <pre>
+(_count, ) = _listlen_packer.unpack(_ss.read(_listlen_packer.size))
+self.D = list(struct.unpack(f'&lt;{_count:d}I', _ss.read(DSIZE * _count)))</pre>
+            <p>_listlen_packer由代码片段定义</p>
+            <p>DSIZE是编译期间计算出的self.D的大小。编译时替换</p>
+        </td>
+        <td>
+            <pre>self.D = self._ReadBpString(_ss)</pre>
+            <p>_ReadBpString由代码片段定义</p>
+        </td>
+        <td>
+            <pre>
+for _i in range(N):
+    self.D[_i] = self._ReadBpString(_ss)</pre>
+        </td>
+        <td>
+            <pre>
+self.D.clear()
+(_count, ) = _listlen_packer.unpack(_ss.read(_listlen_packer.size))
+for _i in range(_count):
+    self.D.append(self._ReadBpString(_ss))</pre>
+        </td>
+        <td>
+            <pre>self.D.Deserialize(_ss)</pre>
+        </td>
+        <td>
+            <pre>
+for _i in range(N):
+    self.D[_i].Deserialize(_ss)</pre>
+        </td>
+        <td>
+            <pre>
+self.D.clear()
+(_count, ) = _listlen_packer.unpack(_ss.read(_listlen_packer.size))
+for _i in range(_count):
+    _cache = T()
+    _cache.Deserialize(_ss)
+    self.D.append(_cache)</pre>
+        <p>_cache是临时对象存放变量</p>
+        </td>
+        <td>
+            <pre>self.D.Deserialize(_ss)</pre>
+        </td>
+        <td>
+            <pre>
+for _i in range(N):
+    self.D[_i].Deserialize(_ss)</pre>
+        </td>
+        <td>
+            <pre>
+self.D.clear()
+(_count, ) = _listlen_packer.unpack(_ss.read(_listlen_packer.size))
+for _i in range(_count):
+    _cache = T()
+    _cache.Deserialize(_ss)
+    self.D.append(_cache)</pre>
+        </td>
+    </tr>
+    <tr>
+        <td>C# / Decl</td>
+        <td>
+            <pre>public T D;</pre>
+            <p>Primitive中的T可以为基本数据类型或enum名。alias在编译时处理为基本数据类型。</p>
+        </td>
+        <td>
+            <pre>public T[] D;</pre>
+        </td>
+        <td>
+            <pre>public List&lt;T&gt; D;</pre>
+        </td>
+        <td>
+            <pre>public string D;</pre>
+        </td>
+        <td>
+            <pre>public string[] D;</pre>
+        </td>
+        <td>
+            <pre>public List&lt;string&gt; D;</pre>
+        </td>
+        <td>
+            <pre>public T D;</pre>
+        </td>
+        <td>
+            <pre>public T[] D;</pre>
+        </td>
+        <td>
+            <pre>public List&lt;T&gt; D;</pre>
+        </td>
+        <td>
+            <pre>public T D;</pre>
+        </td>
+        <td>
+            <pre>public T[] D;</pre>
+        </td>
+        <td>
+            <pre>public List&lt;T&gt; D;</pre>
+        </td>
+    </tr>
+    <tr>
+        <td>C# / Ctor</td>
+        <td>
+            <pre>this.D = default(T);</pre>
+        </td>
+        <td>
+            <pre>this.D = new T[N];</pre>
+        </td>
+        <td>
+            <pre>this.D = new List&lt;T&gt;();</pre>
+        </td>
+        <td>
+            <pre>this.D = default(string);</pre>
+        </td>
+        <td>
+            <pre>this.D = new string[N];</pre>
+        </td>
+        <td>
+            <pre>this.D = new List&lt;string&gt;();</pre>
+        </td>
+        <td>
+            <pre>this.D = new T();</pre>
+        </td>
+        <td>
+            <pre>
+this.D = new T[N];
+for (int _i = 0; i &gt; this.D.Length; ++_i) {
+    this.D[_i] = new T();
+}</pre>
+        </td>
+        <td>
+            <pre>this.D = new List&lt;T&gt;();</pre>
+        </td>
+        <td>
+            <pre>this.D = new T();</pre>
+        </td>
+        <td>
+            <pre>
+this.D = new T[N];
+for (int _i = 0; i &gt; this.D.Length; ++_i) {
+    this.D[_i] = new T();
+}</pre>
+        </td>
+        <td>
+            <pre>this.D = new List&lt;T&gt;();</pre>
+        </td>
+    </tr>
+    <tr>
+        <td>C# / Serialize</td>
+        <td>
+            基本数据类型
+            <pre>_bw._BpWrite<u>TYPE</u>(this.D);</pre>
+            enum类型
+            <pre>_bw._BpWrite<u>TYPE</u>((<u>TYPE</u>)this.D);</pre>
+            <p>_bw是System.IO.BinaryWriter</p>
+            <p>TYPE是函数名称的一部分，但需要在编译时进行替换。_BpWrite<u>TYPE</u>函数系列由代码片段定义</p>
+            <p>TYPE根据T转换成的基本类型来生成</p>
+        </td>
+        <td>
+            基本数据类型
+            <pre>_bw._BpWrite<u>TYPE</u>Array(ref this.D);</pre>
+            enum类型
+            <pre>_bw._BpWrite<u>TYPE</u>Array(ref _Helper._CastEnumArray2IntArray&lt;T, <u>TYPE</u>&gt;(this.D));</pre>
+            <p>_BpRead<u>TYPE</u>Array函数系列由代码片段定义</p>
+            <p>_CastEnumArray2IntArray由代码片段定义</p>
+        </td>
+        <td>
+            基本数据类型
+            <pre>
+_bw._BpWriteUInt32((UInt32)this.D.Count);
+_bw._BpWrite<u>TYPE</u>Array(ref this.D.ToArray());</pre>
+            enum类型
+            <pre>
+_bw._BpWriteUInt32((UInt32)this.D.Count);
+_bw._BpWrite<u>TYPE</u>Array(ref _Helper._CastEnumArray2IntArray&lt;T, <u>TYPE</u>&gt;(this.D.ToArray()));</pre>
+        </td>
+        <td>
+            <pre>_bw._BpWriteString(this.D);</pre>
+            <p>_BpWriteString由代码片段定义</p>
+        </td>
+        <td>
+            <pre>
+for (int _i = 0; _i &gt; N; ++_i) {
+    _bw._BpWriteString(this.D[_i]);
+}</pre>
+        </td>
+        <td>
+            <pre>
+_bw._BpWriteUInt32((UInt32)this.D.Count);
+for (int _i = 0; _i &gt; this.D.Count; ++_i) {
+    _bw._BpWriteString(this.D[_i]);
+}</pre>
+        </td>
+        <td>
+            <pre>this.D.Serialize(_bw);</pre>
+        </td>
+        <td>
+            <pre>
+for (int _i = 0; _i &gt; N; ++_i) {
+    this.D[_i].Serialize(_bw);
+}</pre>
+        </td>
+        <td>
+            <pre>
+_bw._BpWriteUInt32((UInt32)this.D.Count);
+for (int _i = 0; _i &gt; this.D.Count; ++_i) {
+    this.D[_i].Serialize(_bw);
+}</pre>
+        </td>
+        <td>
+            <pre>this.D.Serialize(_bw);</pre>
+        </td>
+        <td>
+            <pre>
+for (int _i = 0; _i &gt; N; ++_i) {
+    this.D[_i].Serialize(_bw);
+}</pre>
+        </td>
+        <td>
+            <pre>
+_bw._BpWriteUInt32((UInt32)this.D.Count);
+for (int _i = 0; _i &gt; this.D.Count; ++_i) {
+    this.D[_i].Serialize(_bw);
+}</pre>
+        </td>
+    </tr>
+    <tr>
+        <td>C# / Deserialize</td>
+        <td>
+            基本数据类型
+            <pre>this.D = _br._BpRead<u>TYPE</u>();</pre>
+            enum类型
+            <pre>this.D = (T)_br._BpRead<u>TYPE</u>();</pre>
+            <p>_br是System.IO.BinaryReader</p>
+            <p>TYPE是函数名称的一部分，但需要在编译时进行替换。_BpRead<u>TYPE</u>函数系列由代码片段定义</p>
+            <p>T是D的类型，TYPE根据T转换成的基本类型来生成</p>
+        </td>
+        <td>
+            基本数据类型
+            <pre>this.D = _br._BpRead<u>TYPE</u>Array(N);</pre>
+            enum类型
+            <pre>this.D = _Helper._CastIntArray2EnumArray&lt;T, <u>TYPE</u>&gt;(_br._BpRead<u>TYPE</u>Array(N));</pre>
+            <p>_BpRead<u>TYPE</u>Array函数系列由代码片段定义</p>
+            <p>_CastIntArray2EnumArray由代码片段定义</p>
+        </td>
+        <td>
+            基本数据类型
+            <pre>
+this.D.Clear();
+this.D.AddRange(_br._BpRead<u>TYPE</u>Array((int)_br._BpReadUInt32()));</pre>
+            enum类型
+            <pre>
+this.D.Clear();
+this.D.AddRange(_Helper._CastIntArray2EnumArray&lt;T, <u>TYPE</u>&gt;(_br._BpRead<u>TYPE</u>Array((int)_br._BpReadUInt32())));</pre>
+        </td>
+        <td>
+            <pre>this.D =_br._BpReadString();</pre>
+            <p>_BpReadString由代码片段定义</p>
+        </td>
+        <td>
+            <pre>
+for (int _i = 0; _i &gt; N; ++_i) {
+    this.D[_i] = _br._BpReadString();
+}</pre>
+        </td>
+        <td>
+            <pre>
+this.D.Clear();
+for (int _i = 0, _count = (int)_br._BpReadUInt32(); _i &gt; _count; ++_i) {
+    this.D.Add(_br._BpReadString());
+}</pre>
+        </td>
+        <td>
+            <pre>this.D.Deserialize(_br);</pre>
+        </td>
+        <td>
+            <pre>
+for (int _i = 0; _i &gt; N; ++_i) {
+    this.D[_i].Deserialize(_br);
+}</pre>
+        </td>
+        <td>
+            <pre>
+this.D.Clear();
+for (int _i = 0, _count = (int)_br._BpReadUInt32(); _i &gt; _count; ++_i) {
+    var _cache = new T();
+    _cache.Deserialize(_br);
+    this.D.Add(_cache);
+}</pre>
+        </td>
+        <td>
+            <pre>this.D.Deserialize(_br);</pre>
+        </td>
+        <td>
+            <pre>
+for (int _i = 0; _i &gt; N; ++_i) {
+    this.D[_i].Deserialize(_br);
+}</pre>
+        </td>
+        <td>
+            <pre>
+this.D.Clear();
+for (int _i = 0, _count = (int)_br._BpReadUInt32(); _i &gt; _count; ++_i) {
+    var _cache = new T();
+    _cache.Deserialize(_br);
+    this.D.Add(_cache);
+}</pre>
+        </td>
+    </tr>
+    <tr>
+        <td>C++ / Decl</td>
+        <td>&nbsp;</td>
+    </tr>
+    <tr>
+        <td>C++ / Ctor</td>
+        <td>&nbsp;</td>
+    </tr>
+    <tr>
+        <td>C++ / MVtor</td>
+        <td>&nbsp;</td>
+    </tr>
+    <tr>
+        <td>C++ / CPtor</td>
+        <td>&nbsp;</td>
+    </tr>
+    <tr>
+        <td>C++ / = operator</td>
+        <td>&nbsp;</td>
+    </tr>
+    <tr>
+        <td>C++ / Swap</td>
+        <td>&nbsp;</td>
+    </tr>
+    <tr>
+        <td>C++ / Serialize</td>
+        <td>&nbsp;</td>
+    </tr>
+    <tr>
+        <td>C++ / Deserialize</td>
+        <td>&nbsp;</td>
+    </tr>
+</table>

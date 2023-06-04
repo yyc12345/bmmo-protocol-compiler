@@ -27,7 +27,8 @@ static void write_enum(FILE* fs, BPCSMTV_ENUM* smtv_enum, BPCGEN_INDENT_TYPE ind
 		BPCSMTV_ENUM_MEMBER* data = (BPCSMTV_ENUM_MEMBER*)cursor->data;
 
 		BPCGEN_INDENT_PRINT;
-		bpcgen_print_enum_member(fs, data);
+		fprintf(fs, "%s = ", data->enum_member_name);
+		bpcgen_print_enum_member_value(fs, data);
 
 		if (cursor->next != NULL) {
 			fputc(',', fs);

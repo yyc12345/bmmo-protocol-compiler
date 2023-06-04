@@ -381,6 +381,12 @@ narrow reliable msg sound_data_msg {
 }
 
 // i don't know what this fucking message do.
-narrow reliable msg public_warning_msg {
+enum uint8 public_notification_type {
+    Info,
+    Warning,
+    Error
+}
+narrow reliable msg public_notification_msg {
+    public_notification_type notice_type;
     string text_content;
 }

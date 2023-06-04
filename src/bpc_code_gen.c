@@ -220,11 +220,11 @@ void bpcgen_destructor_msg_list(GSList* msg_ls) {
 
 #pragma region convenient functions
 
-void bpcgen_print_enum_member(FILE* fs, BPCSMTV_ENUM_MEMBER* data) {
+void bpcgen_print_enum_member_value(FILE* fs, BPCSMTV_ENUM_MEMBER* data) {
 	if (data->distributed_value_is_uint) {
-		fprintf(fs, "%s = %" PRIu64, data->enum_member_name, data->distributed_value.value_uint);
+		fprintf(fs, "%" PRIu64, data->distributed_value.value_uint);
 	} else {
-		fprintf(fs, "%s = %" PRIi64, data->enum_member_name, data->distributed_value.value_int);
+		fprintf(fs, "%" PRIi64, data->distributed_value.value_int);
 	}
 }
 

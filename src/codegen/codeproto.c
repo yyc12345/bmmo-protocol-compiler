@@ -56,7 +56,8 @@ static void write_enum(FILE* fs, BPCSMTV_ENUM* smtv_enum) {
 
 		// print node
 		BPCGEN_INDENT_PRINT;
-		bpcgen_print_enum_member(fs, data);
+		fprintf(fs, "%s = ", data->enum_member_name);
+		bpcgen_print_enum_member_value(fs, data);
 		fputc(';', fs);
 	}
 	// enum is over

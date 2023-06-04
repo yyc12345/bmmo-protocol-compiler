@@ -26,7 +26,8 @@ static void write_enum(FILE* fs, BPCSMTV_ENUM* smtv_enum, BPCGEN_INDENT_TYPE ind
 		BPCSMTV_ENUM_MEMBER* data = (BPCSMTV_ENUM_MEMBER*)cursor->data;
 
 		BPCGEN_INDENT_PRINT;
-		bpcgen_print_enum_member(fs, data);
+		fprintf(fs, "%s = ", data->enum_member_name);
+		bpcgen_print_enum_member_value(fs, data);
 
 		if (cursor->next != NULL) {
 			fputc(',', fs);
@@ -152,7 +153,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 
 					// loop to init each item.
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "for (int _i = 0; i < this.%s.Length; ++i) {", vardata->variable_name); BPCGEN_INDENT_INC;
+					fprintf(fs, "for (int _i = 0; i < this.%s.Length; ++_i) {", vardata->variable_name); BPCGEN_INDENT_INC;
 					BPCGEN_INDENT_PRINT;
 					fprintf(fs, "this.%s[_i] = new %s();", vardata->variable_name, vardata->variable_type->type_data.custom_type);
 					BPCGEN_INDENT_DEC;
@@ -343,7 +344,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 					BPCGEN_INDENT_PRINT;
 					fprintf(fs, "var _cache = new %s();", vardata->variable_type->type_data.custom_type);
 					BPCGEN_INDENT_PRINT;
-					fputs("cache.Deserialize(_br);", fs);
+					fputs("_cache.Deserialize(_br);", fs);
 					BPCGEN_INDENT_PRINT;
 					fprintf(fs, "this.%s.Add(_cache);", vardata->variable_name);
 					BPCGEN_INDENT_DEC;
@@ -355,7 +356,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 				default:
 					g_assert_not_reached();
 			}
-
+			
 			// align data
 			if (vardata->variable_align->use_align) {
 				BPCGEN_INDENT_PRINT;

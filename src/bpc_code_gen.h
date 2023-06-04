@@ -94,7 +94,7 @@ void bpcgen_destructor_msg_list(GSList* msg_ls);
 /// </summary>
 /// <param name="fs"></param>
 /// <param name="data"></param>
-void bpcgen_print_enum_member(FILE* fs, BPCSMTV_ENUM_MEMBER* data);
+void bpcgen_print_enum_member_value(FILE* fs, BPCSMTV_ENUM_MEMBER* data);
 /// <summary>
 /// print a joined GPtrArray string to file
 /// </summary>
