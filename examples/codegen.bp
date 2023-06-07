@@ -18,6 +18,18 @@ natural struct struct_natural {
     uint32 data;
 }
 
+reliable natural msg codegen_test_align {
+    uint8 single_small_primitive1;
+    uint32 single_big_primitive1;
+    uint8[3] static_small_primitive1;
+    uint32[3] static_big_primitive1;
+    
+    struct_empty_natural single_small_primitive2;
+    struct_natural single_big_primitive2;
+    struct_empty_natural[3] static_small_primitive2;
+    enum_primitive[3] static_big_primitive2;
+}
+
 reliable natural msg codegen_test_natural {
     uint32 single_primitive;
     uint32[3] static_primitive;

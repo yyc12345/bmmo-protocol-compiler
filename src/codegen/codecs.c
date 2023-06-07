@@ -197,15 +197,6 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 	uint32_t preset_struct_index = UINT32_C(0);
 	BPCGEN_INDENT_PRINT;
 	fputs("public override void Deserialize(BinaryReader _br) {", fs); BPCGEN_INDENT_INC;
-	if (is_msg) {
-		BPCGEN_INDENT_PRINT;
-		fprintf(fs, "if (_br._BpReadOpCode() != _OpCode.%s) {", struct_like_name); BPCGEN_INDENT_INC;
-		BPCGEN_INDENT_PRINT;
-		fputs("throw new Exception(\"Invalid OpCode!\");", fs);
-		BPCGEN_INDENT_DEC;
-		BPCGEN_INDENT_PRINT;
-		fputc('}', fs);
-	}
 	for (cursor = bond_vars; cursor != NULL; cursor = cursor->next) {
 		BOND_VARS* data = (BOND_VARS*)cursor->data;
 
@@ -373,10 +364,6 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 	preset_struct_index = UINT32_C(0);
 	BPCGEN_INDENT_PRINT;
 	fputs("public override void Serialize(BinaryWriter _bw) {", fs); BPCGEN_INDENT_INC;
-	if (is_msg) {
-		BPCGEN_INDENT_PRINT;
-		fprintf(fs, "_bw._BpWriteOpCode(_OpCode.%s);", struct_like_name);
-	}
 	for (cursor = bond_vars; cursor != NULL; cursor = cursor->next) {
 		BOND_VARS* data = (BOND_VARS*)cursor->data;
 

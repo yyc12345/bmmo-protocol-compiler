@@ -69,6 +69,13 @@ Narrow Message use following steps to accelerate RW speed. Some language may ign
 0. For the tuple or list of primitive type, read them together and convert them in a single conversion.
 0. Process single or array non-primitive type normally.
 
+## Name Conflict Principle
+
+The template of generated code may occupy some names to define something. Obviously the generated code can not work if you name your msg name or class member to these names. There is the principle instructing how we occupy the names.
+
+All objects used internally will add underline (`_`) prefix to prevent name conflict. For example, _ss, the name of intermediate stream. The reason why we add underline prefix is that the name start with underline is not allowed in BP file.  
+All objects exported for user should keep its original name. For example, BpMessage and BpStruct, the prototype of msg and struct.
+
 ## Python
 
 ### Read Message
@@ -78,10 +85,11 @@ ss = io.BytesIO()
 ss.write(blabla)
 ss.seek(io.SEEK_SET, 0)
 
-your_data = _UniformDeserialize(ss)
+your_data = UniformDeserialize(ss)
 if your_data is None:
 	raise Exception("Invalid OpCode.")
 
+ss.seek(io.SEEK_SET, 0)
 ss.truncate(0)
 ```
 
@@ -89,7 +97,7 @@ ss.truncate(0)
 0. Write binary data into buffer from other sources, such as file or network stream.
 0. Then we need reset cursor to the head of buffer for the convenience of following deserialization.
 0. Call uniform deserialization function to try parsing data.
-    * Return an instance of the class inheriting `_BpMessage` when successfully parsing.
+    * Return an instance of the class inheriting `BpMessage` when successfully parsing.
     * Return `None` when parser do not understand this binary sequence.
     * Throw exception when something went wrong when parsing message.
 0. Clear buffer for following using. It is highly recommended even if you just want to use this buffer only once.
@@ -103,10 +111,14 @@ your_data = ExampleMessage()
 your_data.essential = 114514
 your_data.essential_list[0] = "test"
 
-your_data.serialize(ss)
-your_sender(ss.getvalue())
-ss.truncate(0)
+your_data.Serialize(ss)
 
+your_reliable_setter(your_data.IsReliable())
+your_opcode_setter(your_data.GetOpCode())
+your_sender(ss.getvalue())
+
+ss.seek(io.SEEK_SET, 0)
+ss.truncate(0)
 ```
 
 0. Create a buffer like deserialization.

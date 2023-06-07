@@ -393,15 +393,6 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 	// real deserializer
 	BPCGEN_INDENT_PRINT;
 	fprintf(fs, "bool %s::_InnerDeserialize(_InternalDataType* _p, std::stringstream* _ss) {", struct_like_name); BPCGEN_INDENT_INC;
-	// msg specific stmt
-	if (is_msg) {
-		BPCGEN_INDENT_PRINT;
-		fputs("_OpCode _opcode_checker;", fs);
-		BPCGEN_INDENT_PRINT;
-		fputs("_Helper::ReadOpCode(_ss, &_opcode_checker);", fs);
-		BPCGEN_INDENT_PRINT;
-		fprintf(fs, "if (_opcode_checker != _OpCode::%s) return false;", struct_like_name);
-	}
 	// may be used variables
 	BPCGEN_INDENT_PRINT;
 	fputs("uint32_t _count;", fs);
@@ -539,11 +530,6 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 	// real serializer
 	BPCGEN_INDENT_PRINT;
 	fprintf(fs, "bool %s::_InnerSerialize(_InternalDataType* _p, std::stringstream* _ss) {", struct_like_name); BPCGEN_INDENT_INC;
-	// msg specific stmt
-	if (is_msg) {
-		BPCGEN_INDENT_PRINT;
-		fprintf(fs, "_Helper::WriteOpCode(_ss, _OpCode::%s);", struct_like_name);
-	}
 	// may be used variables
 	BPCGEN_INDENT_PRINT;
 	fputs("uint32_t _count;", fs);

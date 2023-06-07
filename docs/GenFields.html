@@ -54,45 +54,84 @@
         <th>NaturalStruct[]</th>
     </tr>
     <tr>
+        <td>Py / Decl</td>
+        <td>
+            <pre>D: T</pre>
+            <p>Primitive中的T只能是基本数据类型。enum与alias在编译时替换为其对应的基本数据类型。</p>
+        </td>
+        <td>
+            <pre>D: list[T]</pre>
+        </td>
+        <td>
+            <pre>D: list[T]</pre>
+        </td>
+        <td>
+            <pre>D: str</pre>
+        </td>
+        <td>
+            <pre>D: list[str]</pre>
+        </td>
+        <td>
+            <pre>D: list[str]</pre>
+        </td>
+        <td>
+            <pre>D: T</pre>
+        </td>
+        <td>
+            <pre>D: list[T]</pre>
+        </td>
+        <td>
+            <pre>D: list[T]</pre>
+        </td>
+        <td>
+            <pre>D: T</pre>
+        </td>
+        <td>
+            <pre>D: list[T]</pre>
+        </td>
+        <td>
+            <pre>D: list[T]</pre>
+        </td>
+    </tr>
+    <tr>
         <td>Py / Ctor</td>
         <td>
-            <pre>self.D: T = 0</pre>或
-            <pre>self.D: T = 0.0</pre>
-            <p>Primitive中的T只能是基本数据类型。enum与alias在编译时处理为基本数据类型。</p>
+            <pre>self.D = 0</pre>或
+            <pre>self.D = 0.0</pre>
         </td>
         <td>
-            <pre>self.D: list[T] = [0] * N</pre>或
-            <pre>self.D: list[T] = [0.0] * N</pre>
+            <pre>self.D = [0] * N</pre>或
+            <pre>self.D = [0.0] * N</pre>
         </td>
         <td>
-            <pre>self.D: list[T] = []</pre>
+            <pre>self.D = []</pre>
         </td>
         <td>
-            <pre>self.D: str = ""</pre>
+            <pre>self.D = ""</pre>
         </td>
         <td>
-            <pre>self.D: list[str] = [""] * N</pre>
+            <pre>self.D = [""] * N</pre>
         </td>
         <td>
-            <pre>self.D: list[str] = []</pre>
+            <pre>self.D = []</pre>
         </td>
         <td>
-            <pre>self.D: T = T()</pre>
+            <pre>self.D = T()</pre>
         </td>
         <td>
-            <pre>self.D: list[T] = list(T() for _i in range(N))</pre>
+            <pre>self.D = list(T() for _i in range(N))</pre>
         </td>
         <td>
-            <pre>self.D: list[T] = []</pre>
+            <pre>self.D = []</pre>
         </td>
         <td>
-            <pre>self.D: T = T()</pre>
+            <pre>self.D = T()</pre>
         </td>
         <td>
-            <pre>self.D: list[T] = list(T() for _i in range(N))</pre>
+            <pre>self.D = list(T() for _i in range(N))</pre>
         </td>
         <td>
-            <pre>self.D: list[T] = []</pre>
+            <pre>self.D = []</pre>
         </td>
     </tr>
     <tr>
@@ -100,13 +139,13 @@
         <td>
             <pre>_ss.write(struct.pack("&lt;I", self.D))</pre>
             <p>_ss是io.BytesIO</p>
-            <p>I是示例，根据不同数据类型替换</p>
+            <p>I是示例，在编译期间根据self.D的类型替换</p>
             <p><b>本项不使用，参见Python优化</b></p>
         </td>
         <td>
             <pre>_ss.write(struct.pack("&lt;NI", *self.D))</pre>
-            <p>N不是表达式的一部分，需要替换为数值</p>
-            <p>*self.D是Python的Star表达式</p>
+            <p>I是示例，在编译期间根据self.D的元素的类型替换</p>
+            <p>字符串中的N需要在编译时替换为数值</p>
             <p><b>本项不使用，参见Python优化</b></p>
         </td>
         <td>
@@ -169,22 +208,24 @@ for _i in range(_count):
         <td>
             <pre>(self.D, ) = struct.unpack("&lt;I", _ss.read(DSIZE))</pre>
             <p>_ss是io.BytesIO</p>
-            <p>I是示例，根据不同数据类型替换</p>
-            <p>DSIZE是编译期间计算出的self.D的大小。编译时替换</p>
+            <p>I是示例，在编译期间根据self.D的类型替换</p>
+            <p>DSIZE在编译期间替换为self.D的大小。</p>
             <p><b>本项不使用，参见Python优化</b></p>
         </td>
         <td>
             <pre>self.D = list(struct.unpack('&lt;NI', _ss.read(DSIZE)))</pre>
-            <p>N不是表达式的一部分，需要替换为数值</p>
-            <p>DSIZE是编译期间计算出的self.D的元素 * self.D的长度。编译时替换</p>
+            <p>I是示例，在编译期间根据self.D的元素的类型替换</p>
+            <p>字符串中的N需要在编译时替换为数值</p>
+            <p>DSIZE在编译期间替换为self.D的元素的大小 * self.D的长度。</p>
             <p><b>本项不使用，参见Python优化</b></p>
         </td>
         <td>
             <pre>
 (_count, ) = _listlen_packer.unpack(_ss.read(_listlen_packer.size))
 self.D = list(struct.unpack(f'&lt;{_count:d}I', _ss.read(DSIZE * _count)))</pre>
+            <p>_count是用于存储列表长度的临时变量</p>
             <p>_listlen_packer由代码片段定义</p>
-            <p>DSIZE是编译期间计算出的self.D的大小。编译时替换</p>
+            <p>DSIZE在编译期间替换为self.D的大小。</p>
         </td>
         <td>
             <pre>self.D = self._ReadBpString(_ss)</pre>
@@ -218,7 +259,7 @@ for _i in range(_count):
     _cache = T()
     _cache.Deserialize(_ss)
     self.D.append(_cache)</pre>
-        <p>_cache是临时对象存放变量</p>
+        <p>_cache是临时变量</p>
         </td>
         <td>
             <pre>self.D.Deserialize(_ss)</pre>
@@ -467,6 +508,7 @@ for (int _i = 0, _count = (int)_br._BpReadUInt32(); _i &gt; _count; ++_i) {
     _cache.Deserialize(_br);
     this.D.Add(_cache);
 }</pre>
+            <p>_cache是临时变量</p>
         </td>
         <td>
             <pre>this.D.Deserialize(_br);</pre>
