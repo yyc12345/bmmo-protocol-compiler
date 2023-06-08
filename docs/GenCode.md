@@ -16,30 +16,31 @@ Following table introduce the data type conversion used by Bp Compiler.
 
 ### Basic Type
 
-|Bp|Python|C\#|C++|Proto|
-|:---|:---|:---|:---|:---|
-||||||
-||||||
-||||||
-||||||
-||||||
-||||||
-||||||
-||||||
-|string|str|string|std::string||
-
+|Bp		|Python	|C\#	|C++			|Proto	|
+|:---	|:---	|:---	|:---			|:---	|
+|float	|float	|float	|float			|float	|
+|double	|float	|double	|double			|double	|
+|int8	|int	|sbyte	|int8_t			|int32	|
+|int16	|int	|short	|int16_t		|int32	|
+|int32	|int	|int	|int32_t		|int32	|
+|int64	|int	|long	|int64_t		|int64	|
+|uint8	|int	|byte	|uint8_t		|uint32	|
+|uint16	|int	|ushort	|uint16_t		|uint32	|
+|uint32	|int	|uint	|uint32_t		|uint32	|
+|uint64	|int	|ulong	|uint64_t		|uint64	|
+|string	|str	|string	|std::string	|string	|
 
 ## Container
 
-|Bp|Python|C\#|C++|Proto|
-|:---|:---|:---|:---|:---|
-|tuple|list<T>|T[]|T[]||
-|list|list<T>|List<T>|std::vector<T>||
+|Bp		|Python		|C\#									|C++				|Proto		|
+|:---	|:---		|:---									|:---				|:---		|
+|tuple	|list[T]	|T[]									|T[]				|repeated	|
+|list	|list[T]	|System.Collections.Generic.List\<T\>	|std::vector\<T\>	|repeated	|
 
 Tips:
 
 * Python do not have compulsory type system, so I use Python type hints system instead.
-* Python use `list<T>` for the static and dynamic array of Bp file just due to `tuple<T>` do not support assigning value one by one.
+* Python use `list[T]` for the static and dynamic array of Bp file just due to `tuple[T]` do not support assigning value one by one.
 * String type need special treatment in almost languages although it is grouped as basic type. For convenience, we name the collection of all basic types without string as a new name, primitive type.
 * At the opposite, we call string type and struct type as non-primitive type.
 * Enum also can be seen as primitive type because its inheriting type is primitive type.
@@ -71,9 +72,9 @@ Narrow Message use following steps to accelerate RW speed. Some language may ign
 
 ## Name Conflict Principle
 
-The template of generated code may occupy some names to define something. Obviously the generated code can not work if you name your msg name or class member to these names. There is the principle instructing how we occupy the names.
+The templates of generated code may occupy some names to define something. Obviously the generated code can not work if you name your msg or class member to these names. There is the principle instructing how we occupy these names.
 
-All objects used internally will add underline (`_`) prefix to prevent name conflict. For example, _ss, the name of intermediate stream. The reason why we add underline prefix is that the name start with underline is not allowed in BP file.  
+All objects used internally will add underline (`_`) prefix to prevent any possible name conflict. For example, _ss, the name of intermediate stream variable. The reason why we add underline prefix is that the name started with underline is not allowed in BP file.  
 All objects exported for user should keep its original name. For example, BpMessage and BpStruct, the prototype of msg and struct.
 
 ## Python
@@ -81,18 +82,21 @@ All objects exported for user should keep its original name. For example, BpMess
 ### Read Message
 
 ```python
+import YourBpModule
+
 ss = io.BytesIO()
 ss.write(blabla)
 ss.seek(io.SEEK_SET, 0)
 
-your_data = UniformDeserialize(ss)
+your_data = YourBpModule.UniformDeserialize(ss)
 if your_data is None:
-	raise Exception("Invalid OpCode.")
+    raise Exception("Invalid OpCode.")
 
 ss.seek(io.SEEK_SET, 0)
 ss.truncate(0)
 ```
 
+0. Import the generated Python module first.
 0. Create an `io.BytesIO` as an intermediate buffer. This buffer can be recycled as much as you want. So it also can be defined in global or class scope.
 0. Write binary data into buffer from other sources, such as file or network stream.
 0. Then we need reset cursor to the head of buffer for the convenience of following deserialization.
@@ -105,29 +109,33 @@ ss.truncate(0)
 ### Write Message
 
 ```python
+import YourBpModule
+
 ss = io.BytesIO()
 
-your_data = ExampleMessage()
+your_data = YourBpModule.ExampleMessage()
 your_data.essential = 114514
 your_data.essential_list[0] = "test"
 
-your_data.Serialize(ss)
+YourBpModule.UniformSerialize(your_data, ss)
 
 your_reliable_setter(your_data.IsReliable())
 your_opcode_setter(your_data.GetOpCode())
-your_sender(ss.getvalue())
+your_data_sender(ss.getvalue())
 
 ss.seek(io.SEEK_SET, 0)
 ss.truncate(0)
 ```
 
+0. Import the generated Python module first.
 0. Create a buffer like deserialization.
 0. Create an instance of your data and fill all fields before doing serialization.
-0. Call object's serialization function.
-    * Data will be written in passed `BytesIO` when everything is OK.
+0. Call uniform serialization function.
+    * Data will be written in passed `io.BytesIO` when everything is OK.
     * Raise exception when something went wrong. It usually caused by:
         - Forget to fill some fields.
-        - Fill data with wrong type. (Python do not have compulsory type system so this error only can be found when doing parsing.parsing.
+        - Fill data with wrong type. (Python do not have compulsory type system so this error only can be found when doing parsing.)
+	* Uniform serialization function will write OpCode automatically. If you don't need it, call `your_data.Serialize(ss)` directly.
 0. Send gotten binary sequence via stream or anything you like.
 0. Clear buffer like deserialization.
 
@@ -142,7 +150,7 @@ ms.Seek(0, SeekOrigin.Begin);
 
 _BpMessage your_data = YourNameSpace._Helper.UniformDeserialize(new BinaryReader(ms, Encoding.Default, true));
 if (your_data is null)
-	throw new Exception("Invalid OpCode.");
+    throw new Exception("Invalid OpCode.");
 
 ms.SetLength(0);
 
@@ -206,23 +214,23 @@ Here is a example.
 ```cpp
 class message_a : public _BpMessage {
 public:
-	struct _InnerDataDef {
-		uint32_t data1;
-	};
-	_InnerDataDef _InnerData;
-	
-	// blabla
+    struct _InnerDataDef {
+        uint32_t data1;
+    };
+    _InnerDataDef _InnerData;
+    
+    // blabla
 };
 
 class message_b : public _BpMessage {
 public:
-	struct _InnerDataDef {
-		uint32_t data1;
-		message_a::_InnerDataDef data2;
-	};
-	_InnerDataDef _InnerData;
-	
-	// blabla
+    struct _InnerDataDef {
+        uint32_t data1;
+        message_a::_InnerDataDef data2;
+    };
+    _InnerDataDef _InnerData;
+    
+    // blabla
 };
 ```
 
@@ -239,30 +247,30 @@ Also, there is a example for your reference.
 ```cpp
 class message_a : public _BpMessage {
 public:
-	struct _InnerDataDef {
-		uint32_t data1;
-	};
-	_InnerDataDef _InnerData;
-	
-	// blabla
+    struct _InnerDataDef {
+        uint32_t data1;
+    };
+    _InnerDataDef _InnerData;
+    
+    // blabla
 };
 
 class message_b : public _BpMessage {
 public:
-	struct _InnerDataDef {
-		uint32_t data1;
-		std::string data2;
-		message_a::_InnerDataDef data3;
-		uint32_t[4] data4;
-		std::string[4] data5;
-		message_a::_InnerDataDef[4] data6;
-		std::vector<uint32_t> data7;
-		std::vector<std::string*> data8;
-		std::vector<message_a::_InnerDataDef*> data9;
-	};
-	_InnerDataDef _InnerData;
-	
-	// blabla
+    struct _InnerDataDef {
+        uint32_t data1;
+        std::string data2;
+        message_a::_InnerDataDef data3;
+        uint32_t[4] data4;
+        std::string[4] data5;
+        message_a::_InnerDataDef[4] data6;
+        std::vector<uint32_t> data7;
+        std::vector<std::string*> data8;
+        std::vector<message_a::_InnerDataDef*> data9;
+    };
+    _InnerDataDef _InnerData;
+    
+    // blabla
 };
 ```
 
@@ -305,7 +313,7 @@ buffer.write(blabla);
 
 _BpcMessage* your_data = YourNameSpace._UniformDeserialize(&buffer);
 if (your_data == NULL)
-	throw std::exception("Invalid OpCode.");
+    throw std::exception("Invalid OpCode.");
 
 buffer.str("");
 buffer.clear();
@@ -334,7 +342,7 @@ your_data->essential = 114514;
 your_data->essential_list[0] = "test";
 
 if (!your_data->Serialize(&buffer))
-	throw std::exception("Invalid Message.");
+    throw std::exception("Invalid Message.");
 
 your_sender(buffer.str(), buffer.str().size());
 

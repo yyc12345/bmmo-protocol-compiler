@@ -30,12 +30,24 @@ reliable natural msg codegen_test_align {
     enum_primitive[3] static_big_primitive2;
 }
 
+reliable narrow msg codegen_test_manual_align {
+    uint8 single_primitive1;
+    uint32 single_primitive2;
+    uint8 single_primitive3 #3;
+    uint32 single_primitive4;
+
+    string single_string1 #3;
+    string single_string2;
+}
+
 reliable natural msg codegen_test_natural {
     uint32 single_primitive;
-    uint32[3] static_primitive;
+    uint32[3] static_primitive1;
+    uint32[5] static_primitive2;
     
     struct_empty_natural single_natural;
-    struct_empty_natural[3] static_natural;
+    struct_empty_natural[3] static_natural1;
+    struct_empty_natural[5] static_natural2;
 }
 
 reliable natural msg codegen_test_natural_alternative {
