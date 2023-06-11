@@ -7,4 +7,4 @@ Next step, put `testbench.py` with `CodeGenTest.py`. Then executing `python3 tes
 At first running, script will create a folder called `TestbenchData`. And benchmark the performance of generated ython code.
 
 At the same time, this script also will write some binary files in `TestbenchData/py`. You need to try reading these binary files in other languages and order other languages output their binary files in the corresponding folder in `TestbenchData`.  
-Then, execute `python3 testbench.py -b -s` again to check the correction of binary files output by other languages.
+Then, execute `python3 testbench.py -b` again to check the correction of binary files output by other languages.

@@ -613,41 +613,40 @@ static void write_opcode_enum(FILE* fs, GSList* msg_ls) {
 
 static void write_uniform_deserialize(FILE* fs, GSList* msg_ls) {
 	GSList* cursor;
-	bool is_first = true;
 	BPCGEN_INDENT_INIT_NEW(fs);
+
+	// write all msgs tuple first
+	BPCGEN_INDENT_PRINT;
+	fputs("_all_msgs: tuple[type] = (", fs); BPCGEN_INDENT_INC;
+	for (cursor = msg_ls; cursor != NULL; cursor = cursor->next) {
+		BPCSMTV_MSG* data = (BPCSMTV_MSG*)cursor->data;
+
+		// print tuple item
+		BPCGEN_INDENT_PRINT;
+		fprintf(fs, "%s,", data->msg_name);
+	}
+	BPCGEN_INDENT_DEC;
+	BPCGEN_INDENT_PRINT;
+	fputc(')', fs);
 
 	// write uniformed deserialize func
 	BPCGEN_INDENT_PRINT;
 	fputs("def UniformDeserialize(_ss: io.BytesIO) -> BpMessage:", fs); BPCGEN_INDENT_INC;
+	// get opcode and check overflow
 	BPCGEN_INDENT_PRINT;
-	fputs("_opcode: int = _opcode_packer.unpack(_ss.read(_opcode_packer.size))[0]", fs);
+	fputs("(_opcode, ) = _opcode_packer.unpack(_ss.read(_opcode_packer.size))", fs);
 	BPCGEN_INDENT_PRINT;
-	fputs("_data: BpMessage = None", fs);
-	for (cursor = msg_ls; cursor != NULL; cursor = cursor->next) {
-		BPCSMTV_MSG* data = (BPCSMTV_MSG*)cursor->data;
-
-		BPCGEN_INDENT_PRINT;
-		// print if or elif statements
-		if (is_first) is_first = false;
-		else fputs("el", fs);
-		fprintf(fs, "if _opcode == OpCode.%s:", data->msg_name);
-
-		// write if body
-		BPCGEN_INDENT_INC;
-		BPCGEN_INDENT_PRINT;
-		fprintf(fs, "_data = %s()", data->msg_name);
-		BPCGEN_INDENT_DEC;
-	}
-	// serialize together
+	fputs("if _opcode < 0 or _opcode >= len(_all_msgs): return None", fs);
+	// start real deserialize function
 	BPCGEN_INDENT_PRINT;
-	fputs("if _data is not None:", fs);
-	BPCGEN_INDENT_INC;
+	fputs("else:", fs); BPCGEN_INDENT_INC;
+	BPCGEN_INDENT_PRINT;
+	fputs("_data = _all_msgs[_opcode]()", fs);
 	BPCGEN_INDENT_PRINT;
 	fputs("_data.Deserialize(_ss)", fs);
-	BPCGEN_INDENT_DEC;
-	// default return
 	BPCGEN_INDENT_PRINT;
 	fputs("return _data", fs);
+	BPCGEN_INDENT_DEC;	// it's over
 	// uniform func is over
 	BPCGEN_INDENT_DEC;
 

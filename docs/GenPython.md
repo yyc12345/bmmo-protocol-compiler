@@ -15,21 +15,20 @@ class OpCode(enum.IntEnum):
 
 # alias，enum，struct，msg定义在这里
 
+# 一个tuple，用于记录所有生成的msg的类型，用于快速反序列化。
+_all_msgs: tuple[type] = (
+	msg_a,
+	msg_b,
+	# 更多msg的名字将在这里继续生成
+)
 # 通用反序列化函数生成在此
 def UniformDeserialize(_ss: io.BytesIO) -> BpMessage:
-	_opcode: int = _opcode_packer.unpack(_ss.read(_opcode_packer.size))[0]
-	_data: BpMessage = None
-	if _opcode == OpCode.msg_a:
-		_data = msg_a()
-	elif _opcode == OpCode.msg_b:
-		_data = msg_b()
-	# 更多msg将以elif继续进行生成
-
-	if _data is not None:
+	(_opcode, ) = _opcode_packer.unpack(_ss.read(_opcode_packer.size))
+	if _opcode < 0 or _opcode >= len(_all_msgs): return None
+	else:
+		_data = _all_msgs[_opcode]()
 		_data.Deserialize(_ss)
-	
-	return _data
-
+		return _data
 ```
 
 `snippets/header.py`是Python代码的模板。模板定义了一些常用的格式字符串，这些格式字符串会被反复使用，因此将其独立出来定义可以减少不必要的性能开销。  

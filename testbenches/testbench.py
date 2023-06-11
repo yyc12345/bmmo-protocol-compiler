@@ -18,6 +18,14 @@ DEFAULT_LIST_LEN: int = 5
 
 BENCHMARK_TIMES: int = 100
 
+def RewindSS():
+    global SS
+    SS.seek(io.SEEK_SET, 0)
+def ClearSS():
+    global SS
+    SS.seek(io.SEEK_SET, 0)
+    SS.truncate(0)
+
 def GetStructMsgsName() -> tuple[list[str]]:
     msgs: list[str] = []
     structs: list[str] = []
@@ -121,56 +129,47 @@ def CompareInstance(typedict: dict[str, dict], clsname: str, inst1, inst2) -> bo
                 CompareInstance(typedict, vtype.__name__, instattr1, instattr2)
 
     return True
-                
-def WriteToFile(instance: BP.BpMessage, filename: str):
+
+def BenchmarkTest_PureSer(instance: BP.BpMessage):
     global SS
     instance.Serialize(SS)
-    with open(filename, 'wb') as f:
-        f.write(SS.getvalue())
-    SS.seek(io.SEEK_SET, 0)
-    SS.truncate(0)
-
-def ReadFromFile(instance: BP.BpMessage, filename: str) -> BP.BpMessage:
+    RewindSS()
+def BenchmarkTest_PureDeser(instance_t: type):
     global SS
-    with open(filename, 'rb') as f:
-        SS.write(f.read())
-    SS.seek(io.SEEK_SET, 0)
+    instance = instance_t()
     instance.Deserialize(SS)
-    SS.seek(io.SEEK_SET, 0)
-    SS.truncate(0)
-
-    return instance
-
-def BenchmarkTestSerializeEntry(instance: BP.BpMessage):
+    RewindSS()
+def BenchmarkTest_Ser(instance: BP.BpMessage):
     global SS
     BP.UniformSerialize(instance, SS)
-    SS.seek(io.SEEK_SET, 0)
-def BenchmarkTestDeserializeEntry():
+    RewindSS()
+def BenchmarkTest_Deser():
     global SS
-    _ = BP.UniformDeserialize(SS)
-    SS.seek(io.SEEK_SET, 0)
+    instance = BP.UniformDeserialize(SS)
+    RewindSS()
 def BenchmarkTest(vtypes: dict[str, dict], msgs: list[str]):
-    global SS
-
     for name in msgs:
         # create a example instance
-        instance = getattr(BP, name)()
+        instance: BP.BpMessage = getattr(BP, name)()
         AssignVariablesValue(vtypes, name, instance)
 
         # write to file
         print(f'Benchmarking {name}...')
         env: dict = {
-            'BenchmarkTestSerializeEntry': BenchmarkTestSerializeEntry,
-            'BenchmarkTestDeserializeEntry': BenchmarkTestDeserializeEntry,
-            'instance': instance
+            'BenchmarkTest_PureSer': BenchmarkTest_PureSer,
+            'BenchmarkTest_PureDeser': BenchmarkTest_PureDeser,
+            'BenchmarkTest_Ser': BenchmarkTest_Ser,
+            'BenchmarkTest_Deser': BenchmarkTest_Deser,
+            'instance': instance,
+            'instance_t': getattr(BP, name)
         }
-        ser_sec = timeit.timeit(stmt='BenchmarkTestSerializeEntry(instance)', number=BENCHMARK_TIMES, globals=env) / BENCHMARK_TIMES
-        deser_sec = timeit.timeit(stmt='BenchmarkTestDeserializeEntry()', number=BENCHMARK_TIMES, globals=env) / BENCHMARK_TIMES
-        print(f'Serialize {ser_sec * 1e6:7f} usec. Deserialize {deser_sec * 1e6:7f} usec.')
-
-        # mannually clear SS
-        SS.seek(io.SEEK_SET, 0)
-        SS.truncate(0)
+        pureser_sec = timeit.timeit(stmt='BenchmarkTest_PureSer(instance)', number=BENCHMARK_TIMES, globals=env) / BENCHMARK_TIMES
+        puredeser_sec = timeit.timeit(stmt='BenchmarkTest_PureDeser(instance_t)', number=BENCHMARK_TIMES, globals=env) / BENCHMARK_TIMES
+        ClearSS()   # manually clear
+        ser_sec = timeit.timeit(stmt='BenchmarkTest_Ser(instance)', number=BENCHMARK_TIMES, globals=env) / BENCHMARK_TIMES
+        deser_sec = timeit.timeit(stmt='BenchmarkTest_Deser()', number=BENCHMARK_TIMES, globals=env) / BENCHMARK_TIMES
+        ClearSS()   # manually clear
+        print(f'Serialize (uniform/spec) {ser_sec * 1e6:7f}/{pureser_sec * 1e6:7f} usec. Deserialize (uniform/spec) {deser_sec * 1e6:7f}/{puredeser_sec * 1e6:7f} usec.')
 
 EXPECTED_STR_DLEN = len(DEFAULT_STR.encode('utf-8', errors='ignore')) + 4
 EXPECTED_SIZE: dict[str, int] = {
@@ -188,44 +187,26 @@ EXPECTED_SIZE: dict[str, int] = {
         EXPECTED_STR_DLEN + (EXPECTED_STR_DLEN * 3) + (EXPECTED_STR_DLEN * DEFAULT_LIST_LEN + 4) + 
         4 + (4 * 3) + (4 * DEFAULT_LIST_LEN + 4),
 }
-def SizeTest(vtypes: dict[str, dict], msgs: list[str]):
+def GetFilename(ident_lang: str, ident_msg: str) -> str:
+    return os.path.join(DATA_FOLDER_NAME, ident_lang, ident_msg + '.bin')
+def LangInteractionTest(vtypes: dict[str, dict], msgs: list[str]):
     global SS
 
-    for name in msgs:
-        # check whether need size test
-        if not (name in EXPECTED_SIZE):
-            print(f'Skip {name} check.')
-            continue
-
-        # create a example instance
-        instance = getattr(BP, name)()
-        AssignVariablesValue(vtypes, name, instance)
-
-        # check size
-        print(f'Checking {name} size...')
-        instance.Serialize(SS)
-        v_got = len(SS.getvalue())
-        v_expect = EXPECTED_SIZE[name]
-        if v_expect != v_got:
-            print(f'Failed! Expect {v_expect} got {v_got}.')
-
-        # clear stream
-        SS.seek(io.SEEK_SET, 0)
-        SS.truncate(0)
-
-def LangInteractionTest(vtypes: dict[str, dict], msgs: list[str]):
+    # create a list of standard msg for comparing and writing
     standard: dict[str, BP.BpMessage] = {}
     for name in msgs:
-        # create and insert
-        instance = getattr(BP, name)()
+        # create and add
+        instance: BP.BpMessage = getattr(BP, name)()
         AssignVariablesValue(vtypes, name, instance)
         standard[name] = instance
 
         # write to file
-        filename = os.path.join(DATA_FOLDER_NAME, THIS_LANG, name + '.bin')
-        WriteToFile(instance, filename)
+        instance.Serialize(SS)
+        with open(GetFilename(THIS_LANG, name), 'wb') as f:
+            f.write(SS.getvalue())
+        ClearSS()
 
-    # re-read and check them again
+    # check the output of languages, including the output created by python previously.
     for lang in ALL_LANGS:
         if not os.path.isdir(os.path.join(DATA_FOLDER_NAME, lang)):
             print(f'Skip {lang} language test!')
@@ -233,23 +214,40 @@ def LangInteractionTest(vtypes: dict[str, dict], msgs: list[str]):
 
         print(f'Start testing {lang} language.')
         for name in msgs:
-            # read from file
-            filename = os.path.join(DATA_FOLDER_NAME, lang, name + '.bin')
+            # check file exist
+            filename = GetFilename(lang, name)
             if not os.path.isfile(filename):
                 print(f'Skip msg {name} test!')
                 continue
-            
-            newinstance = getattr(BP, name)()
-            ReadFromFile(newinstance, filename)
 
-            # compare
-            print(f'Checking {name}...')
+            # read from file
+            with open(filename, 'rb') as f:
+                binary_data = f.read()
+
+            # compare size
+            if name in EXPECTED_SIZE:
+                print(f'Checking {name} data size...')
+                v_got = len(binary_data)
+                v_expect = EXPECTED_SIZE[name]
+                if v_expect != v_got:
+                    print(f'Failed on data size check! Expect {v_expect} got {v_got}.')
+            
+            # check data correction
+            print(f'Checking {name} data correction...')
+            # created a comparable instance
+            newinstance: BP.BpMessage = getattr(BP, name)()
+            SS.write(binary_data)
+            RewindSS()
+            newinstance.Deserialize(SS)
+            ClearSS()
+            # compare with standard object
             if not CompareInstance(vtypes, name, standard[name], newinstance):
-                print('Failed!')
+                print('Failed on data correction check!')
                 print(vars(standard[name]))
                 print(vars(newinstance))
 
-def Testbench(skip_benchmark: bool, skip_size: bool, skip_langinter: bool):
+                
+def Testbench(skip_benchmark: bool, skip_langinter: bool):
     # make sure dir
     for lang in ALL_LANGS:
         os.makedirs(os.path.join(DATA_FOLDER_NAME, lang), exist_ok=True)
@@ -261,11 +259,6 @@ def Testbench(skip_benchmark: bool, skip_size: bool, skip_langinter: bool):
     if not skip_benchmark:
         print('===== Serialize & Deserialize Benchmark =====')
         BenchmarkTest(vtypes, msgs)
-
-    # check size
-    if not skip_size:
-        print('===== Data Size Check =====')
-        SizeTest(vtypes, msgs)
 
     # check lang compatibility
     if not skip_langinter:
@@ -281,8 +274,7 @@ if __name__ == '__main__':
         description = 'This script will benchmark generated code and test language interactions.'
     )
     parser.add_argument('-b', '--skip-benchmark', help = 'Skip Python benchmark.', action='store_true', dest='skip_benchmark')
-    parser.add_argument('-s', '--skip-size', help = 'Skip data size test.', action='store_true', dest='skip_size')
     parser.add_argument('-l', '--skip-langs', help = 'Skip language interaction test.', action='store_true', dest='skip_langs')
     args = parser.parse_args()
 
-    Testbench(args.skip_benchmark, args.skip_size, args.skip_langs)
+    Testbench(args.skip_benchmark, args.skip_langs)
