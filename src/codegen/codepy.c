@@ -431,7 +431,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data) {
 	if (bond_vars == NULL) {
 		// no variable, read 1 byte anyway. because sizeof(empty_struct) == 1u
 		BPCGEN_INDENT_PRINT;
-		fprintf(fs, "_ss.read(1)");
+		fputs("_ss.read(1)", fs);
 	}
 	BPCGEN_INDENT_DEC;
 

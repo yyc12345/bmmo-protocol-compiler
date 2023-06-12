@@ -52,9 +52,9 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 	// class header
 	BPCGEN_INDENT_PRINT;
 	if (is_msg) {
-		fprintf(fs, "public class %s : _BpMessage {", struct_like_name);
+		fprintf(fs, "public class %s : BpMessage {", struct_like_name);
 	} else {
-		fprintf(fs, "public class %s : _BpStruct {", struct_like_name);
+		fprintf(fs, "public class %s : BpStruct {", struct_like_name);
 	}
 	BPCGEN_INDENT_INC;
 
@@ -153,7 +153,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 
 					// loop to init each item.
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "for (int _i = 0; i < this.%s.Length; ++_i) {", vardata->variable_name); BPCGEN_INDENT_INC;
+					fprintf(fs, "for (int _i = 0; _i < this.%s.Length; ++_i) {", vardata->variable_name); BPCGEN_INDENT_INC;
 					BPCGEN_INDENT_PRINT;
 					fprintf(fs, "this.%s[_i] = new %s();", vardata->variable_name, vardata->variable_type->type_data.custom_type);
 					BPCGEN_INDENT_DEC;
@@ -190,7 +190,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 
 		// opcode
 		BPCGEN_INDENT_PRINT;
-		fprintf(fs, "public override _OpCode GetOpCode() => _OpCode.%s;", struct_like_name); BPCGEN_INDENT_INC;
+		fprintf(fs, "public override OpCode GetOpCode() => OpCode.%s;", struct_like_name); BPCGEN_INDENT_INC;
 	}
 
 	// deserialize func
@@ -238,7 +238,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 							vardata->variable_array->static_array_len);
 					} else {
 						// enum
-						fprintf(fs, "this.%s = _Helper._CastIntArray2EnumArray<%s, %s>(_br._BpRead%sArray(%" PRIu32 "));",
+						fprintf(fs, "this.%s = BPHelper._CastIntArray2EnumArray<%s, %s>(_br._BpRead%sArray(%" PRIu32 "));",
 							vardata->variable_name,
 							vardata->variable_type->semi_uncover_custom_type,
 							csharp_formal_basic_type[vardata->variable_type->full_uncover_basic_type],
@@ -260,7 +260,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 							csharp_formal_basic_type[vardata->variable_type->full_uncover_basic_type]);
 					} else {
 						// enum
-						fprintf(fs, "this.%s.AddRange(_Helper._CastIntArray2EnumArray<%s, %s>(_br._BpRead%sArray((int)_br._BpReadUInt32())));",
+						fprintf(fs, "this.%s.AddRange(BPHelper._CastIntArray2EnumArray<%s, %s>(_br._BpRead%sArray((int)_br._BpReadUInt32())));",
 							vardata->variable_name,
 							vardata->variable_type->semi_uncover_custom_type,
 							csharp_formal_basic_type[vardata->variable_type->full_uncover_basic_type],
@@ -351,9 +351,14 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 			// align data
 			if (vardata->variable_align->use_align) {
 				BPCGEN_INDENT_PRINT;
-				fprintf(fs, "br.BaseStream.Seek(%" PRIu32 ", SeekOrigin.Current);", vardata->variable_align->padding_size);
+				fprintf(fs, "_br.BaseStream.Seek(%" PRIu32 ", SeekOrigin.Current);", vardata->variable_align->padding_size);
 			}
 		}
+	}
+	if (bond_vars == NULL) {
+		// no variable, skip 1 byte anyway. because sizeof(empty_struct) == 1u
+		BPCGEN_INDENT_PRINT;
+		fputs("_br.BaseStream.Seek(1, SeekOrigin.Current);", fs);
 	}
 	// deserialize is over
 	BPCGEN_INDENT_DEC;
@@ -399,12 +404,12 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 					BPCGEN_INDENT_PRINT;
 					if (vardata->variable_type->semi_uncover_is_basic_type) {
 						// basic type, alias
-						fprintf(fs, "_bw._BpWrite%sArray(ref this.%s);",
+						fprintf(fs, "_bw._BpWrite%sArray(this.%s);",
 							csharp_formal_basic_type[vardata->variable_type->full_uncover_basic_type],
 							vardata->variable_name);
 					} else {
 						//enum
-						fprintf(fs, "_bw._BpWrite%sArray(ref _Helper._CastEnumArray2IntArray<%s, %s>(this.%s));",
+						fprintf(fs, "_bw._BpWrite%sArray(BPHelper._CastEnumArray2IntArray<%s, %s>(this.%s));",
 							csharp_formal_basic_type[vardata->variable_type->full_uncover_basic_type],
 							vardata->variable_type->semi_uncover_custom_type,
 							csharp_formal_basic_type[vardata->variable_type->full_uncover_basic_type],
@@ -420,12 +425,12 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 					BPCGEN_INDENT_PRINT;
 					if (vardata->variable_type->semi_uncover_is_basic_type) {
 						// basic type, alias
-						fprintf(fs, "_bw._BpWrite%sArray(ref this.%s.ToArray());",
+						fprintf(fs, "_bw._BpWrite%sArray(this.%s.ToArray());",
 							csharp_formal_basic_type[vardata->variable_type->full_uncover_basic_type],
 							vardata->variable_name);
 					} else {
 						//enum
-						fprintf(fs, "_bw._BpWrite%sArray(ref _Helper._CastEnumArray2IntArray<%s, %s>(this.%s.ToArray()));",
+						fprintf(fs, "_bw._BpWrite%sArray(BPHelper._CastEnumArray2IntArray<%s, %s>(this.%s.ToArray()));",
 							csharp_formal_basic_type[vardata->variable_type->full_uncover_basic_type],
 							vardata->variable_type->semi_uncover_custom_type,
 							csharp_formal_basic_type[vardata->variable_type->full_uncover_basic_type],
@@ -515,10 +520,15 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 			// align padding
 			if (vardata->variable_align->use_align) {
 				BPCGEN_INDENT_PRINT;
-				fprintf(fs, "bw.BaseStream.Seek(%" PRIu32 ", SeekOrigin.Current);", vardata->variable_align->padding_size);
+				fprintf(fs, "_bw.BaseStream.Seek(%" PRIu32 ", SeekOrigin.Current);", vardata->variable_align->padding_size);
 			}
 		}
 
+	}
+	if (bond_vars == NULL) {
+		// no variables, write 1 blank byte. because sizeof(empty_struct) == 1u
+		BPCGEN_INDENT_PRINT;
+		fputs("_bw.BaseStream.Seek(1, SeekOrigin.Current);", fs);
 	}
 	// serialize is over
 	BPCGEN_INDENT_DEC;
@@ -540,7 +550,7 @@ static void write_opcode_enum(FILE* fs, GSList* msg_ls, BPCGEN_INDENT_TYPE inden
 
 	// write opcode enum
 	BPCGEN_INDENT_PRINT;
-	fputs("public enum _OpCode : uint {", fs); BPCGEN_INDENT_INC;
+	fputs("public enum OpCode : uint {", fs); BPCGEN_INDENT_INC;
 	for (cursor = msg_ls; cursor != NULL; cursor = cursor->next) {
 		BPCSMTV_MSG* data = (BPCSMTV_MSG*)cursor->data;
 
@@ -563,37 +573,38 @@ static void write_uniform_deserialize(FILE* fs, GSList* msg_ls, BPCGEN_INDENT_TY
 
 	// write uniformed deserialize func
 	BPCGEN_INDENT_PRINT;
-	fputs("public static partial class _Helper {", fs); BPCGEN_INDENT_INC;
+	fputs("public static partial class BPHelper {", fs); BPCGEN_INDENT_INC;
 	BPCGEN_INDENT_PRINT;
-	fputs("public static _BpMessage UniformDeserialize(BinaryReader _br) {", fs); BPCGEN_INDENT_INC;
+	fputs("public static BpMessage UniformDeserialize(BinaryReader _br) {", fs); BPCGEN_INDENT_INC;
 	BPCGEN_INDENT_PRINT;
-	fputs("switch (_br._BpPeekOpCode()) {", fs); BPCGEN_INDENT_INC;
+	fputs("BpMessage _data = null;", fs);
+	BPCGEN_INDENT_PRINT;
+	fputs("switch ((OpCode)_br.ReadUInt32()) {", fs); BPCGEN_INDENT_INC;
 	for (cursor = msg_ls; cursor != NULL; cursor = cursor->next) {
 		BPCSMTV_MSG* data = (BPCSMTV_MSG*)cursor->data;
 
 		BPCGEN_INDENT_PRINT;
-		fprintf(fs, "case _OpCode.%s: {", data->msg_name);
+		fprintf(fs, "case OpCode.%s:", data->msg_name);
 
 		// write if body
 		BPCGEN_INDENT_INC;
 		BPCGEN_INDENT_PRINT;
-		fprintf(fs, "var _data = new %s();", data->msg_name);
+		fprintf(fs, "_data = new %s();", data->msg_name);
 		BPCGEN_INDENT_PRINT;
-		fputs("_data.Deserialize(br);", fs);
-		BPCGEN_INDENT_PRINT;
-		fputs("return _data;", fs);
+		fputs("break;", fs);
 
 		BPCGEN_INDENT_DEC;
-		BPCGEN_INDENT_PRINT;
-		fputc('}', fs);
 	}
-	// default return
-	BPCGEN_INDENT_PRINT;
-	fprintf(fs, "default: return null;");
 	// switch over
 	BPCGEN_INDENT_DEC;
 	BPCGEN_INDENT_PRINT;
 	fputc('}', fs);
+
+	// deserialize and return
+	BPCGEN_INDENT_PRINT;
+	fprintf(fs, "if (!(_data is null)) _data.Deserialize(_br);");
+	BPCGEN_INDENT_PRINT;
+	fputs("return _data;", fs);
 
 
 	// uniform func is over
