@@ -85,7 +85,6 @@ public static partial class BPHelper {
         br.Read(buffer);
         if (!BitConverter.IsLittleEndian) _BpByteSwap(buffer, unit_size);
 
-        data.Clear();
         data.AddRange(raw);
     }
 
@@ -123,7 +122,7 @@ public static partial class BPHelper {
 
     public static void _BpWriteNumberTuple<TItem>(this BinaryWriter bw, ref TItem[] data, int unit_size) where TItem : struct {
         Span<byte> buffer;
-        if (!BitConverter.IsLittleEndian) {
+        if (BitConverter.IsLittleEndian) {
             buffer = MemoryMarshal.Cast<TItem, byte>(data.AsSpan());
         } else {
             var intermediary = (TItem[])data.Clone();
@@ -139,3 +138,4 @@ public static partial class BPHelper {
         if (!BitConverter.IsLittleEndian) _BpByteSwap(buffer, unit_size);
         bw.Write(buffer);
     }
+}

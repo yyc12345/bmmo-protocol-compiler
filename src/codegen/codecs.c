@@ -185,12 +185,12 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 	if (is_msg) {
 		// reliable
 		BPCGEN_INDENT_PRINT;
-		fprintf(fs, "public override bool GetIsReliable() => %s;",
+		fprintf(fs, "public override bool IsReliable() => %s;",
 			(modifier->is_reliable ? "true" : "false"));
 
 		// opcode
 		BPCGEN_INDENT_PRINT;
-		fprintf(fs, "public override OpCode GetOpCode() => OpCode.%s;", struct_like_name); BPCGEN_INDENT_INC;
+		fprintf(fs, "public override OpCode GetOpCode() => OpCode.%s;", struct_like_name);
 	}
 
 	// deserialize func
@@ -230,21 +230,14 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 				case BPCGEN_VARTYPE_STATIC_PRIMITIVE:
 				{
 					BPCGEN_INDENT_PRINT;
-					if (vardata->variable_type->semi_uncover_is_basic_type) {
-						// basic type, alias
-						fprintf(fs, "this.%s = _br._BpRead%sArray(%" PRIu32 ");",
-							vardata->variable_name,
-							csharp_formal_basic_type[vardata->variable_type->full_uncover_basic_type],
-							vardata->variable_array->static_array_len);
-					} else {
-						// enum
-						fprintf(fs, "this.%s = BPHelper._CastIntArray2EnumArray<%s, %s>(_br._BpRead%sArray(%" PRIu32 "));",
-							vardata->variable_name,
-							vardata->variable_type->semi_uncover_custom_type,
-							csharp_formal_basic_type[vardata->variable_type->full_uncover_basic_type],
-							csharp_formal_basic_type[vardata->variable_type->full_uncover_basic_type],
-							vardata->variable_array->static_array_len);
-					}
+					fprintf(fs, "_br._BpReadNumberTuple<%s>(ref this.%s, sizeof(%s));",
+						// variable type. if it is enum, fill enum name.
+						get_primitive_type_name(vardata),
+						// simply var name
+						vardata->variable_name,
+						// calc size when compiling csharp. using enum for sizeof is leagl, so we use it to get more human-readable code.
+						get_primitive_type_name(vardata)
+					);
 					break;
 				}
 				case BPCGEN_VARTYPE_DYNAMIC_PRIMITIVE:
@@ -253,19 +246,11 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 					fprintf(fs, "this.%s.Clear();", vardata->variable_name);
 
 					BPCGEN_INDENT_PRINT;
-					if (vardata->variable_type->semi_uncover_is_basic_type) {
-						// basic type, alias
-						fprintf(fs, "this.%s.AddRange(_br._BpRead%sArray((int)_br._BpReadUInt32()));",
-							vardata->variable_name,
-							csharp_formal_basic_type[vardata->variable_type->full_uncover_basic_type]);
-					} else {
-						// enum
-						fprintf(fs, "this.%s.AddRange(BPHelper._CastIntArray2EnumArray<%s, %s>(_br._BpRead%sArray((int)_br._BpReadUInt32())));",
-							vardata->variable_name,
-							vardata->variable_type->semi_uncover_custom_type,
-							csharp_formal_basic_type[vardata->variable_type->full_uncover_basic_type],
-							csharp_formal_basic_type[vardata->variable_type->full_uncover_basic_type]);
-					}
+					fprintf(fs, "_br._BpReadNumberList<%s>(ref this.%s, (int)_br._BpReadUInt32(), sizeof(%s));",
+						get_primitive_type_name(vardata),
+						vardata->variable_name,
+						get_primitive_type_name(vardata)
+					);
 					break;
 				}
 
@@ -351,14 +336,14 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 			// align data
 			if (vardata->variable_align->use_align) {
 				BPCGEN_INDENT_PRINT;
-				fprintf(fs, "_br.BaseStream.Seek(%" PRIu32 ", SeekOrigin.Current);", vardata->variable_align->padding_size);
+				fprintf(fs, "_br._BpSkip(%" PRIu32 ");", vardata->variable_align->padding_size);
 			}
 		}
 	}
 	if (bond_vars == NULL) {
 		// no variable, skip 1 byte anyway. because sizeof(empty_struct) == 1u
 		BPCGEN_INDENT_PRINT;
-		fputs("_br.BaseStream.Seek(1, SeekOrigin.Current);", fs);
+		fputs("_br._BpSkip(1);", fs);
 	}
 	// deserialize is over
 	BPCGEN_INDENT_DEC;
@@ -402,19 +387,11 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 				case BPCGEN_VARTYPE_STATIC_PRIMITIVE:
 				{
 					BPCGEN_INDENT_PRINT;
-					if (vardata->variable_type->semi_uncover_is_basic_type) {
-						// basic type, alias
-						fprintf(fs, "_bw._BpWrite%sArray(this.%s);",
-							csharp_formal_basic_type[vardata->variable_type->full_uncover_basic_type],
-							vardata->variable_name);
-					} else {
-						//enum
-						fprintf(fs, "_bw._BpWrite%sArray(BPHelper._CastEnumArray2IntArray<%s, %s>(this.%s));",
-							csharp_formal_basic_type[vardata->variable_type->full_uncover_basic_type],
-							vardata->variable_type->semi_uncover_custom_type,
-							csharp_formal_basic_type[vardata->variable_type->full_uncover_basic_type],
-							vardata->variable_name);
-					}
+					fprintf(fs, "_bw._BpWriteNumberTuple<%s>(ref this.%s, sizeof(%s));",
+						get_primitive_type_name(vardata),
+						vardata->variable_name,
+						get_primitive_type_name(vardata)
+					);
 					break;
 				}
 				case BPCGEN_VARTYPE_DYNAMIC_PRIMITIVE:
@@ -423,19 +400,11 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 					fprintf(fs, "_bw._BpWriteUInt32((UInt32)this.%s.Count);", vardata->variable_name);
 
 					BPCGEN_INDENT_PRINT;
-					if (vardata->variable_type->semi_uncover_is_basic_type) {
-						// basic type, alias
-						fprintf(fs, "_bw._BpWrite%sArray(this.%s.ToArray());",
-							csharp_formal_basic_type[vardata->variable_type->full_uncover_basic_type],
-							vardata->variable_name);
-					} else {
-						//enum
-						fprintf(fs, "_bw._BpWrite%sArray(BPHelper._CastEnumArray2IntArray<%s, %s>(this.%s.ToArray()));",
-							csharp_formal_basic_type[vardata->variable_type->full_uncover_basic_type],
-							vardata->variable_type->semi_uncover_custom_type,
-							csharp_formal_basic_type[vardata->variable_type->full_uncover_basic_type],
-							vardata->variable_name);
-					}
+					fprintf(fs, "_bw._BpWriteNumberList<%s>(ref this.%s, sizeof(%s));",
+						get_primitive_type_name(vardata),
+						vardata->variable_name,
+						get_primitive_type_name(vardata)
+					);
 					break;
 				}
 
@@ -520,7 +489,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 			// align padding
 			if (vardata->variable_align->use_align) {
 				BPCGEN_INDENT_PRINT;
-				fprintf(fs, "_bw.BaseStream.Seek(%" PRIu32 ", SeekOrigin.Current);", vardata->variable_align->padding_size);
+				fprintf(fs, "_bw._BpSkip(%" PRIu32 ");", vardata->variable_align->padding_size);
 			}
 		}
 
@@ -528,7 +497,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 	if (bond_vars == NULL) {
 		// no variables, write 1 blank byte. because sizeof(empty_struct) == 1u
 		BPCGEN_INDENT_PRINT;
-		fputs("_bw.BaseStream.Seek(1, SeekOrigin.Current);", fs);
+		fputs("_bw._BpSkip(1);", fs);
 	}
 	// serialize is over
 	BPCGEN_INDENT_DEC;

@@ -378,22 +378,12 @@ for (int _i = 0; i &gt; this.D.Length; ++_i) {
             <p>TYPE根据T转换成的基本类型来生成</p>
         </td>
         <td>
-            基本数据类型
-            <pre>_bw._BpWrite<u>TYPE</u>Array(ref this.D);</pre>
-            enum类型
-            <pre>_bw._BpWrite<u>TYPE</u>Array(ref _Helper._CastEnumArray2IntArray&lt;T, <u>TYPE</u>&gt;(this.D));</pre>
-            <p>_BpRead<u>TYPE</u>Array函数系列由代码片段定义</p>
-            <p>_CastEnumArray2IntArray由代码片段定义</p>
+            <pre>_bw._BpWriteNumberTuple&lt;T&gt;(ref this.D, sizeof(T));</pre>
+            <p>_BpWriteNumberTuple函数由代码片段定义</p>
         </td>
         <td>
-            基本数据类型
-            <pre>
-_bw._BpWriteUInt32((UInt32)this.D.Count);
-_bw._BpWrite<u>TYPE</u>Array(ref this.D.ToArray());</pre>
-            enum类型
-            <pre>
-_bw._BpWriteUInt32((UInt32)this.D.Count);
-_bw._BpWrite<u>TYPE</u>Array(ref _Helper._CastEnumArray2IntArray&lt;T, <u>TYPE</u>&gt;(this.D.ToArray()));</pre>
+            <pre>_bw._BpWriteNumberList&lt;T&gt;(ref this.D, sizeof(T));</pre>
+            <p>_BpWriteNumberList函数由代码片段定义</p>
         </td>
         <td>
             <pre>_bw._BpWriteString(this.D);</pre>
@@ -457,22 +447,14 @@ for (int _i = 0; _i &gt; this.D.Count; ++_i) {
             <p>T是D的类型，TYPE根据T转换成的基本类型来生成</p>
         </td>
         <td>
-            基本数据类型
-            <pre>this.D = _br._BpRead<u>TYPE</u>Array(N);</pre>
-            enum类型
-            <pre>this.D = _Helper._CastIntArray2EnumArray&lt;T, <u>TYPE</u>&gt;(_br._BpRead<u>TYPE</u>Array(N));</pre>
-            <p>_BpRead<u>TYPE</u>Array函数系列由代码片段定义</p>
-            <p>_CastIntArray2EnumArray由代码片段定义</p>
+            <pre>_br._BpReadNumberTuple&lt;T&gt;(ref this.D, sizeof(T));</pre>
+            <p>_BpReadNumberTuple函数由代码片段定义</p>
         </td>
         <td>
-            基本数据类型
             <pre>
 this.D.Clear();
-this.D.AddRange(_br._BpRead<u>TYPE</u>Array((int)_br._BpReadUInt32()));</pre>
-            enum类型
-            <pre>
-this.D.Clear();
-this.D.AddRange(_Helper._CastIntArray2EnumArray&lt;T, <u>TYPE</u>&gt;(_br._BpRead<u>TYPE</u>Array((int)_br._BpReadUInt32())));</pre>
+_br._BpReadNumberList&lt;T&gt;(ref this.D, (int)_br._BpReadUInt32(), sizeof(T));</pre>
+            <p>_BpReadNumberList函数由代码片段定义</p>
         </td>
         <td>
             <pre>this.D =_br._BpReadString();</pre>
