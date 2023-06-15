@@ -52,6 +52,8 @@
         <th>NaturalStruct</th>
         <th>NaturalStruct[N]</th>
         <th>NaturalStruct[]</th>
+        <th>Padding</th>
+        <th>Empty Struct</th>
     </tr>
     <tr>
         <td>Py / Decl</td>
@@ -92,6 +94,8 @@
         <td>
             <pre>D: list[T]</pre>
         </td>
+        <td>&nbsp;</td>
+        <td>&nbsp;</td>
     </tr>
     <tr>
         <td>Py / Ctor</td>
@@ -133,6 +137,8 @@
         <td>
             <pre>self.D = []</pre>
         </td>
+        <td>&nbsp;</td>
+        <td>&nbsp;</td>
     </tr>
     <tr>
         <td>Py / Serialize</td>
@@ -201,6 +207,12 @@ _count = len(self.D)
 _ss.write(_listlen_packer.pack(_count))
 for _i in range(_count):
     self.D[_i].Serialize(_ss)</pre>
+        </td>
+        <td>
+            <pre>_ss.write(b'\0' * N)</pre>
+        </td>
+        <td>
+            <pre>_ss.write(b'\0')</pre>
         </td>
     </tr>
     <tr>
@@ -278,6 +290,12 @@ for _i in range(_count):
     _cache.Deserialize(_ss)
     self.D.append(_cache)</pre>
         </td>
+        <td>
+            <pre>_ss.read(N)</pre>
+        </td>
+        <td>
+            <pre>_ss.read(1)</pre>
+        </td>
     </tr>
     <tr>
         <td>C# / Decl</td>
@@ -318,6 +336,8 @@ for _i in range(_count):
         <td>
             <pre>public List&lt;T&gt; D;</pre>
         </td>
+        <td>&nbsp;</td>
+        <td>&nbsp;</td>
     </tr>
     <tr>
         <td>C# / Ctor</td>
@@ -365,6 +385,8 @@ for (int _i = 0; i &gt; this.D.Length; ++_i) {
         <td>
             <pre>this.D = new List&lt;T&gt;();</pre>
         </td>
+        <td>&nbsp;</td>
+        <td>&nbsp;</td>
     </tr>
     <tr>
         <td>C# / Serialize</td>
@@ -433,6 +455,12 @@ _bw._BpWriteUInt32((UInt32)this.D.Count);
 for (int _i = 0; _i &gt; this.D.Count; ++_i) {
     this.D[_i].Serialize(_bw);
 }</pre>
+        </td>
+        <td>
+            <pre>_bw._BpSkip(N);</pre>
+        </td>
+        <td>
+            <pre>_bw._BpSkip(1);</pre>
         </td>
     </tr>
     <tr>
@@ -509,6 +537,12 @@ for (int _i = 0, _count = (int)_br._BpReadUInt32(); _i &gt; _count; ++_i) {
     _cache.Deserialize(_br);
     this.D.Add(_cache);
 }</pre>
+        </td>
+        <td>
+            <pre>_br._BpSkip(N);</pre>
+        </td>
+        <td>
+            <pre>_br._BpSkip(1);</pre>
         </td>
     </tr>
     <tr>

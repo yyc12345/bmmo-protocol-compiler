@@ -10,12 +10,13 @@ Imagine following circumstance, You have developed a new network application, yo
 
 * Easy to read and debug.
 * Do not use plain text.
-* Use binary format.
+* Use serialization friendly binary format.
 * Just for a demo.
 
 Congratulation! This project is very suit for you.
 
-This project is mainly served for [Swung0x48/BallanceMMO](https://github.com/Swung0x48/BallanceMMO), because I want to create a standalone protocol parser to erase the dependency to original BallanceMMO project. Original BallanceMMO protocol become more and more complex. It is hard to be written by hand, so I create this compiler. Now, I can get effective code in any language via just writing a tiny protocol prototype file like Google Protobuf proto file. However, it is okay that you want to use this project in any other applications, because what your demo is facing  is usually the same as current BMMO's circumstance.
+This project is originally served for [Swung0x48/BallanceMMO](https://github.com/Swung0x48/BallanceMMO), because I want to create a standalone protocol parser to erase the dependency to original BallanceMMO project. Original BallanceMMO protocol become more and more complex. It is hard to be written by hand, so I create this compiler. Now, I can get effective code in any language via just writing a tiny protocol prototype file like Google Protobuf proto file. However, it is okay that you want to use this project in any other applications, because what your demo is facing is usually the same as current BMMO's circumstance.  
+Now, because the protocol of BMMO no longer follow some crucial syntax. This project is not focus on BMMO protocol anymore. However I don't want to change its name. I just want keep its name to show where it comes from.
 
 Considering Google Protobuf, this project is not suit for production environment, just like I said previously. If your application become more and more strong and ready for release, I suggest you switch to more strong serializer, for example, Google Protobuf. This project also provide the function that convert bp file used by this program to proto file used by Google Protobuf. It is convenient for migration.
 
@@ -23,10 +24,10 @@ Considering Google Protobuf, this project is not suit for production environment
 
 ### Supported Language
 
-* Python
-* C\# (on the way)
-* C++ (on the way)
-* Google Protobuf 3 (on the way)
+* Python (at least 3.5.3)
+* C\# (at least .Net Core 2.1)
+* C++ (at least C++ 17. Optimized for C++ 20 and 23)
+* Google Protobuf 3
 
 ### Supported Features
 

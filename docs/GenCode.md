@@ -135,7 +135,6 @@ ss.truncate(0)
     * Raise exception when something went wrong. It usually caused by:
         - Forget to fill some fields.
         - Fill data with wrong type. (Python do not have compulsory type system so this error only can be found when doing parsing.)
-	* Uniform serialization function will write OpCode automatically. If you don't need it, call `your_data.Serialize(ss)` directly.
 0. Send gotten binary sequence via stream or anything you like.
 0. Clear buffer like deserialization.
 
@@ -148,7 +147,7 @@ MemoryStream ms = new MemoryStream();
 ms.Write(blabla);
 ms.Seek(0, SeekOrigin.Begin);
 
-_BpMessage your_data = YourNameSpace._Helper.UniformDeserialize(new BinaryReader(ms, Encoding.Default, true));
+BpMessage your_data = YourNameSpace.BPHelper.UniformDeserialize(new BinaryReader(ms, Encoding.Default, true));
 if (your_data is null)
     throw new Exception("Invalid OpCode.");
 
@@ -168,7 +167,7 @@ ms.SetLength(0);
     * This function will **not** throw any exception.
     * We need construct a `System.IO.BinaryReader` in there as its parameter.
         - Set `leaveOpen = true` to make sure that `MemoryStream` will not be closed automatically.
-        - If you want to use this `BinaryReader`, you also can declare it in any scope as you want.
+        - If you want to re-use this `BinaryReader`, you also can declare it in any scope as you want.
         - The `encoding` parameter is not important because we do not use its string RW functions.
 0. Clear buffer for following using. It is highly recommended even if you just want to use this buffer only once.
 
@@ -181,8 +180,12 @@ var your_data = new ExampleMessage();
 your_data.essential = 114514;
 your_data.essential_list[0] = "test";
 
-your_data.Serialize(new BinaryWriter(ms, Encoding.Default, true));
-your_sender(ms.ToArray());
+YourNameSpace.BPHelper.UniformSerialize(your_data, new BinaryWriter(ms, Encoding.Default, true));
+
+your_reliable_setter(your_data.IsReliable());
+your_opcode_setter(your_data.GetOpCode());
+your_data_sender(ms.ToArray());
+
 ms.SetLength(0);
 
 ```
