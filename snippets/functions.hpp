@@ -1,146 +1,154 @@
 
-class _BpStruct {
+class BpStruct {
 public:
-    _BpStruct() {};
-    virtual ~_BpStruct() {};
+	BpStruct() {};
+	virtual ~BpStruct() {};
 
-    virtual bool Serialize(std::stringstream* data) = 0;
-    virtual bool Deserialize(std::stringstream* data) = 0;
+	virtual bool Serialize(std::stringstream& data) = 0;
+	virtual bool Deserialize(std::stringstream& data) = 0;
 };
 
-class _BpMessage : public _BpStruct {
+class BpMessage : public BpStruct {
 public:
-    _BpMessage() {};
-    virtual ~_BpMessage() {};
+	BpMessage() {};
+	virtual ~BpMessage() {};
 
-    virtual _OpCode GetOpCode() = 0;
-    virtual bool GetIsReliable() = 0;
+	virtual OpCode GetOpCode() = 0;
+	virtual bool IsReliable() = 0;
 };
 
-template<class T, size_t N>
-struct _CStyleArray {
-	T _Elems[N];
-	_CStyleArray() : _Elems() {}
-	_CStyleArray(const _CStyleArray& rhs) : _Elems() {
-		for (int _i = 0; _i < N; ++_i) this->_Elems[_i] = rhs._Elems[_i];
+template<class _Ty, size_t _Nsize>
+struct CStyleArray {
+	_Ty _Elems[_Nsize];
+	CStyleArray() : _Elems() {}
+	CStyleArray(const CStyleArray& rhs) : _Elems() {
+		if constexpr (std::is_arithmetic_v<_Ty>) {
+			std::memmove(_Elems, rhs._Elems, sizeof(_Ty) * _Nsize);
+		} else {
+			for (int _i = 0; _i < _Nsize; ++_i) this->_Elems[_i] = rhs._Elems[_i];
+		}
 	}
-	_CStyleArray(_CStyleArray&& rhs) : _Elems() {
-		for (int _i = 0; _i < N; ++_i) this->_Elems[_i] = std::move(rhs._Elems[_i]);
+	CStyleArray(CStyleArray&& rhs) : _Elems() {
+		if constexpr (std::is_arithmetic_v<_Ty>) {
+			std::memmove(_Elems, rhs._Elems, sizeof(_Ty) * _Nsize);
+		} else {
+			for (int _i = 0; _i < _Nsize; ++_i) this->_Elems[_i] = std::move(rhs._Elems[_i]);
+		}
 	}
-	_CStyleArray& operator=(const _CStyleArray& rhs) {
-		for (int _i = 0; _i < N; ++_i) this->_Elems[_i] = rhs._Elems[_i];
+	CStyleArray& operator=(const CStyleArray& rhs) {
+		if constexpr (std::is_arithmetic_v<_Ty>) {
+			std::memmove(_Elems, rhs._Elems, sizeof(_Ty) * _Nsize);
+		} else {
+			for (int _i = 0; _i < _Nsize; ++_i) this->_Elems[_i] = rhs._Elems[_i];
+		}
 	}
-	_CStyleArray& operator=(_CStyleArray&& rhs) {
-		for (int _i = 0; _i < N; ++_i) this->_Elems[_i] = std::move(rhs._Elems[_i]);
+	CStyleArray& operator=(CStyleArray&& rhs) {
+		if constexpr (std::is_arithmetic_v<_Ty>) {
+			std::memmove(_Elems, rhs._Elems, sizeof(_Ty) * _Nsize);
+		} else {
+			for (int _i = 0; _i < _Nsize; ++_i) this->_Elems[_i] = std::move(rhs._Elems[_i]);
+		}
 	}
-	[[nodiscard]] constexpr T& operator[](size_t idx) noexcept {
+	[[nodiscard]] constexpr _Ty& operator[](size_t idx) noexcept {
 		return _Elems[idx];
 	}
-	[[nodiscard]] constexpr const T& operator[](size_t idx) const noexcept {
+	[[nodiscard]] constexpr const _Ty& operator[](size_t idx) const noexcept {
 		return _Elems[idx];
 	}
-	[[nodiscard]] constexpr T* data() noexcept {
+	[[nodiscard]] constexpr _Ty* data() noexcept {
 		return _Elems;
 	}
-	[[nodiscard]] constexpr const T* data() const noexcept {
+	[[nodiscard]] constexpr const _Ty* data() const noexcept {
 		return _Elems;
 	}
 
-	~_CStyleArray() {}
+	~CStyleArray() {}
 };
 
-class _EndianHelper {
-private:
-    static const uint16_t mEndianProbe = UINT16_C(0xFEFF);
-    
-public:
-    static inline bool IsLittleEndian(){
-        return (((uint8_t*)(&_EndianHelper::mEndianProbe))[0] == UINT8_C(0xFF));
-    }
-    
-    static inline void SwapEndian8(void* val) {
-        return; // 8bit data do not need swap
-    }
-    static inline void SwapEndian16(void* v) {
-        if (_EndianHelper::IsLittleEndian()) return;
-        
-        uint16_t val = *v;
-        *(uint16_t*)v = ((uint16_t) (
-            (uint16_t) ((uint16_t) (val) >> 8) |
-            (uint16_t) ((uint16_t) (val) << 8)
-        ))
-    }
-    static inline void SwapEndian32(void* v) {
-        if (_EndianHelper::IsLittleEndian()) return;
+namespace BPHelper {
+	bool UniformSerialize(std::stringstream& ss, BpMessage* instance);
+	BpMessage* UniformDeserialize(std::stringstream& ss);
 
-        uint32_t val = *v;
-        *(uint32_t*)v = ((uint32_t) (
-            (((uint32_t) (val) & (uint32_t) 0x000000ffU) << 24) |
-            (((uint32_t) (val) & (uint32_t) 0x0000ff00U) <<  8) |
-            (((uint32_t) (val) & (uint32_t) 0x00ff0000U) >>  8) |
-            (((uint32_t) (val) & (uint32_t) 0xff000000U) >> 24)
-        ))
-    }
-    static inline void SwapEndian64(void* v) {
-        if (_EndianHelper::IsLittleEndian()) return;
+	bool ReadString(std::stringstream& ss, std::string& strl);
+	bool WriteString(std::stringstream& ss, std::string& strl);
 
-        uint64_t val = *v;
-        *(uint64_t*)v = ((uint64_t) ( \
-              (((uint64_t) (val) &
-            (uint64_t) UINT64_C(0x00000000000000ffU)) << 56) |
-              (((uint64_t) (val) &
-            (uint64_t) UINT64_C(0x000000000000ff00U)) << 40) |
-              (((uint64_t) (val) &
-            (uint64_t) UINT64_C(0x0000000000ff0000U)) << 24) |
-              (((uint64_t) (val) &
-            (uint64_t) UINT64_C(0x00000000ff000000U)) <<  8) |
-              (((uint64_t) (val) &
-            (uint64_t) UINT64_C(0x000000ff00000000U)) >>  8) |
-              (((uint64_t) (val) &
-            (uint64_t) UINT64_C(0x0000ff0000000000U)) >> 24) |
-              (((uint64_t) (val) &
-            (uint64_t) UINT64_C(0x00ff000000000000U)) >> 40) |
-              (((uint64_t) (val) &
-            (uint64_t) UINT64_C(0xff00000000000000U)) >> 56)
-        ))
-    }
+	namespace ByteSwap {
+#if __cpp_lib_endian
+		constexpr const bool g_IsLittleEndian = (std::endian::native == std::endian::little);
+#define _ENDIAN_CHECKER constexpr (g_IsLittleEndian)
+#else
+		const uint16_t g_EndianProbe = UINT16_C(0xFEFF);
+		const bool g_IsLittleEndian = reinterpret_cast<const uint8_t*>(&g_EndianProbe)[0] == UINT8_C(0xFF);
+#define _ENDIAN_CHECKER (g_IsLittleEndian)
+#endif
 
-    static inline void SwapEndianArray8(void* val, uint32_t len) {
-        return; // 8bit data do not need swap
-    }
-    static inline void SwapEndianArray16(void* val, uint32_t len) {
-        if (_EndianHelper::IsLittleEndian()) return;
-        
-        uint32_t c = UINT32_C(0);
-        for(; c < len; ++c) _EndianHelper::SwapEndian16(((uint16_t*)val) + c);
-    }
-    static inline void SwapEndianArray32(void* val, uint32_t len) {
-        if (_EndianHelper::IsLittleEndian()) return;
+		template <class>
+		constexpr bool g_AlwaysFalse = false;
+		template <class _Ty, std::enable_if_t<std::is_integral_v<_Ty>, int> = 0>
+		void SwapSingle(void* v) {
+			if _ENDIAN_CHECKER return;
 
-        uint32_t c = UINT32_C(0);
-        for(; c < len; ++c) _EndianHelper::SwapEndian32(((uint32_t*)val) + c);
-    }
-    static inline void SwapEndianArray64(void* val, uint32_t len) {
-        if (_EndianHelper::IsLittleEndian()) return;
+#if __cpp_lib_byteswap
+			* reinterpret_cast<_Ty*>(v) = std::byteswap(*reinterpret_cast<_Ty*>(v));
+#else
+			if constexpr (sizeof(_Ty) == 1) {
+				return;     // 8bit data do not need swap
+			} else if constexpr (sizeof(_Ty) == 2) {
 
-        uint32_t c = UINT32_C(0);
-        for(; c < len; ++c) _EndianHelper::SwapEndian64(((uint64_t*)val) + c);
-    }
-};
+				uint16_t val = *reinterpret_cast<uint16_t*>(v);
+				*reinterpret_cast<uint16_t*>(v) = ((uint16_t)(
+					(uint16_t)((uint16_t)(val) >> 8) |
+					(uint16_t)((uint16_t)(val) << 8)
+					));
 
-namespace _Helper {
-    _BpMessage* UniformDeserializer(std::stringstream* ss);
-    
-    bool PeekOpCode(std::stringstream* ss, _OpCode* code);
-    bool ReadOpCode(std::stringstream* ss, _OpCode* code);
-    bool WriteOpCode(std::stringstream* ss, _OpCode code);
-    
-    bool ReadString(std::stringstream* ss, std::string* strl);
-    bool WriteString(std::stringstream* ss, std::string* strl);
-    
-    template<typename T> void ResizePtrVector(
-        std::vector<T*>* vec, uint32_t new_size, 
-        void (*pfunc_init)(T* _p), 
-        void (*pfunc_free)(T* _p)
-    );
+			} else if constexpr (sizeof(_Ty) == 4) {
+
+				uint32_t val = *reinterpret_cast<uint32_t*>(v);
+				*reinterpret_cast<uint32_t*>(v) = ((uint32_t)(
+					(((uint32_t)(val) & (uint32_t)0x000000ffU) << 24) |
+					(((uint32_t)(val) & (uint32_t)0x0000ff00U) << 8) |
+					(((uint32_t)(val) & (uint32_t)0x00ff0000U) >> 8) |
+					(((uint32_t)(val) & (uint32_t)0xff000000U) >> 24)
+					));
+
+			} else if constexpr (sizeof(_Ty) == 8) {
+
+				uint64_t val = *reinterpret_cast<uint64_t*>(v);
+				*reinterpret_cast<uint64_t*>(v) = ((uint64_t)(\
+					(((uint64_t)(val) &
+					(uint64_t)UINT64_C(0x00000000000000ff)) << 56) |
+					(((uint64_t)(val) &
+					(uint64_t)UINT64_C(0x000000000000ff00)) << 40) |
+					(((uint64_t)(val) &
+					(uint64_t)UINT64_C(0x0000000000ff0000)) << 24) |
+					(((uint64_t)(val) &
+					(uint64_t)UINT64_C(0x00000000ff000000)) << 8) |
+					(((uint64_t)(val) &
+					(uint64_t)UINT64_C(0x000000ff00000000)) >> 8) |
+					(((uint64_t)(val) &
+					(uint64_t)UINT64_C(0x0000ff0000000000)) >> 24) |
+					(((uint64_t)(val) &
+					(uint64_t)UINT64_C(0x00ff000000000000)) >> 40) |
+					(((uint64_t)(val) &
+					(uint64_t)UINT64_C(0xff00000000000000)) >> 56)
+					));
+
+			} else {
+				static_assert(g_AlwaysFalse<_Ty>, "Unexpected integer size");
+			}
+#endif
+		}
+
+		template <class _Ty, std::enable_if_t<std::is_integral_v<_Ty>, int> = 0>
+		void SwapArray(void* v, uint32_t len) {
+			if _ENDIAN_CHECKER return;
+
+			uint32_t c = UINT32_C(0);
+			for (; c < len; ++c) SwapSingle<_Ty>(reinterpret_cast<_Ty*>(v) + c);
+		}
+
+#undef _ENDIAN_CHECKER
+
+	}
+
 }

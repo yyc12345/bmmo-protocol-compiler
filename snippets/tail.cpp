@@ -1,11 +1,11 @@
 
-#undef SSTREAM_PRE_RD
-#undef SSTREAM_RD_STRUCT
-#undef SSTREAM_RD_STRING
-#undef SSTREAM_RD_FUNCTION
-#undef SSTREAM_END_RD
-#undef SSTREAM_PRE_WR
-#undef SSTREAM_WR_STRUCT
-#undef SSTREAM_WR_STRING
-#undef SSTREAM_WR_FUNCTION
-#undef SSTREAM_END_WR
+#undef _SS_PRE_RD
+#undef _SS_RD_STRUCT
+#undef _SS_RD_STRING
+#undef _SS_RD_FUNCTION
+#undef _SS_END_RD
+#undef _SS_PRE_WR
+#undef _SS_WR_STRUCT
+#undef _SS_WR_STRING
+#undef _SS_WR_FUNCTION
+#undef _SS_END_WR
