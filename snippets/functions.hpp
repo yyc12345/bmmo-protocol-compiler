@@ -1,4 +1,28 @@
 
+#if _ENABLE_BP_TESTBENCH
+#include <functional>
+enum class _BPTestbench_ContainerType {
+	Single, Tuple, List
+};
+enum class _BPTestbench_BasicType {
+	u8, u16, u32, u64, i8, i16, i32, i64, f32, f64, bpstr, bpstruct
+};
+using _BPTestbench_VecSize_t = std::vector<uint32_t>::size_type;
+struct _BPTestbench_VariableProperty {
+	std::string mName;
+
+	_BPTestbench_ContainerType mContainerType;
+	_BPTestbench_BasicType mBasicType;
+	std::string mComplexType;
+
+	size_t mOffset;
+	size_t mTypeSizeof;
+
+	std::function<void* (void*)> mVectorDataFuncPtr;
+	std::function<void(void*, _BPTestbench_VecSize_t)> mVectorResizeFuncPtr;
+};
+#endif
+
 class BpStruct {
 public:
 	BpStruct() {};
@@ -23,28 +47,28 @@ struct CStyleArray {
 	CStyleArray() : _Elems() {}
 	CStyleArray(const CStyleArray& rhs) : _Elems() {
 		if constexpr (std::is_arithmetic_v<_Ty>) {
-			std::memmove(_Elems, rhs._Elems, sizeof(_Ty) * _Nsize);
+			std::memmove(_Elems, rhs._Elems, sizeof(_Elems));
 		} else {
 			for (int _i = 0; _i < _Nsize; ++_i) this->_Elems[_i] = rhs._Elems[_i];
 		}
 	}
 	CStyleArray(CStyleArray&& rhs) : _Elems() {
 		if constexpr (std::is_arithmetic_v<_Ty>) {
-			std::memmove(_Elems, rhs._Elems, sizeof(_Ty) * _Nsize);
+			std::memmove(_Elems, rhs._Elems, sizeof(_Elems));
 		} else {
 			for (int _i = 0; _i < _Nsize; ++_i) this->_Elems[_i] = std::move(rhs._Elems[_i]);
 		}
 	}
 	CStyleArray& operator=(const CStyleArray& rhs) {
 		if constexpr (std::is_arithmetic_v<_Ty>) {
-			std::memmove(_Elems, rhs._Elems, sizeof(_Ty) * _Nsize);
+			std::memmove(_Elems, rhs._Elems, sizeof(_Elems));
 		} else {
 			for (int _i = 0; _i < _Nsize; ++_i) this->_Elems[_i] = rhs._Elems[_i];
 		}
 	}
 	CStyleArray& operator=(CStyleArray&& rhs) {
 		if constexpr (std::is_arithmetic_v<_Ty>) {
-			std::memmove(_Elems, rhs._Elems, sizeof(_Ty) * _Nsize);
+			std::memmove(_Elems, rhs._Elems, sizeof(_Elems));
 		} else {
 			for (int _i = 0; _i < _Nsize; ++_i) this->_Elems[_i] = std::move(rhs._Elems[_i]);
 		}
@@ -84,12 +108,22 @@ namespace BPHelper {
 
 		template <class>
 		constexpr bool g_AlwaysFalse = false;
-		template <class _Ty, std::enable_if_t<std::is_integral_v<_Ty>, int> = 0>
+		template <class _Ty, std::enable_if_t<std::is_arithmetic_v<_Ty>, int> = 0>
 		void SwapSingle(void* v) {
 			if _ENDIAN_CHECKER return;
 
 #if __cpp_lib_byteswap
-			* reinterpret_cast<_Ty*>(v) = std::byteswap(*reinterpret_cast<_Ty*>(v));
+			if constexpr (sizeof(_Ty) == 1) {
+				return;     // 8bit data do not need swap
+			} else if constexpr (sizeof(_Ty) == 2) {
+				*reinterpret_cast<uint16_t*>(v) = std::byteswap(*reinterpret_cast<uint16_t*>(v));
+			} else if constexpr (sizeof(_Ty) == 4) {
+				*reinterpret_cast<uint32_t*>(v) = std::byteswap(*reinterpret_cast<uint32_t*>(v));
+			} else if constexpr (sizeof(_Ty) == 8) {
+				*reinterpret_cast<uint64_t*>(v) = std::byteswap(*reinterpret_cast<uint64_t*>(v));
+			} else {
+				static_assert(g_AlwaysFalse<_Ty>, "Unexpected integer size");
+			}
 #else
 			if constexpr (sizeof(_Ty) == 1) {
 				return;     // 8bit data do not need swap
