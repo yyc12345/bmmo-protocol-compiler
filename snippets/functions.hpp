@@ -64,6 +64,7 @@ struct CStyleArray {
 		} else {
 			for (int _i = 0; _i < _Nsize; ++_i) this->_Elems[_i] = rhs._Elems[_i];
 		}
+		return *this;
 	}
 	CStyleArray& operator=(CStyleArray&& rhs) {
 		if constexpr (std::is_arithmetic_v<_Ty>) {
@@ -71,6 +72,7 @@ struct CStyleArray {
 		} else {
 			for (int _i = 0; _i < _Nsize; ++_i) this->_Elems[_i] = std::move(rhs._Elems[_i]);
 		}
+		return *this;
 	}
 	[[nodiscard]] constexpr _Ty& operator[](size_t idx) noexcept {
 		return _Elems[idx];
@@ -96,22 +98,34 @@ namespace BPHelper {
 	bool ReadString(std::stringstream& ss, std::string& strl);
 	bool WriteString(std::stringstream& ss, std::string& strl);
 
+	void ReadBlank(std::stringstream& ss, uint32_t offset);
+	void WriteBlank(std::stringstream& ss, uint32_t offset);
+
 	namespace ByteSwap {
 #if __cpp_lib_endian
 		constexpr const bool g_IsLittleEndian = (std::endian::native == std::endian::little);
-#define _ENDIAN_CHECKER constexpr (g_IsLittleEndian)
+#define _BP_IS_LITTLE_ENDIAN constexpr (BPHelper::ByteSwap::g_IsLittleEndian)
+#define _BP_IS_BIG_ENDIAN constexpr (!BPHelper::ByteSwap::g_IsLittleEndian)
 #else
 		const uint16_t g_EndianProbe = UINT16_C(0xFEFF);
 		const bool g_IsLittleEndian = reinterpret_cast<const uint8_t*>(&g_EndianProbe)[0] == UINT8_C(0xFF);
-#define _ENDIAN_CHECKER (g_IsLittleEndian)
+#define _BP_IS_LITTLE_ENDIAN (BPHelper::ByteSwap::g_IsLittleEndian)
+#define _BP_IS_BIG_ENDIAN (!BPHelper::ByteSwap::g_IsLittleEndian)
 #endif
 
+		template <class _Ty>
+		constexpr bool CheckSwapType() {
+			if constexpr (std::is_arithmetic_v<_Ty>) return true;
+			else if constexpr (std::is_enum_v<_Ty> && std::is_arithmetic_v<std::underlying_type_t<_Ty>>) return true;
+			else return false;
+		}
 		template <class>
 		constexpr bool g_AlwaysFalse = false;
-		template <class _Ty, std::enable_if_t<std::is_arithmetic_v<_Ty>, int> = 0>
+		template <class _Ty>
 		void SwapSingle(void* v) {
-			if _ENDIAN_CHECKER return;
-
+			if constexpr (!CheckSwapType<_Ty>()) static_assert(g_AlwaysFalse<_Ty>, "Invalid type for ByteSwap.");
+			if _BP_IS_LITTLE_ENDIAN return;
+			
 #if __cpp_lib_byteswap
 			if constexpr (sizeof(_Ty) == 1) {
 				return;     // 8bit data do not need swap
@@ -173,15 +187,15 @@ namespace BPHelper {
 #endif
 		}
 
-		template <class _Ty, std::enable_if_t<std::is_integral_v<_Ty>, int> = 0>
+		template <class _Ty>
 		void SwapArray(void* v, uint32_t len) {
-			if _ENDIAN_CHECKER return;
+			if constexpr (!CheckSwapType<_Ty>()) static_assert(g_AlwaysFalse<_Ty>, "Invalid type for ByteSwap.");
+			if _BP_IS_LITTLE_ENDIAN return;
 
 			uint32_t c = UINT32_C(0);
 			for (; c < len; ++c) SwapSingle<_Ty>(reinterpret_cast<_Ty*>(v) + c);
 		}
 
-#undef _ENDIAN_CHECKER
 
 	}
 

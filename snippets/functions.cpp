@@ -15,8 +15,8 @@ return false;
 #define _SS_RD_STRING(ss, strl) if (!BPHelper::ReadString(ss, strl)) \
 return false;
 
-// func: bool
-#define _SS_RD_FUNCTION(ss, func) if (!(func)) \
+// obj: BpStruct&
+#define _SS_RD_FUNCTION(ss, obj) if (!((obj).Deserialize(ss))) \
 return false;
 
 #define _SS_END_RD(ss) return (ss).good();
@@ -29,11 +29,11 @@ return false;
 #define _SS_WR_STRUCT(ss, ptr, len) (ss).write(reinterpret_cast<const char*>(ptr), (len));
 
 // func: bool
-#define _SS_WR_STRING(ss, func) if (!BPHelper::WriteString(ss, strl)) \
+#define _SS_WR_STRING(ss, strl) if (!BPHelper::WriteString(ss, strl)) \
 return false;
 
-// func: bool
-#define _SS_WR_FUNCTION(ss, func) if (!(func)) \
+// obj: BpStruct&
+#define _SS_WR_FUNCTION(ss, obj) if (!((obj).Serialize(ss))) \
 return false;
 
 #define _SS_END_WR(ss) return (ss).good();
@@ -41,27 +41,6 @@ return false;
 namespace BPHelper {
 
 	// ==================== RW Assist Functions ====================
-
-	//bool PeekOpCode(std::stringstream* ss, OpCode* code) {
-	//    _SS_RD_STRUCT(ss, sizeof(uint32_t), code);
-	//    ByteSwap::SwapEndian<uint32_t>(code)
-	//    _EndianHelper::SwapEndian32(code);
-
-	//    ss->seekg(-(int32_t)(sizeof(uint32_t)), std::ios_base::cur);
-	//    return true;
-	//}
-
-	//bool ReadOpCode(std::stringstream* ss, _OpCode* code) {
-	//    _SS_RD_STRUCT(ss, sizeof(uint32_t), code);
-	//    _EndianHelper::SwapEndian32(code);
-	//    return true;
-	//}
-
-	//bool WriteOpCode(std::stringstream* ss, _OpCode code) {
-	//    _EndianHelper::SwapEndian32(&code);
-	//    _SS_WR_STRUCT(ss, sizeof(uint32_t), &code);
-	//    return true;
-	//}
 
 	bool UniformSerialize(std::stringstream& ss, BpMessage* instance) {
 		OpCode code = instance->GetOpCode();
@@ -73,13 +52,14 @@ namespace BPHelper {
 
 	BpMessage* UniformDeserialize(std::stringstream& ss) {
 		OpCode code;
-		_SS_RD_STRUCT(ss, &code, sizeof(uint32_t));
+		if (![&ss, &code]() { _SS_RD_STRUCT(ss, &code, sizeof(uint32_t)); return true; }()) return nullptr;
 		BPHelper::ByteSwap::SwapSingle<uint32_t>(&code);
 
 		BpMessage* instance = MessageFactory(code);
 		if (instance != nullptr) {
 			if (!instance->Deserialize(ss)) {
 				delete instance;
+				instance = nullptr;
 			}
 		}
 		return instance;
@@ -104,6 +84,18 @@ namespace BPHelper {
 		_SS_WR_STRUCT(ss, strl.c_str(), strl.size());
 
 		return true;
+	}
+
+	void ReadBlank(std::stringstream& ss, uint32_t offset) {
+		ss.seekg(offset, std::ios_base::cur);
+	}
+
+	void WriteBlank(std::stringstream& ss, uint32_t offset) {
+		if (offset == 0) return;
+		ss.seekp(offset - 1, std::ios_base::cur);
+		
+		constexpr const uint8_t c_ZeroFill = UINT8_C(0);
+		_SS_WR_STRUCT(ss, &c_ZeroFill, sizeof(uint8_t));
 	}
 
 }

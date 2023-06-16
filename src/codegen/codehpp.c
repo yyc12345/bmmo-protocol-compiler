@@ -98,20 +98,20 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 				case BPCGEN_VARTYPE_STATIC_STRING:
 				{
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "%s %s[%" PRIu32 "];",
+					fprintf(fs, "CStyleArray<%s, %" PRIu32 "> %s;",
 						get_primitive_type_name(vardata),
-						vardata->variable_name,
-						vardata->variable_array->static_array_len);
+						vardata->variable_array->static_array_len,
+						vardata->variable_name);
 					break;
 				}
 				case BPCGEN_VARTYPE_STATIC_NARROW:
 				case BPCGEN_VARTYPE_STATIC_NATURAL:
 				{
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "%s::Payload_t %s[%" PRIu32 "];", 
-						get_primitive_type_name(vardata), 
-						vardata->variable_name, 
-						vardata->variable_array->static_array_len);
+					fprintf(fs, "CStyleArray<%s::Payload_t, %" PRIu32 "> %s;",
+						get_primitive_type_name(vardata),
+						vardata->variable_array->static_array_len,
+						vardata->variable_name);
 					break;
 				}
 
@@ -193,9 +193,34 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 	fprintf(fs, "%s& operator=(%s&& rhs) { this->Payload = std::move(rhs.Payload); return *this; }", struct_like_name, struct_like_name);
 	// declare serialization related functions
 	BPCGEN_INDENT_PRINT;
-	fputs("virtual bool Serialize(std::stringstream& _ss) override { return Payload.Serialize(_ss); }", fs);
+	fputs("virtual bool Serialize(std::stringstream& _ss) override {", fs); BPCGEN_INDENT_INC;
 	BPCGEN_INDENT_PRINT;
-	fputs("virtual bool Deserialize(std::stringstream& _ss) override { return Payload.Deserialize(_ss); }", fs);
+	fputs("Payload_t* pPayload = nullptr;", fs);
+	BPCGEN_INDENT_PRINT;
+	fputs("if _BP_IS_BIG_ENDIAN { pPayload = new Payload_t(Payload); pPayload->ByteSwap(); }", fs);	// we need create a new payload in big endian and swap it.
+	BPCGEN_INDENT_PRINT;
+	fputs("else { pPayload = &Payload; }", fs);
+	BPCGEN_INDENT_PRINT;
+	fputs("bool hr = pPayload->Serialize(_ss);", fs);
+	BPCGEN_INDENT_PRINT;
+	fputs("if _BP_IS_BIG_ENDIAN { delete pPayload; }", fs);	// and free it when bbig endian.
+	BPCGEN_INDENT_PRINT;
+	fputs("return hr;", fs);
+	BPCGEN_INDENT_DEC;
+	BPCGEN_INDENT_PRINT;
+	fputc('}', fs);
+
+	BPCGEN_INDENT_PRINT;
+	fputs("virtual bool Deserialize(std::stringstream& _ss) override {", fs); BPCGEN_INDENT_INC;
+	BPCGEN_INDENT_PRINT;
+	fputs("bool hr = Payload.Deserialize(_ss);", fs);
+	BPCGEN_INDENT_PRINT;
+	fputs("if _BP_IS_BIG_ENDIAN { Payload.ByteSwap(); }", fs);	// try using constexpr to prevent useless code compile
+	BPCGEN_INDENT_PRINT;
+	fputs("return hr;", fs);
+	BPCGEN_INDENT_DEC;
+	BPCGEN_INDENT_PRINT;
+	fputc('}', fs);
 
 	// msg unique functions
 	if (is_msg) {
@@ -235,38 +260,6 @@ static void write_opcode_enum(FILE* fs, GSList* msg_ls, BPCGEN_INDENT_TYPE inden
 	BPCGEN_INDENT_DEC;
 	BPCGEN_INDENT_PRINT;
 	fputs("};", fs);
-}
-
-static void write_msg_factory(FILE* fs, GSList* msg_ls, BPCGEN_INDENT_TYPE indent) {
-	GSList* cursor;
-	BPCGEN_INDENT_INIT_REF(fs, indent);
-
-	// write uniformed deserialize func
-	BPCGEN_INDENT_PRINT;
-	fputs("BpMessage* MessageFactory(OpCode code) {", fs); BPCGEN_INDENT_INC;
-	BPCGEN_INDENT_PRINT;
-	fputs("switch (code) {", fs); BPCGEN_INDENT_INC;
-	for (cursor = msg_ls; cursor != NULL; cursor = cursor->next) {
-		BPCSMTV_MSG* data = (BPCSMTV_MSG*)cursor->data;
-
-		// return new instance
-		BPCGEN_INDENT_PRINT;
-		fprintf(fs, "case OpCode::%s: return new %s;", data->msg_name, data->msg_name);
-	}
-	// default return
-	BPCGEN_INDENT_PRINT;
-	fprintf(fs, "default: return nullptr;");
-	// switch over
-	BPCGEN_INDENT_DEC;
-	BPCGEN_INDENT_PRINT;
-	fputc('}', fs);
-
-
-	// uniform func is over
-	BPCGEN_INDENT_DEC;
-	BPCGEN_INDENT_PRINT;
-	fputc('}', fs);
-
 }
 
 static void write_testbench_data(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN_INDENT_TYPE indent) {
@@ -451,14 +444,6 @@ void codehpp_write_document(FILE* fs, BPCSMTV_DOCUMENT* document) {
 				g_assert_not_reached();
 		}
 	}
-
-	// write msg factory
-	BPCGEN_INDENT_PRINT;
-	fputs("namespace BPHelper {", fs); BPCGEN_INDENT_INC;
-	write_msg_factory(fs, msg_ls, BPCGEN_INDENT_REF);
-	BPCGEN_INDENT_DEC;
-	BPCGEN_INDENT_PRINT;
-	fputc('}', fs);
 
 	// ===== start testbench code. write macro
 	BPCGEN_INDENT_PRINT;
