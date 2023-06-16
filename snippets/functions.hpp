@@ -1,6 +1,5 @@
 
 #if _ENABLE_BP_TESTBENCH
-#include <functional>
 enum class _BPTestbench_ContainerType {
 	Single, Tuple, List
 };
@@ -85,11 +84,12 @@ struct CStyleArray {
 	[[nodiscard]] constexpr const _Ty* data() const noexcept {
 		return _Elems;
 	}
-
+	
 	~CStyleArray() {}
 };
 
 namespace BPHelper {
+	BpMessage* MessageFactory(OpCode code);
 	bool UniformSerialize(std::stringstream& ss, BpMessage* instance);
 	BpMessage* UniformDeserialize(std::stringstream& ss);
 

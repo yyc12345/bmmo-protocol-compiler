@@ -71,6 +71,20 @@ namespace BPHelper {
 		return instance->Serialize(ss);
 	}
 
+	BpMessage* UniformDeserialize(std::stringstream& ss) {
+		OpCode code;
+		_SS_RD_STRUCT(ss, &code, sizeof(uint32_t));
+		BPHelper::ByteSwap::SwapSingle<uint32_t>(&code);
+
+		BpMessage* instance = MessageFactory(code);
+		if (instance != nullptr) {
+			if (!instance->Deserialize(ss)) {
+				delete instance;
+			}
+		}
+		return instance;
+	}
+
 	bool ReadString(std::stringstream& ss, std::string& strl) {
 		uint32_t length = 0;
 		_SS_RD_STRUCT(ss, &length, sizeof(uint32_t));
