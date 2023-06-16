@@ -188,9 +188,9 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 	BPCGEN_INDENT_PRINT;
 	fprintf(fs, "%s(%s&& rhs) : Payload(std::move(rhs.Payload)) {}", struct_like_name, struct_like_name);
 	BPCGEN_INDENT_PRINT;
-	fprintf(fs, "%s& operator=(const %s& rhs) { this->Payload = rhs.Payload; }", struct_like_name, struct_like_name);
+	fprintf(fs, "%s& operator=(const %s& rhs) { this->Payload = rhs.Payload; return *this; }", struct_like_name, struct_like_name);
 	BPCGEN_INDENT_PRINT;
-	fprintf(fs, "%s& operator=(%s&& rhs) { this->Payload = std::move(rhs.Payload); }", struct_like_name, struct_like_name);
+	fprintf(fs, "%s& operator=(%s&& rhs) { this->Payload = std::move(rhs.Payload); return *this; }", struct_like_name, struct_like_name);
 	// declare serialization related functions
 	BPCGEN_INDENT_PRINT;
 	fputs("virtual bool Serialize(std::stringstream& _ss) override { return Payload.Serialize(_ss); }", fs);
@@ -378,15 +378,13 @@ static void write_testbench_data(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGE
 				case BPCGEN_VARTYPE_DYNAMIC_NARROW:
 				case BPCGEN_VARTYPE_DYNAMIC_NATURAL:
 				{
-					fprintf(fs, "[](void* cls) { return reinterpret_cast<decltype(%s::Payload_t::%s)*>(cls)->data(); }, ",
-						struct_like_name,
-						vardata->variable_name
+					// BUG INFO!
+					// because the bug of MSVC, we need reveal its real type in c++. not use delctype() instead.
+					fprintf(fs, "[](void* cls) { return reinterpret_cast<std::vector<%s>*>(cls)->data(); }, ",
+						get_primitive_type_name(vardata)
 					);
-					fprintf(fs, "[](void* cls, decltype(%s::Payload_t::%s)::size_type n) { reinterpret_cast<decltype(%s::Payload_t::%s)*>(cls)->resize(n); }",
-						struct_like_name,
-						vardata->variable_name,
-						struct_like_name,
-						vardata->variable_name
+					fprintf(fs, "[](void* cls, _BPTestbench_VecSize_t n) { reinterpret_cast<std::vector<%s>*>(cls)->resize(n); }",
+						get_primitive_type_name(vardata)
 					);
 					break;
 				}
