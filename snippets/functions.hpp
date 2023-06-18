@@ -1,5 +1,6 @@
 
 #if _ENABLE_BP_TESTBENCH
+#define _BP_OFFSETOF(s,m) ((::size_t)&reinterpret_cast<char const volatile&>((((s*)0)->m)))
 enum class _BPTestbench_ContainerType {
 	Single, Tuple, List
 };
@@ -15,10 +16,16 @@ struct _BPTestbench_VariableProperty {
 	std::string mComplexType;
 
 	size_t mOffset;
-	size_t mTypeSizeof;
+	size_t mUnitSizeof;
 
-	std::function<void* (void*)> mVectorDataFuncPtr;
-	std::function<void(void*, _BPTestbench_VecSize_t)> mVectorResizeFuncPtr;
+	size_t mTupleSize;
+	std::function<void*(void*)> mListDataFuncPtr;
+	std::function<void(void*, _BPTestbench_VecSize_t)> mListResizeFuncPtr;
+	std::function<_BPTestbench_VecSize_t(void*)> mListSizeFuncPtr;
+};
+struct _BPTestbench_StructProperty {
+	size_t mPayloadOffset;
+	std::vector<_BPTestbench_VariableProperty> mVariableProperties;
 };
 #endif
 
@@ -40,6 +47,7 @@ public:
 	virtual bool IsReliable() = 0;
 };
 
+#pragma pack(1)
 template<class _Ty, size_t _Nsize>
 struct CStyleArray {
 	_Ty _Elems[_Nsize];
@@ -74,6 +82,9 @@ struct CStyleArray {
 		}
 		return *this;
 	}
+	[[nodiscard]] constexpr size_t size() const noexcept {
+		return _Nsize;
+	}
 	[[nodiscard]] constexpr _Ty& operator[](size_t idx) noexcept {
 		return _Elems[idx];
 	}
@@ -89,43 +100,44 @@ struct CStyleArray {
 	
 	~CStyleArray() {}
 };
+#pragma pack()
 
 namespace BPHelper {
 	BpMessage* MessageFactory(OpCode code);
 	bool UniformSerialize(std::stringstream& ss, BpMessage* instance);
 	BpMessage* UniformDeserialize(std::stringstream& ss);
 
-	bool ReadString(std::stringstream& ss, std::string& strl);
-	bool WriteString(std::stringstream& ss, std::string& strl);
+	bool _ReadString(std::stringstream& ss, std::string& strl);
+	bool _WriteString(std::stringstream& ss, std::string& strl);
 
-	void ReadBlank(std::stringstream& ss, uint32_t offset);
-	void WriteBlank(std::stringstream& ss, uint32_t offset);
+	bool _ReadBlank(std::stringstream& ss, uint32_t offset);
+	bool _WriteBlank(std::stringstream& ss, uint32_t offset);
 
-	namespace ByteSwap {
+	namespace _ByteSwap {
 #if __cpp_lib_endian
-		constexpr const bool g_IsLittleEndian = (std::endian::native == std::endian::little);
-#define _BP_IS_LITTLE_ENDIAN constexpr (BPHelper::ByteSwap::g_IsLittleEndian)
-#define _BP_IS_BIG_ENDIAN constexpr (!BPHelper::ByteSwap::g_IsLittleEndian)
+		constexpr const bool _g_IsLittleEndian = (std::endian::native == std::endian::little);
+#define _BP_IS_LITTLE_ENDIAN constexpr (BPHelper::_ByteSwap::_g_IsLittleEndian)
+#define _BP_IS_BIG_ENDIAN constexpr (!BPHelper::_ByteSwap::_g_IsLittleEndian)
 #else
-		const uint16_t g_EndianProbe = UINT16_C(0xFEFF);
-		const bool g_IsLittleEndian = reinterpret_cast<const uint8_t*>(&g_EndianProbe)[0] == UINT8_C(0xFF);
-#define _BP_IS_LITTLE_ENDIAN (BPHelper::ByteSwap::g_IsLittleEndian)
-#define _BP_IS_BIG_ENDIAN (!BPHelper::ByteSwap::g_IsLittleEndian)
+		const uint16_t _g_EndianProbe = UINT16_C(0xFEFF);
+		const bool _g_IsLittleEndian = reinterpret_cast<const uint8_t*>(&_g_EndianProbe)[0] == UINT8_C(0xFF);
+#define _BP_IS_LITTLE_ENDIAN (BPHelper::_ByteSwap::_g_IsLittleEndian)
+#define _BP_IS_BIG_ENDIAN (!BPHelper::_ByteSwap::_g_IsLittleEndian)
 #endif
 
 		template <class _Ty>
-		constexpr bool CheckSwapType() {
+		constexpr bool _CheckSwapType() {
 			if constexpr (std::is_arithmetic_v<_Ty>) return true;
 			else if constexpr (std::is_enum_v<_Ty> && std::is_arithmetic_v<std::underlying_type_t<_Ty>>) return true;
 			else return false;
 		}
 		template <class>
-		constexpr bool g_AlwaysFalse = false;
+		constexpr bool _g_AlwaysFalse = false;
 		template <class _Ty>
-		void SwapSingle(void* v) {
-			if constexpr (!CheckSwapType<_Ty>()) static_assert(g_AlwaysFalse<_Ty>, "Invalid type for ByteSwap.");
+		void _SwapSingle(void* v) {
+			if constexpr (!_CheckSwapType<_Ty>()) static_assert(_g_AlwaysFalse<_Ty>, "Invalid type for ByteSwap.");
 			if _BP_IS_LITTLE_ENDIAN return;
-			
+
 #if __cpp_lib_byteswap
 			if constexpr (sizeof(_Ty) == 1) {
 				return;     // 8bit data do not need swap
@@ -136,7 +148,7 @@ namespace BPHelper {
 			} else if constexpr (sizeof(_Ty) == 8) {
 				*reinterpret_cast<uint64_t*>(v) = std::byteswap(*reinterpret_cast<uint64_t*>(v));
 			} else {
-				static_assert(g_AlwaysFalse<_Ty>, "Unexpected integer size");
+				static_assert(_g_AlwaysFalse<_Ty>, "Unexpected integer size");
 			}
 #else
 			if constexpr (sizeof(_Ty) == 1) {
@@ -182,18 +194,18 @@ namespace BPHelper {
 					));
 
 			} else {
-				static_assert(g_AlwaysFalse<_Ty>, "Unexpected integer size");
+				static_assert(_g_AlwaysFalse<_Ty>, "Unexpected integer size");
 			}
 #endif
 		}
 
 		template <class _Ty>
-		void SwapArray(void* v, uint32_t len) {
-			if constexpr (!CheckSwapType<_Ty>()) static_assert(g_AlwaysFalse<_Ty>, "Invalid type for ByteSwap.");
+		void _SwapArray(void* v, uint32_t len) {
+			if constexpr (!_CheckSwapType<_Ty>()) static_assert(_g_AlwaysFalse<_Ty>, "Invalid type for ByteSwap.");
 			if _BP_IS_LITTLE_ENDIAN return;
 
 			uint32_t c = UINT32_C(0);
-			for (; c < len; ++c) SwapSingle<_Ty>(reinterpret_cast<_Ty*>(v) + c);
+			for (; c < len; ++c) _SwapSingle<_Ty>(reinterpret_cast<_Ty*>(v) + c);
 		}
 
 

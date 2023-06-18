@@ -12,7 +12,10 @@ if (!(ss).good() || (ss).gcount() != (len)) \
 return false;
 
 // strl: std::string&
-#define _SS_RD_STRING(ss, strl) if (!BPHelper::ReadString(ss, strl)) \
+#define _SS_RD_STRING(ss, strl) if (!BPHelper::_ReadString(ss, strl)) \
+return false;
+
+#define _SS_RD_BLANK(ss, len) if (!BPHelper::_ReadBlank(ss, len)) \
 return false;
 
 // obj: BpStruct&
@@ -26,10 +29,15 @@ return false;
 
 // ptr: void*
 // len: size_t
-#define _SS_WR_STRUCT(ss, ptr, len) (ss).write(reinterpret_cast<const char*>(ptr), (len));
+#define _SS_WR_STRUCT(ss, ptr, len) (ss).write(reinterpret_cast<const char*>(ptr), (len)); \
+if (!(ss).good()) \
+return false;
 
-// func: bool
-#define _SS_WR_STRING(ss, strl) if (!BPHelper::WriteString(ss, strl)) \
+// obj: BpStruct&
+#define _SS_WR_STRING(ss, strl) if (!BPHelper::_WriteString(ss, strl)) \
+return false;
+
+#define _SS_WR_BLANK(ss, len) if (!BPHelper::_WriteBlank(ss, len)) \
 return false;
 
 // obj: BpStruct&
@@ -44,7 +52,7 @@ namespace BPHelper {
 
 	bool UniformSerialize(std::stringstream& ss, BpMessage* instance) {
 		OpCode code = instance->GetOpCode();
-		BPHelper::ByteSwap::SwapSingle<uint32_t>(&code);
+		if _BP_IS_BIG_ENDIAN { BPHelper::_ByteSwap::_SwapSingle<uint32_t>(&code); }
 		_SS_WR_STRUCT(ss, &code, sizeof(uint32_t));
 
 		return instance->Serialize(ss);
@@ -53,7 +61,7 @@ namespace BPHelper {
 	BpMessage* UniformDeserialize(std::stringstream& ss) {
 		OpCode code;
 		if (![&ss, &code]() { _SS_RD_STRUCT(ss, &code, sizeof(uint32_t)); return true; }()) return nullptr;
-		BPHelper::ByteSwap::SwapSingle<uint32_t>(&code);
+		if _BP_IS_BIG_ENDIAN { BPHelper::_ByteSwap::_SwapSingle<uint32_t>(&code); }
 
 		BpMessage* instance = MessageFactory(code);
 		if (instance != nullptr) {
@@ -65,10 +73,10 @@ namespace BPHelper {
 		return instance;
 	}
 
-	bool ReadString(std::stringstream& ss, std::string& strl) {
+	bool _ReadString(std::stringstream& ss, std::string& strl) {
 		uint32_t length = 0;
 		_SS_RD_STRUCT(ss, &length, sizeof(uint32_t));
-		BPHelper::ByteSwap::SwapSingle<uint32_t>(&length);
+		if _BP_IS_BIG_ENDIAN { BPHelper::_ByteSwap::_SwapSingle<uint32_t>(&length); }
 		if (length > ss.str().length()) return false;
 
 		strl.resize(length);
@@ -77,25 +85,35 @@ namespace BPHelper {
 		return true;
 	}
 
-	bool WriteString(std::stringstream& ss, std::string& strl) {
+	bool _WriteString(std::stringstream& ss, std::string& strl) {
 		uint32_t length = strl.size();
-		BPHelper::ByteSwap::SwapSingle<uint32_t>(&length);
+		if _BP_IS_BIG_ENDIAN { BPHelper::_ByteSwap::_SwapSingle<uint32_t>(&length); }
 		_SS_WR_STRUCT(ss, &length, sizeof(uint32_t));
 		_SS_WR_STRUCT(ss, strl.c_str(), strl.size());
 
 		return true;
 	}
 
-	void ReadBlank(std::stringstream& ss, uint32_t offset) {
+	bool _ReadBlank(std::stringstream& ss, uint32_t offset) {
 		ss.seekg(offset, std::ios_base::cur);
+		return ss.good();
 	}
 
-	void WriteBlank(std::stringstream& ss, uint32_t offset) {
-		if (offset == 0) return;
-		ss.seekp(offset - 1, std::ios_base::cur);
-		
-		constexpr const uint8_t c_ZeroFill = UINT8_C(0);
-		_SS_WR_STRUCT(ss, &c_ZeroFill, sizeof(uint8_t));
+	bool _WriteBlank(std::stringstream& ss, uint32_t offset) {
+		constexpr const uint32_t len_ph = 512;
+		const char placeholder[len_ph]{ 0 };
+
+		while (true) {
+			if (offset > len_ph) {
+				_SS_WR_STRUCT(ss, placeholder, len_ph);
+				offset -= len_ph;
+			} else {
+				_SS_WR_STRUCT(ss, placeholder, offset);
+				break;
+			}
+		}
+
+		return true;
 	}
 
 }

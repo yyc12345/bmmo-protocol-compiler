@@ -64,12 +64,11 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 
 	// internal data define
 	// pack specific
+	// C++ IMPL WARNING:
+	// due to C++ shitty design. I can't use template with #pack. Compiler will omit this #pack instruction and do not padding any space for this.
+	// so we use _Placeholder to force;y ensure our behavior.
 	BPCGEN_INDENT_PRINT;
-	if (modifier->is_narrow) {
-		fputs("#pragma pack(1)", fs);	// narrow is always 1 byte align
-	} else {
-		fprintf(fs, "#pragma pack(%" PRIu32 ")", modifier->struct_unit_size);	// use calculated align size
-	}
+	fputs("#pragma pack(1)", fs);
 	BPCGEN_INDENT_PRINT;
 	fputs("struct Payload_t {", fs); BPCGEN_INDENT_INC;
 	uint32_t ph_counter = UINT32_C(0);
@@ -134,15 +133,21 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 					g_assert_not_reached();
 			}
 
-			// padding, only applied in narrow struct.
+			// always do padding, see previouslt metioned c++ warning for detail.
 			// because align always reflect variable align even in natural mode.
 			// (for the convenience other languages, python and etc)
-			if (modifier->is_narrow && vardata->variable_align->use_align) {
+			if (vardata->variable_align->use_align) {
 				BPCGEN_INDENT_PRINT;
 				fprintf(fs, "char _Placeholder%" PRIu32 "[%" PRIu32 "];", ph_counter++, vardata->variable_align->padding_size);
 			}
 		}
 	}
+	// if no member. insert a placeholder to ensure its size == 1
+	if (bond_vars == NULL) {
+		BPCGEN_INDENT_PRINT;
+		fputs("char _Placeholder0;", fs);
+	}
+
 	// internal data define is over
 	// start define some basic functions
 	// define c++ functions: constructor, destructor, copy constructor, copy =operator, move constructor, move =operator
@@ -153,11 +158,11 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 	BPCGEN_INDENT_PRINT;
 	fputs("Payload_t(const Payload_t& _rhs);", fs);
 	BPCGEN_INDENT_PRINT;
-	fputs("Payload_t(Payload_t&& _rhs);", fs);
+	fputs("Payload_t(Payload_t&& _rhs) noexcept;", fs);
 	BPCGEN_INDENT_PRINT;
 	fputs("Payload_t& operator=(const Payload_t& _rhs);", fs);
 	BPCGEN_INDENT_PRINT;
-	fputs("Payload_t& operator=(Payload_t&& _rhs);", fs);
+	fputs("Payload_t& operator=(Payload_t&& _rhs) noexcept;", fs);
 	// define serialization functions
 	BPCGEN_INDENT_PRINT;
 	fputs("bool Serialize(std::stringstream& _ss);", fs);
@@ -186,11 +191,11 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 	BPCGEN_INDENT_PRINT;
 	fprintf(fs, "%s(const %s& rhs) : Payload(rhs.Payload) {}", struct_like_name, struct_like_name);
 	BPCGEN_INDENT_PRINT;
-	fprintf(fs, "%s(%s&& rhs) : Payload(std::move(rhs.Payload)) {}", struct_like_name, struct_like_name);
+	fprintf(fs, "%s(%s&& rhs) noexcept : Payload(std::move(rhs.Payload)) {}", struct_like_name, struct_like_name);
 	BPCGEN_INDENT_PRINT;
 	fprintf(fs, "%s& operator=(const %s& rhs) { this->Payload = rhs.Payload; return *this; }", struct_like_name, struct_like_name);
 	BPCGEN_INDENT_PRINT;
-	fprintf(fs, "%s& operator=(%s&& rhs) { this->Payload = std::move(rhs.Payload); return *this; }", struct_like_name, struct_like_name);
+	fprintf(fs, "%s& operator=(%s&& rhs) noexcept { this->Payload = std::move(rhs.Payload); return *this; }", struct_like_name, struct_like_name);
 	// declare serialization related functions
 	BPCGEN_INDENT_PRINT;
 	fputs("virtual bool Serialize(std::stringstream& _ss) override {", fs); BPCGEN_INDENT_INC;
@@ -271,9 +276,10 @@ static void write_testbench_data(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGE
 	// we just want to get variables type. we do not need bond any variables.
 	GSList* bond_vars = bpcgen_constructor_bond_vars(variables, BPCGEN_VARTYPE_NONE);
 
-	// write header, including name and the start bracket of list
+	// write header
+	// struct name, struct property body
 	BPCGEN_INDENT_PRINT;
-	fprintf(fs, "{ \"%s\", {", struct_like_name);
+	fprintf(fs, "{ \"%s\", { _BP_OFFSETOF(%s, Payload), {", struct_like_name, struct_like_name);
 
 	// write variable body
 	for (cursor = bond_vars; cursor != NULL; cursor = cursor->next) {
@@ -344,13 +350,70 @@ static void write_testbench_data(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGE
 					g_assert_not_reached();
 			}
 
-			// write offset and typesize
-			fprintf(fs, "offsetof(%s::Payload_t, %s), sizeof(%s::Payload_t::%s), ", 
-				struct_like_name,
-				vardata->variable_name,
+			// write offset
+			fprintf(fs, "_BP_OFFSETOF(%s::Payload_t, %s), ", 
 				struct_like_name,
 				vardata->variable_name
 			);
+
+			// write unit size
+			switch (data->vars_type[c]) {
+				case BPCGEN_VARTYPE_SINGLE_PRIMITIVE:
+				case BPCGEN_VARTYPE_SINGLE_STRING:
+				case BPCGEN_VARTYPE_STATIC_PRIMITIVE:
+				case BPCGEN_VARTYPE_STATIC_STRING:
+				case BPCGEN_VARTYPE_DYNAMIC_PRIMITIVE:
+				case BPCGEN_VARTYPE_DYNAMIC_STRING:
+				{
+					// single variable just use their types
+					fprintf(fs, "sizeof(%s), ",
+						get_primitive_type_name(vardata)
+					);
+					break;
+				}
+				case BPCGEN_VARTYPE_SINGLE_NARROW:
+				case BPCGEN_VARTYPE_SINGLE_NATURAL:
+				case BPCGEN_VARTYPE_STATIC_NARROW:
+				case BPCGEN_VARTYPE_STATIC_NATURAL:
+				case BPCGEN_VARTYPE_DYNAMIC_NARROW:
+				case BPCGEN_VARTYPE_DYNAMIC_NATURAL:
+				{
+					fprintf(fs, "sizeof(%s::Payload_t), ",
+						get_primitive_type_name(vardata)
+					);
+					break;
+				}
+				default:
+					g_assert_not_reached();
+			}
+
+			// write tuple size
+			switch (data->vars_type[c]) {
+				case BPCGEN_VARTYPE_SINGLE_PRIMITIVE:
+				case BPCGEN_VARTYPE_SINGLE_STRING:
+				case BPCGEN_VARTYPE_SINGLE_NARROW:
+				case BPCGEN_VARTYPE_SINGLE_NATURAL:
+				case BPCGEN_VARTYPE_DYNAMIC_PRIMITIVE:
+				case BPCGEN_VARTYPE_DYNAMIC_STRING:
+				case BPCGEN_VARTYPE_DYNAMIC_NARROW:
+				case BPCGEN_VARTYPE_DYNAMIC_NATURAL: 
+				{
+					fputs("0, ", fs);
+					break;
+				}
+				case BPCGEN_VARTYPE_STATIC_PRIMITIVE:
+				case BPCGEN_VARTYPE_STATIC_STRING:
+				case BPCGEN_VARTYPE_STATIC_NARROW:
+				case BPCGEN_VARTYPE_STATIC_NATURAL:
+				{
+					fprintf(fs, "%" PRIu32 ", ",
+						vardata->variable_array->static_array_len
+					);
+					break;
+				}
+				default:
+					g_assert_not_reached();
+			}
 
 			// write list function ptr. for non-list member, write nullptr
 			switch (data->vars_type[c]) {
@@ -363,20 +426,36 @@ static void write_testbench_data(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGE
 				case BPCGEN_VARTYPE_STATIC_NARROW:
 				case BPCGEN_VARTYPE_STATIC_NATURAL:
 				{
-					fputs("nullptr, nullptr", fs);
+					fputs("nullptr, nullptr, nullptr", fs);
 					break;
 				}
+				// BUG INFO!
+				// because the bug of MSVC, we need reveal its real type in c++. not use delctype() instead.
+				// the difference between primitive+string and struct is that struct need Payload_t suffix
 				case BPCGEN_VARTYPE_DYNAMIC_PRIMITIVE:
 				case BPCGEN_VARTYPE_DYNAMIC_STRING:
+				{
+					fprintf(fs, "[](void* cls) -> void* { return reinterpret_cast<std::vector<%s>*>(cls)->data(); }, ",
+						get_primitive_type_name(vardata)
+					);
+					fprintf(fs, "[](void* cls, _BPTestbench_VecSize_t n) -> void { reinterpret_cast<std::vector<%s>*>(cls)->resize(n); }, ",
+						get_primitive_type_name(vardata)
+					);
+					fprintf(fs, "[](void* cls) -> _BPTestbench_VecSize_t { return reinterpret_cast<std::vector<%s>*>(cls)->size(); }",
+						get_primitive_type_name(vardata)
+					);
+					break;
+				}
 				case BPCGEN_VARTYPE_DYNAMIC_NARROW:
 				case BPCGEN_VARTYPE_DYNAMIC_NATURAL:
 				{
-					// BUG INFO!
-					// because the bug of MSVC, we need reveal its real type in c++. not use delctype() instead.
-					fprintf(fs, "[](void* cls) { return reinterpret_cast<std::vector<%s>*>(cls)->data(); }, ",
+					fprintf(fs, "[](void* cls) -> void* { return reinterpret_cast<std::vector<%s::Payload_t>*>(cls)->data(); }, ",
 						get_primitive_type_name(vardata)
 					);
-					fprintf(fs, "[](void* cls, _BPTestbench_VecSize_t n) { reinterpret_cast<std::vector<%s>*>(cls)->resize(n); }",
+					fprintf(fs, "[](void* cls, _BPTestbench_VecSize_t n) -> void { reinterpret_cast<std::vector<%s::Payload_t>*>(cls)->resize(n); }, ",
+						get_primitive_type_name(vardata)
+					);
+					fprintf(fs, "[](void* cls) -> _BPTestbench_VecSize_t { return reinterpret_cast<std::vector<%s::Payload_t>*>(cls)->size(); }",
 						get_primitive_type_name(vardata)
 					);
 					break;
@@ -385,17 +464,38 @@ static void write_testbench_data(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGE
 					g_assert_not_reached();
 			}
 
-			// end of a variable property body
+			// end of variable property
 			fputs("},", fs);
 		}
 	}
 
-	// write tail including the end bracket of list and the end bracket of pair.
+	// end of std::pair (for std::map), struct property, and variable properties
 	BPCGEN_INDENT_PRINT;
-	fputs("}},", fs);
+	fputs("}}},", fs);
 	
 	// free all cache data
 	bpcgen_destructor_bond_vars(bond_vars);
+}
+
+static void write_msg_list(FILE* fs, GSList* msg_ls, BPCGEN_INDENT_TYPE indent) {
+	GSList* cursor;
+	BPCGEN_INDENT_INIT_REF(fs, indent);
+
+	// write all message name
+	BPCGEN_INDENT_PRINT;
+	fputs("const std::vector<std::string> _BPTestbench_MessageList {", fs); BPCGEN_INDENT_INC;
+	for (cursor = msg_ls; cursor != NULL; cursor = cursor->next) {
+		BPCSMTV_MSG* data = (BPCSMTV_MSG*)cursor->data;
+
+		// write name
+		BPCGEN_INDENT_PRINT;
+		fprintf(fs, "\"%s\", ", data->msg_name);
+	}
+	// over
+	BPCGEN_INDENT_DEC;
+	BPCGEN_INDENT_PRINT;
+	fputs("};", fs);
+
 }
 
 void codehpp_write_document(FILE* fs, BPCSMTV_DOCUMENT* document) {
@@ -450,7 +550,7 @@ void codehpp_write_document(FILE* fs, BPCSMTV_DOCUMENT* document) {
 	fputs("#if _ENABLE_BP_TESTBENCH", fs);
 	// iterate list to generate testbench data
 	BPCGEN_INDENT_PRINT;
-	fputs("const std::map<std::string, std::vector<_BPTestbench_VariableProperty>> _BPTestbench_VariableProperties {", fs); BPCGEN_INDENT_INC;
+	fputs("const std::map<std::string, _BPTestbench_StructProperty> _BPTestbench_StructLayouts {", fs); BPCGEN_INDENT_INC;
 	for (cursor = document->protocol_body; cursor != NULL; cursor = cursor->next) {
 		BPCSMTV_PROTOCOL_BODY* data = (BPCSMTV_PROTOCOL_BODY*)cursor->data;
 
@@ -475,9 +575,8 @@ void codehpp_write_document(FILE* fs, BPCSMTV_DOCUMENT* document) {
 	BPCGEN_INDENT_DEC;
 	BPCGEN_INDENT_PRINT;
 	fputs("};", fs);
-	// write max msg count
-	BPCGEN_INDENT_PRINT;
-	fprintf(fs, "constexpr const uint32_t _BPTestbench_MessageCount = %" PRIu32 ";", (uint32_t)g_slist_length(msg_ls));
+	// write all msg name list
+	write_msg_list(fs, msg_ls, BPCGEN_INDENT_REF);
 	// end of testbench code. write macro
 	BPCGEN_INDENT_PRINT;
 	fputs("#endif", fs);

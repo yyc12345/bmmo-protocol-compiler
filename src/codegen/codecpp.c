@@ -174,7 +174,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 
 	// real move constructor
 	BPCGEN_INDENT_PRINT;
-	fprintf(fs, "%s::Payload_t::Payload_t(%s::Payload_t&& _rhs)", struct_like_name, struct_like_name);
+	fprintf(fs, "%s::Payload_t::Payload_t(%s::Payload_t&& _rhs) noexcept", struct_like_name, struct_like_name);
 	if (variables != NULL) { fputs(" : ", fs); }
 	for (cursor = variables; cursor != NULL; cursor = cursor->next) {
 		BPCSMTV_VARIABLE* vardata = (BPCSMTV_VARIABLE*)cursor->data;
@@ -210,7 +210,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 
 	// real move operator=
 	BPCGEN_INDENT_PRINT;
-	fprintf(fs, "%s::Payload_t& %s::Payload_t::operator=(%s::Payload_t&& _rhs) {", struct_like_name, struct_like_name, struct_like_name); BPCGEN_INDENT_INC;
+	fprintf(fs, "%s::Payload_t& %s::Payload_t::operator=(%s::Payload_t&& _rhs) noexcept {", struct_like_name, struct_like_name, struct_like_name); BPCGEN_INDENT_INC;
 	for (cursor = variables; cursor != NULL; cursor = cursor->next) {
 		BPCSMTV_VARIABLE* vardata = (BPCSMTV_VARIABLE*)cursor->data;
 
@@ -241,7 +241,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 				case BPCGEN_VARTYPE_SINGLE_PRIMITIVE:
 				{
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "BPHelper::ByteSwap::SwapSingle<%s>(&%s);",
+					fprintf(fs, "BPHelper::_ByteSwap::_SwapSingle<%s>(&%s);",
 						get_primitive_type_name(vardata),
 						vardata->variable_name
 					);
@@ -250,7 +250,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 				case BPCGEN_VARTYPE_STATIC_PRIMITIVE:
 				{
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "BPHelper::ByteSwap::SwapArray<%s>(%s.data(), UINT32_C(%" PRIu32 "));",
+					fprintf(fs, "BPHelper::_ByteSwap::_SwapArray<%s>(%s.data(), UINT32_C(%" PRIu32 "));",
 						get_primitive_type_name(vardata),
 						vardata->variable_name,
 						vardata->variable_array->static_array_len
@@ -260,7 +260,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 				case BPCGEN_VARTYPE_DYNAMIC_PRIMITIVE:
 				{
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "BPHelper::ByteSwap::SwapArray<%s>(%s.data(), static_cast<uint32_t>(%s.size()));",
+					fprintf(fs, "BPHelper::_ByteSwap::_SwapArray<%s>(%s.data(), static_cast<uint32_t>(%s.size()));",
 						get_primitive_type_name(vardata),
 						vardata->variable_name,
 						vardata->variable_name
@@ -313,7 +313,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 
 	// real deserializer
 	BPCGEN_INDENT_PRINT;
-	fprintf(fs, "bool %s::Payload_t::Serialize(std::stringstream& _ss) {", struct_like_name); BPCGEN_INDENT_INC;
+	fprintf(fs, "bool %s::Payload_t::Deserialize(std::stringstream& _ss) {", struct_like_name); BPCGEN_INDENT_INC;
 	// may be used variables
 	if (need_extra_var) {
 		BPCGEN_INDENT_PRINT;
@@ -347,7 +347,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 					BPCGEN_INDENT_PRINT;
 					fputs("_SS_RD_STRUCT(_ss, &_count, sizeof(uint32_t));", fs);
 					BPCGEN_INDENT_PRINT;
-					fputs("if _BP_IS_BIG_ENDIAN { BPHelper::ByteSwap::SwapSingle<uint32_t>(&_count); }", fs);
+					fputs("if _BP_IS_BIG_ENDIAN { BPHelper::_ByteSwap::_SwapSingle<uint32_t>(&_count); }", fs);
 					BPCGEN_INDENT_PRINT;
 					fprintf(fs, "%s.resize(_count);", vardata->variable_name);
 					BPCGEN_INDENT_PRINT;
@@ -378,7 +378,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 					BPCGEN_INDENT_PRINT;
 					fputs("_SS_RD_STRUCT(_ss, &_count, sizeof(uint32_t));", fs);
 					BPCGEN_INDENT_PRINT;
-					fputs("if _BP_IS_BIG_ENDIAN { BPHelper::ByteSwap::SwapSingle<uint32_t>(&_count); }", fs);
+					fputs("if _BP_IS_BIG_ENDIAN { BPHelper::_ByteSwap::_SwapSingle<uint32_t>(&_count); }", fs);
 					BPCGEN_INDENT_PRINT;
 					fprintf(fs, "%s.resize(_count);", vardata->variable_name);
 					BPCGEN_INDENT_PRINT;
@@ -410,7 +410,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 					BPCGEN_INDENT_PRINT;
 					fputs("_SS_RD_STRUCT(_ss, &_count, sizeof(uint32_t));", fs);
 					BPCGEN_INDENT_PRINT;
-					fputs("if _BP_IS_BIG_ENDIAN { BPHelper::ByteSwap::SwapSingle<uint32_t>(&_count); }", fs);
+					fputs("if _BP_IS_BIG_ENDIAN { BPHelper::_ByteSwap::_SwapSingle<uint32_t>(&_count); }", fs);
 					BPCGEN_INDENT_PRINT;
 					fprintf(fs, "%s.resize(_count);", vardata->variable_name);
 					BPCGEN_INDENT_PRINT;
@@ -432,14 +432,14 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 			// align data
 			if (vardata->variable_align->use_align) {
 				BPCGEN_INDENT_PRINT;
-				fprintf(fs, "BPHelper::ReadBlank(_ss, %" PRIu32 ");", vardata->variable_align->padding_size);
+				fprintf(fs, "_SS_RD_BLANK(_ss, %" PRIu32 ");", vardata->variable_align->padding_size);
 			}
 		}
 	}
 	if (bond_vars == NULL) {
 		// no variable, read 1 byte anyway. because sizeof(empty_struct) == 1u
 		BPCGEN_INDENT_PRINT;
-		fputs("BPHelper::ReadBlank(_ss, 1);", fs);
+		fputs("_SS_RD_BLANK(_ss, 1);", fs);
 	}
 	BPCGEN_INDENT_PRINT;
 	fputs("_SS_END_RD(_ss);", fs);
@@ -449,7 +449,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 
 	// real serializer
 	BPCGEN_INDENT_PRINT;
-	fprintf(fs, "bool %s::Payload_t::Deserialize(std::stringstream& _ss) {", struct_like_name); BPCGEN_INDENT_INC;
+	fprintf(fs, "bool %s::Payload_t::Serialize(std::stringstream& _ss) {", struct_like_name); BPCGEN_INDENT_INC;
 	// may be used variables
 	if (need_extra_var) {
 		BPCGEN_INDENT_PRINT;
@@ -483,7 +483,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 					BPCGEN_INDENT_PRINT;
 					fprintf(fs, "_count = %s.size();", vardata->variable_name);
 					BPCGEN_INDENT_PRINT;
-					fputs("if _BP_IS_BIG_ENDIAN { BPHelper::ByteSwap::SwapSingle<uint32_t>(&_count); }", fs);
+					fputs("if _BP_IS_BIG_ENDIAN { BPHelper::_ByteSwap::_SwapSingle<uint32_t>(&_count); }", fs);
 					BPCGEN_INDENT_PRINT;
 					fputs("_SS_WR_STRUCT(_ss, &_count, sizeof(uint32_t));", fs);
 					BPCGEN_INDENT_PRINT;
@@ -514,7 +514,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 					BPCGEN_INDENT_PRINT;
 					fprintf(fs, "_count = %s.size();", vardata->variable_name);
 					BPCGEN_INDENT_PRINT;
-					fputs("if _BP_IS_BIG_ENDIAN { BPHelper::ByteSwap::SwapSingle<uint32_t>(&_count); }", fs);
+					fputs("if _BP_IS_BIG_ENDIAN { BPHelper::_ByteSwap::_SwapSingle<uint32_t>(&_count); }", fs);
 					BPCGEN_INDENT_PRINT;
 					fputs("_SS_WR_STRUCT(_ss, &_count, sizeof(uint32_t));", fs);
 					BPCGEN_INDENT_PRINT;
@@ -546,7 +546,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 					BPCGEN_INDENT_PRINT;
 					fprintf(fs, "_count = %s.size();", vardata->variable_name);
 					BPCGEN_INDENT_PRINT;
-					fputs("if _BP_IS_BIG_ENDIAN { BPHelper::ByteSwap::SwapSingle<uint32_t>(&_count); }", fs);
+					fputs("if _BP_IS_BIG_ENDIAN { BPHelper::_ByteSwap::_SwapSingle<uint32_t>(&_count); }", fs);
 					BPCGEN_INDENT_PRINT;
 					fputs("_SS_WR_STRUCT(_ss, &_count, sizeof(uint32_t));", fs);
 					BPCGEN_INDENT_PRINT;
@@ -568,14 +568,14 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 			// align data
 			if (vardata->variable_align->use_align) {
 				BPCGEN_INDENT_PRINT;
-				fprintf(fs, "BPHelper::WriteBlank(_ss, %" PRIu32 ");", vardata->variable_align->padding_size);
+				fprintf(fs, "_SS_WR_BLANK(_ss, %" PRIu32 ");", vardata->variable_align->padding_size);
 			}
 		}
 	}
 	if (bond_vars == NULL) {
 		// no variable, write 1 byte anyway. because sizeof(empty_struct) == 1u
 		BPCGEN_INDENT_PRINT;
-		fputs("BPHelper::WriteBlank(_ss, 1);", fs);
+		fputs("_SS_WR_BLANK(_ss, 1);", fs);
 	}
 	BPCGEN_INDENT_PRINT;
 	fputs("_SS_END_WR(_ss);", fs);
