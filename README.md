@@ -66,6 +66,13 @@ Bp file is the protocol definition file accepted by this compiler. Read [Bp File
 
 For how to use generated code files, please read [Generated Code Manual](docs/GenCode.md) in detail.
 
+For the developer or anyone else who want to know the structure of generated code in detail, read following articles (Chinese only. Translation is on the way).
+
+* [General Generation](docs/GenFields_ZH.html): The general document to describe how we generate statement for different data structures.
+* [Python Generation](docs/GenPython_ZH.md)
+* [C\# Generation](docs/GenCSharp_ZH.md)
+* [C++ Generation](docs/GenCpp_ZH.md)
+
 ## Compile
 
 This compiler support Windows and Linux platform and use different compile steps. I do not have any plan about supporting any Apple platform.

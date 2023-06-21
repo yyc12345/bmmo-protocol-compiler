@@ -94,8 +94,6 @@
         <td>
             <pre>D: list[T]</pre>
         </td>
-        <td>&nbsp;</td>
-        <td>&nbsp;</td>
     </tr>
     <tr>
         <td>Py / Ctor</td>
@@ -137,8 +135,6 @@
         <td>
             <pre>self.D = []</pre>
         </td>
-        <td>&nbsp;</td>
-        <td>&nbsp;</td>
     </tr>
     <tr>
         <td>Py / Serialize</td>
@@ -146,13 +142,11 @@
             <pre>_ss.write(struct.pack("&lt;I", self.D))</pre>
             <p>_ss是io.BytesIO</p>
             <p>I是示例，在编译期间根据self.D的类型替换</p>
-            <p><b>本项不使用，参见Python优化</b></p>
+            <p>self.D根据参数数量可用逗号分隔添加</p>
+            <p><b>本项不使用。参见Python优化</b></p>
         </td>
         <td>
-            <pre>_ss.write(struct.pack("&lt;NI", *self.D))</pre>
-            <p>I是示例，在编译期间根据self.D的元素的类型替换</p>
-            <p>字符串中的N需要在编译时替换为数值</p>
-            <p><b>本项不使用，参见Python优化</b></p>
+            <p><b>本项与Primitive合并。参见Python优化</b></p>
         </td>
         <td>
             <pre>
@@ -220,16 +214,13 @@ for _i in range(_count):
         <td>
             <pre>(self.D, ) = struct.unpack("&lt;I", _ss.read(DSIZE))</pre>
             <p>_ss是io.BytesIO</p>
-            <p>I是示例，在编译期间根据self.D的类型替换</p>
-            <p>DSIZE在编译期间替换为self.D的大小。</p>
-            <p><b>本项不使用，参见Python优化</b></p>
+            <p>I是示例，在编译期间根据(self.D, )的类型替换</p>
+            <p>DSIZE在编译期间替换为(self.D, )的大小。</p>
+            <p>(self.D, )根据参数数量可用逗号分隔添加。</p>
+            <p><b>本项不使用。参见Python优化</b></p>
         </td>
         <td>
-            <pre>self.D = list(struct.unpack('&lt;NI', _ss.read(DSIZE)))</pre>
-            <p>I是示例，在编译期间根据self.D的元素的类型替换</p>
-            <p>字符串中的N需要在编译时替换为数值</p>
-            <p>DSIZE在编译期间替换为self.D的元素的大小 * self.D的长度。</p>
-            <p><b>本项不使用，参见Python优化</b></p>
+            <p><b>本项与Primitive合并。参见Python优化</b></p>
         </td>
         <td>
             <pre>
@@ -336,8 +327,6 @@ for _i in range(_count):
         <td>
             <pre>public List&lt;T&gt; D;</pre>
         </td>
-        <td>&nbsp;</td>
-        <td>&nbsp;</td>
     </tr>
     <tr>
         <td>C# / Ctor</td>
@@ -385,8 +374,6 @@ for (int _i = 0; i &gt; this.D.Length; ++_i) {
         <td>
             <pre>this.D = new List&lt;T&gt;();</pre>
         </td>
-        <td>&nbsp;</td>
-        <td>&nbsp;</td>
     </tr>
     <tr>
         <td>C# / Serialize</td>
@@ -458,6 +445,7 @@ for (int _i = 0; _i &gt; this.D.Count; ++_i) {
         </td>
         <td>
             <pre>_bw._BpSkip(N);</pre>
+            <p>_BpSkip由代码片段定义</p>
         </td>
         <td>
             <pre>_bw._BpSkip(1);</pre>
@@ -540,6 +528,7 @@ for (int _i = 0, _count = (int)_br._BpReadUInt32(); _i &gt; _count; ++_i) {
         </td>
         <td>
             <pre>_br._BpSkip(N);</pre>
+            <p>_BpSkip由代码片段定义</p>
         </td>
         <td>
             <pre>_br._BpSkip(1);</pre>
@@ -547,34 +536,280 @@ for (int _i = 0, _count = (int)_br._BpReadUInt32(); _i &gt; _count; ++_i) {
     </tr>
     <tr>
         <td>C++ / Decl</td>
-        <td>&nbsp;</td>
+        <td><pre>T D;</pre></td>
+        <td><pre>CStyleArray&lt;T, N&gt; D;</pre></td>
+        <td><pre>std::vector&lt;T&gt; D;</pre></td>
+        <td><pre>std::string D;</pre></td>
+        <td><pre>CStyleArray&lt;std::string, N&gt; D;</pre></td>
+        <td><pre>std::vector&lt;std::string&gt; D;</pre></td>
+        <td><pre>T::Payload_t D;</pre></td>
+        <td><pre>CStyleArray&lt;T::Payload_t, N&gt; D;</pre></td>
+        <td><pre>std::vector&lt;T::Payload_t&gt; D;</pre></td>
+        <td><pre>T::Payload_t D;</pre></td>
+        <td><pre>CStyleArray&lt;T::Payload_t, N&gt; D;</pre></td>
+        <td><pre>std::vector&lt;T::Payload_t&gt; D;</pre></td>
+        <td>
+            <pre>char _Placeholder<u>PN</u>;</pre>
+            <p>PN是名称的一部分。对于每一个Struct，PN初始为0。如果需要添加Padding，则使用当前PN数值替换，然后将PN自增1以供下一个Padding命名使用</p>
+        </td>
+        <td><pre>char _Placeholder0;</pre></td>
     </tr>
     <tr>
         <td>C++ / Ctor</td>
-        <td>&nbsp;</td>
+        <td><pre>D()</pre></td>
+        <td><pre>D()</pre></td>
+        <td><pre>D()</pre></td>
+        <td><pre>D()</pre></td>
+        <td><pre>D()</pre></td>
+        <td><pre>D()</pre></td>
+        <td><pre>D()</pre></td>
+        <td><pre>D()</pre></td>
+        <td><pre>D()</pre></td>
+        <td><pre>D()</pre></td>
+        <td><pre>D()</pre></td>
+        <td><pre>D()</pre></td>
     </tr>
     <tr>
-        <td>C++ / MVtor</td>
-        <td>&nbsp;</td>
+        <td>C++ / Copy Ctor</td>
+        <td>
+            <pre>D(_rhs.D)</pre>
+            <p>_rhs是函数T::Payload_t::Payload_t(const T::Payload_t& _rhs)的参数</p>
+        </td>
+        <td><pre>D(_rhs.D)</pre></td>
+        <td><pre>D(_rhs.D)</pre></td>
+        <td><pre>D(_rhs.D)</pre></td>
+        <td><pre>D(_rhs.D)</pre></td>
+        <td><pre>D(_rhs.D)</pre></td>
+        <td><pre>D(_rhs.D)</pre></td>
+        <td><pre>D(_rhs.D)</pre></td>
+        <td><pre>D(_rhs.D)</pre></td>
+        <td><pre>D(_rhs.D)</pre></td>
+        <td><pre>D(_rhs.D)</pre></td>
+        <td><pre>D(_rhs.D)</pre></td>
     </tr>
     <tr>
-        <td>C++ / CPtor</td>
-        <td>&nbsp;</td>
+        <td>C++ / Move Ctor</td>
+        <td>
+            <pre>D(std::move(_rhs.D))</pre>
+            <p>_rhs是函数T::Payload_t::Payload_t(T::Payload_t&& _rhs)的参数</p>
+        </td>
+        <td><pre>D(std::move(_rhs.D))</pre></td>
+        <td><pre>D(std::move(_rhs.D))</pre></td>
+        <td><pre>D(std::move(_rhs.D))</pre></td>
+        <td><pre>D(std::move(_rhs.D))</pre></td>
+        <td><pre>D(std::move(_rhs.D))</pre></td>
+        <td><pre>D(std::move(_rhs.D))</pre></td>
+        <td><pre>D(std::move(_rhs.D))</pre></td>
+        <td><pre>D(std::move(_rhs.D))</pre></td>
+        <td><pre>D(std::move(_rhs.D))</pre></td>
+        <td><pre>D(std::move(_rhs.D))</pre></td>
+        <td><pre>D(std::move(_rhs.D))</pre></td>
     </tr>
     <tr>
-        <td>C++ / = operator</td>
-        <td>&nbsp;</td>
+        <td>C++ / Copy operator=</td>
+        <td>
+            <pre>D = _rhs.D</pre>
+            <p>_rhs是函数T::Payload_t& T::Payload_t::operator=(const T::Payload_t& _rhs)的参数</p>
+        </td>
+        <td><pre>D = _rhs.D</pre></td>
+        <td><pre>D = _rhs.D</pre></td>
+        <td><pre>D = _rhs.D</pre></td>
+        <td><pre>D = _rhs.D</pre></td>
+        <td><pre>D = _rhs.D</pre></td>
+        <td><pre>D = _rhs.D</pre></td>
+        <td><pre>D = _rhs.D</pre></td>
+        <td><pre>D = _rhs.D</pre></td>
+        <td><pre>D = _rhs.D</pre></td>
+        <td><pre>D = _rhs.D</pre></td>
+        <td><pre>D = _rhs.D</pre></td>
     </tr>
     <tr>
-        <td>C++ / Swap</td>
-        <td>&nbsp;</td>
+        <td>C++ / Move operator=</td>
+        <td>
+            <pre>D = std::move(_rhs.D)</pre>
+            <p>_rhs是函数T::Payload_t& T::Payload_t::operator=(T::Payload_t&& _rhs)的参数</p>
+        </td>
+        <td><pre>D = std::move(_rhs.D)</pre></td>
+        <td><pre>D = std::move(_rhs.D)</pre></td>
+        <td><pre>D = std::move(_rhs.D)</pre></td>
+        <td><pre>D = std::move(_rhs.D)</pre></td>
+        <td><pre>D = std::move(_rhs.D)</pre></td>
+        <td><pre>D = std::move(_rhs.D)</pre></td>
+        <td><pre>D = std::move(_rhs.D)</pre></td>
+        <td><pre>D = std::move(_rhs.D)</pre></td>
+        <td><pre>D = std::move(_rhs.D)</pre></td>
+        <td><pre>D = std::move(_rhs.D)</pre></td>
+        <td><pre>D = std::move(_rhs.D)</pre></td>
+    </tr>
+    <tr>
+        <td>C++ / ByteSwap</td>
+        <td>
+            <pre>BPHelper::_ByteSwap::_SwapSingle&lt;T&gt;(&D)</pre>
+            <p>BPHelper::_ByteSwap::_SwapSingle由代码片段定义</p>
+        </td>
+        <td>
+            <pre>BPHelper::_ByteSwap::_SwapArray&lt;T&gt;(D.data(), UINT32_C(N));</pre>
+            <p>BPHelper::_ByteSwap::_SwapArray由代码片段定义</p>
+        </td>
+        <td>
+            <pre>BPHelper::_ByteSwap::_SwapArray&lt;T&gt;(D.data(), static_cast&lt;uint32_t&gt;(D.size()));</pre>
+        </td>
+        <td><b>本项无需ByteSwap</b></td>
+        <td><b>本项无需ByteSwap</b></td>
+        <td><b>本项无需ByteSwap</b></td>
+        <td>
+            <pre>D.ByteSwap();</pre>
+        </td>
+        <td>
+            <pre>for (uint32_t _c = 0; _c < UINT32_C(N); ++_c) { D[_c].ByteSwap(); }</pre>
+        </td>
+        <td>
+            <pre>for (auto& _it : D) { _it.ByteSwap(); }</pre>
+        </td>
+        <td>
+            <pre>D.ByteSwap();</pre>
+        </td>
+        <td>
+            <pre>for (uint32_t _c = 0; _c < UINT32_C(N); ++_c) { D[_c].ByteSwap(); }</pre>
+        </td>
+        <td>
+            <pre>for (auto& _it : D) { _it.ByteSwap(); }</pre>
+        </td>
     </tr>
     <tr>
         <td>C++ / Serialize</td>
-        <td>&nbsp;</td>
+        <td>
+            <pre>_SS_WR_STRUCT(_ss, &D, DISZE);</pre>
+            <p>_ss是std::stringstream&</p>
+            <p>_SS_WR_STRUCT由代码片段定义</p>
+            <p>D是待写入数据块的起始成员</p>
+            <p>DISZE在编译期间替换为待写入数据块的大小</p>
+            <p><b>本项不使用。参见C++优化</b></p>
+        </td>
+        <td>
+            <p><b>本项与Primitive合并。参见C++优化</b></p>
+        </td>
+        <td>
+            <pre>_count = D.size();
+if _BP_IS_BIG_ENDIAN { BPHelper::_ByteSwap::_SwapSingle&lt;uint32_t&gt;(&_count); }
+_SS_WR_STRUCT(_ss, &_count, sizeof(uint32_t));
+_SS_WR_STRUCT(_ss, D.data(), _count * sizeof(T));</pre>
+            <p>_count是临时变量。定义为uint32_t _count;</p>
+            <p>_BP_IS_BIG_ENDIAN由代码片段定义</p>
+            <p>BPHelper::_ByteSwap::_SwapSingle由代码片段定义</p>
+        </td>
+        <td>
+            <pre>_SS_WR_STRING(_ss, D);</pre>
+            <p>_SS_WR_STRING由代码片段定义</p>
+        </td>
+        <td>
+            <pre>for (uint32_t _c = 0; _c < UINT32_C(N); ++_c) { _SS_WR_STRING(_ss, D[_c]); }</pre>
+        </td>
+        <td>
+            <pre>_count = D.size();
+if _BP_IS_BIG_ENDIAN { BPHelper::_ByteSwap::_SwapSingle&lt;uint32_t&gt;(&_count); }
+_SS_WR_STRUCT(_ss, &_count, sizeof(uint32_t));
+for (auto& _it : D) { _SS_WR_STRING(_ss, _it); }</pre>
+        </td>
+        <td>
+            <p><b>本项与Primitive合并。参见C++优化</b></p>
+        </td>
+        <td>
+            <p><b>本项与Primitive合并。参见C++优化</b></p>
+        </td>
+        <td>
+            <pre>_count = D.size();
+if _BP_IS_BIG_ENDIAN { BPHelper::_ByteSwap::_SwapSingle&lt;uint32_t&gt;(&_count); }
+_SS_WR_STRUCT(_ss, &_count, sizeof(uint32_t));
+_SS_WR_STRUCT(_ss, D.data(), _count * sizeof(T));</pre>
+        </td>
+        <td>
+            <pre>_SS_WR_FUNCTION(_ss, D);</pre>
+            <p>_SS_WR_FUNCTION由代码片段定义</p>
+        </td>
+        <td>
+            <pre>for (uint32_t _c = 0; _c < UINT32_C(N); ++_c) { _SS_WR_FUNCTION(_ss, D[_c]); }</pre>
+        </td>
+        <td>
+            <pre>_count = D.size();
+if _BP_IS_BIG_ENDIAN { BPHelper::_ByteSwap::_SwapSingle&lt;uint32_t&gt;(&_count); }
+_SS_WR_STRUCT(_ss, &_count, sizeof(uint32_t));
+for (auto& _it : D) { _SS_WR_FUNCTION(_ss, _it); }</pre>
+        </td>
+        <td>
+            <pre>_SS_WR_BLANK(_ss, N);</pre>
+            <p>_SS_WR_BLANK由代码片段定义</p>
+        </td>
+        <td>
+            <pre>_SS_WR_BLANK(_ss, 1);</pre>
+        </td>
     </tr>
     <tr>
         <td>C++ / Deserialize</td>
-        <td>&nbsp;</td>
+        <td>
+            <pre>_SS_RD_STRUCT(_ss, &D, DSIZE);</pre>
+            <p>_ss是std::stringstream&</p>
+            <p>_SS_RD_STRUCT由代码片段定义</p>
+            <p>D是待读取数据块的起始成员</p>
+            <p>DISZE在编译期间替换为待读取数据块的大小</p>
+            <p><b>本项不使用。参见C++优化</b></p>
+        </td>
+        <td>
+            <p><b>本项与Primitive合并。参见C++优化</b></p>
+        </td>
+        <td>
+            <pre>_SS_RD_STRUCT(_ss, &_count, sizeof(uint32_t));
+if _BP_IS_BIG_ENDIAN { BPHelper::_ByteSwap::_SwapSingle&lt;uint32_t&gt;(&_count); }
+D.resize(_count);
+_SS_RD_STRUCT(_ss, D.data(), _count * sizeof(T));</pre>
+            <p>_count是临时变量。定义为uint32_t _count;</p>
+            <p>_BP_IS_BIG_ENDIAN由代码片段定义</p>
+            <p>BPHelper::_ByteSwap::_SwapSingle由代码片段定义</p>
+        </td>
+        <td>
+            <pre>_SS_RD_STRING(_ss, D);</pre>
+            <p>_SS_RD_STRING由代码片段定义</p>
+        </td>
+        <td>
+            <pre>for (uint32_t _c = 0; _c < UINT32_C(N); ++_c) { _SS_RD_STRING(_ss, D[_c]); }</pre>
+        </td>
+        <td>
+            <pre>_SS_RD_STRUCT(_ss, &_count, sizeof(uint32_t));
+if _BP_IS_BIG_ENDIAN { BPHelper::_ByteSwap::_SwapSingle&lt;uint32_t&gt;(&_count); }
+D.resize(_count);
+for (auto& _it : D) { _SS_RD_STRING(_ss, _it); }</pre>
+        </td>
+        <td>
+            <p><b>本项与Primitive合并。参见C++优化</b></p>
+        </td>
+        <td>
+            <p><b>本项与Primitive合并。参见C++优化</b></p>
+        </td>
+        <td>
+            <pre>_SS_RD_STRUCT(_ss, &_count, sizeof(uint32_t));
+if _BP_IS_BIG_ENDIAN { BPHelper::_ByteSwap::_SwapSingle&lt;uint32_t&gt;(&_count); }
+D.resize(_count);
+_SS_RD_STRUCT(_ss, D.data(), _count * sizeof(T));</pre>
+        </td>
+        <td>
+            <pre>_SS_RD_FUNCTION(_ss, D);</pre>
+            <p>_SS_RD_FUNCTION由代码片段定义</p>
+        </td>
+        <td>
+            <pre>for (uint32_t _c = 0; _c < UINT32_C(N); ++_c) { _SS_RD_FUNCTION(_ss, D[_c]); }</pre>
+        </td>
+        <td>
+            <pre>_SS_RD_STRUCT(_ss, &_count, sizeof(uint32_t));
+if _BP_IS_BIG_ENDIAN { BPHelper::_ByteSwap::_SwapSingle&lt;uint32_t&gt;(&_count); }
+D.resize(_count);
+for (auto& _it : D) { _SS_RD_FUNCTION(_ss, _it); }</pre>
+        </td>
+        <td>
+            <pre>_SS_RD_BLANK(_ss, N);</pre>
+            <p>_SS_RD_BLANK由代码片段定义</p>
+        </td>
+        <td>
+            <pre>_SS_RD_BLANK(_ss, 1);</pre>
+        </td>
     </tr>
 </table>
