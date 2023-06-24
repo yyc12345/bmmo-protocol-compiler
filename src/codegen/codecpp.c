@@ -357,6 +357,21 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 					);
 					break;
 				}
+				case BPCGEN_VARTYPE_DYNAMIC_NATURAL:
+				{
+					BPCGEN_INDENT_PRINT;
+					fputs("_SS_RD_STRUCT(_ss, &_count, sizeof(uint32_t));", fs);
+					BPCGEN_INDENT_PRINT;
+					fputs("if _BP_IS_BIG_ENDIAN { BPHelper::_ByteSwap::_SwapSingle<uint32_t>(&_count); }", fs);
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "%s.resize(_count);", vardata->variable_name);
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "_SS_RD_STRUCT(_ss, %s.data(), _count * sizeof(%s::Payload_t));",
+						vardata->variable_name,
+						get_primitive_type_name(vardata)
+					);
+					break;
+				}
 
 				case BPCGEN_VARTYPE_SINGLE_STRING:
 				{
@@ -405,7 +420,6 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 					break;
 				}
 				case BPCGEN_VARTYPE_DYNAMIC_NARROW:
-				case BPCGEN_VARTYPE_DYNAMIC_NATURAL:
 				{
 					BPCGEN_INDENT_PRINT;
 					fputs("_SS_RD_STRUCT(_ss, &_count, sizeof(uint32_t));", fs);
@@ -493,6 +507,21 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 					);
 					break;
 				}
+				case BPCGEN_VARTYPE_DYNAMIC_NATURAL:
+				{
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "_count = %s.size();", vardata->variable_name);
+					BPCGEN_INDENT_PRINT;
+					fputs("if _BP_IS_BIG_ENDIAN { BPHelper::_ByteSwap::_SwapSingle<uint32_t>(&_count); }", fs);
+					BPCGEN_INDENT_PRINT;
+					fputs("_SS_WR_STRUCT(_ss, &_count, sizeof(uint32_t));", fs);
+					BPCGEN_INDENT_PRINT;
+					fprintf(fs, "_SS_WR_STRUCT(_ss, %s.data(), _count * sizeof(%s::Payload_t));",
+						vardata->variable_name,
+						get_primitive_type_name(vardata)
+					);
+					break;
+				}
 
 				case BPCGEN_VARTYPE_SINGLE_STRING:
 				{
@@ -541,7 +570,6 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 					break;
 				}
 				case BPCGEN_VARTYPE_DYNAMIC_NARROW:
-				case BPCGEN_VARTYPE_DYNAMIC_NATURAL:
 				{
 					BPCGEN_INDENT_PRINT;
 					fprintf(fs, "_count = %s.size();", vardata->variable_name);

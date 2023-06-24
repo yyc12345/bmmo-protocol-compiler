@@ -721,7 +721,7 @@ for (auto& _it : D) { _SS_WR_STRING(_ss, _it); }</pre>
             <pre>_count = D.size();
 if _BP_IS_BIG_ENDIAN { BPHelper::_ByteSwap::_SwapSingle&lt;uint32_t&gt;(&_count); }
 _SS_WR_STRUCT(_ss, &_count, sizeof(uint32_t));
-_SS_WR_STRUCT(_ss, D.data(), _count * sizeof(T));</pre>
+_SS_WR_STRUCT(_ss, D.data(), _count * sizeof(T::Payload_t));</pre>
         </td>
         <td>
             <pre>_SS_WR_FUNCTION(_ss, D);</pre>
@@ -789,7 +789,7 @@ for (auto& _it : D) { _SS_RD_STRING(_ss, _it); }</pre>
             <pre>_SS_RD_STRUCT(_ss, &_count, sizeof(uint32_t));
 if _BP_IS_BIG_ENDIAN { BPHelper::_ByteSwap::_SwapSingle&lt;uint32_t&gt;(&_count); }
 D.resize(_count);
-_SS_RD_STRUCT(_ss, D.data(), _count * sizeof(T));</pre>
+_SS_RD_STRUCT(_ss, D.data(), _count * sizeof(T::Payload_t));</pre>
         </td>
         <td>
             <pre>_SS_RD_FUNCTION(_ss, D);</pre>
