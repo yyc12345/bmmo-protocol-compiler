@@ -1,4 +1,7 @@
+# conditional import
+_ENABLE_BP_TESTBENCH: bool = True
 import CodeGenTest as BP
+
 import typing, inspect, timeit, os, io
 import argparse
 
@@ -187,8 +190,10 @@ EXPECTED_SIZE: dict[str, int] = {
         EXPECTED_STR_DLEN + (EXPECTED_STR_DLEN * 3) + (EXPECTED_STR_DLEN * DEFAULT_LIST_LEN + 4) + 
         4 + (4 * 3) + (4 * DEFAULT_LIST_LEN + 4),
 }
-def GetFilename(ident_lang: str, ident_msg: str) -> str:
-    return os.path.join(DATA_FOLDER_NAME, ident_lang, ident_msg + '.bin')
+def GetEndianStr(is_bigendian: bool):
+    return 'BE' if is_bigendian else 'LE'
+def GetFilename(ident_lang: str, ident_msg: str, is_bigendian: bool) -> str:
+    return os.path.join(DATA_FOLDER_NAME, ident_lang, GetEndianStr(is_bigendian) + '_' + ident_msg + '.bin')
 def LangInteractionTest(vtypes: dict[str, dict], msgs: list[str]):
     global SS
 
@@ -200,11 +205,17 @@ def LangInteractionTest(vtypes: dict[str, dict], msgs: list[str]):
         AssignVariablesValue(vtypes, name, instance)
         standard[name] = instance
 
-        # write to file
-        instance.Serialize(SS)
-        with open(GetFilename(THIS_LANG, name), 'wb') as f:
-            f.write(SS.getvalue())
-        ClearSS()
+        # write to file with 2 endian
+        for is_bigendian in (False, True):
+            # set endian switch
+            BP.g_ForceBigEndian = is_bigendian
+            # do file written
+            instance.Serialize(SS)
+            with open(GetFilename(THIS_LANG, name, is_bigendian), 'wb') as f:
+                f.write(SS.getvalue())
+            ClearSS()
+            # reset endian
+            BP.g_ForceBigEndian = False
 
     # check the output of languages, including the output created by python previously.
     for lang in ALL_LANGS:
@@ -214,37 +225,43 @@ def LangInteractionTest(vtypes: dict[str, dict], msgs: list[str]):
 
         print(f'Start testing {lang} language.')
         for name in msgs:
-            # check file exist
-            filename = GetFilename(lang, name)
-            if not os.path.isfile(filename):
-                print(f'Skip msg {name} test!')
-                continue
+            # iterate endian
+            for is_bigendian in (False, True):
+                
+                # check file exist
+                filename = GetFilename(lang, name, is_bigendian)
+                if not os.path.isfile(filename):
+                    print(f'Skip msg {name} ({GetEndianStr(is_bigendian)}) test!')
+                    continue
+                print(f'Checking {name} ({GetEndianStr(is_bigendian)})...')
 
-            # read from file
-            with open(filename, 'rb') as f:
-                binary_data = f.read()
+                # read from file
+                with open(filename, 'rb') as f:
+                    binary_data = f.read()
 
-            # compare size
-            if name in EXPECTED_SIZE:
-                print(f'Checking {name} data size...')
-                v_got = len(binary_data)
-                v_expect = EXPECTED_SIZE[name]
-                if v_expect != v_got:
-                    print(f'Failed on data size check! Expect {v_expect} got {v_got}.')
-            
-            # check data correction
-            print(f'Checking {name} data correction...')
-            # created a comparable instance
-            newinstance: BP.BpMessage = getattr(BP, name)()
-            SS.write(binary_data)
-            RewindSS()
-            newinstance.Deserialize(SS)
-            ClearSS()
-            # compare with standard object
-            if not CompareInstance(vtypes, name, standard[name], newinstance):
-                print('Failed on data correction check!')
-                print(vars(standard[name]))
-                print(vars(newinstance))
+                # compare size
+                if name in EXPECTED_SIZE:
+                    v_got = len(binary_data)
+                    v_expect = EXPECTED_SIZE[name]
+                    if v_expect != v_got:
+                        print(f'Failed on data size check! Expect {v_expect} got {v_got}.')
+                
+                # check data correction
+                # set endian switch
+                BP.g_ForceBigEndian = is_bigendian
+                # create a comparable instance
+                newinstance: BP.BpMessage = getattr(BP, name)()
+                SS.write(binary_data)
+                RewindSS()
+                newinstance.Deserialize(SS)
+                ClearSS()
+                # reset endian
+                BP.g_ForceBigEndian = False
+                # compare with standard object
+                if not CompareInstance(vtypes, name, standard[name], newinstance):
+                    print(f'Failed on data correction check!')
+                    print(vars(standard[name]))
+                    print(vars(newinstance))
 
                 
 def Testbench(skip_benchmark: bool, skip_langinter: bool):

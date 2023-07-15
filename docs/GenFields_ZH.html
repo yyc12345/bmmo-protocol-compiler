@@ -139,10 +139,11 @@
     <tr>
         <td>Py / Serialize</td>
         <td>
-            <pre>_ss.write(struct.pack("&lt;I", self.D))</pre>
+            <pre>_ss.write(pStructPack("&lt;I", self.D))</pre>
             <p>_ss是io.BytesIO</p>
             <p>I是示例，在编译期间根据self.D的类型替换</p>
             <p>self.D根据参数数量可用逗号分隔添加</p>
+            <p>pStructPack由代码片段定义</p>
             <p><b>本项不使用。参见Python优化</b></p>
         </td>
         <td>
@@ -152,7 +153,7 @@
             <pre>
 _count = len(self.D)
 _ss.write(_listlen_packer.pack(_count))
-_ss.write(struct.pack(f'<{_count:d}I', *self.D))</pre>
+_ss.write(pStructPack(f'<{_count:d}I', *self.D))</pre>
             <p>_count是用于存储列表长度的临时变量</p>
             <p>_listlen_packer由代码片段定义</p>
         </td>
@@ -212,11 +213,12 @@ for _i in range(_count):
     <tr>
         <td>Py / Deserialize</td>
         <td>
-            <pre>(self.D, ) = struct.unpack("&lt;I", _ss.read(DSIZE))</pre>
+            <pre>(self.D, ) = pStructUnpack("&lt;I", _ss.read(DSIZE))</pre>
             <p>_ss是io.BytesIO</p>
             <p>I是示例，在编译期间根据(self.D, )的类型替换</p>
             <p>DSIZE在编译期间替换为(self.D, )的大小。</p>
             <p>(self.D, )根据参数数量可用逗号分隔添加。</p>
+            <p>pStructUnpack由代码片段定义</p>
             <p><b>本项不使用。参见Python优化</b></p>
         </td>
         <td>
@@ -225,7 +227,7 @@ for _i in range(_count):
         <td>
             <pre>
 (_count, ) = _listlen_packer.unpack(_ss.read(_listlen_packer.size))
-self.D = list(struct.unpack(f'&lt;{_count:d}I', _ss.read(DSIZE * _count)))</pre>
+self.D = list(pStructUnpack(f'&lt;{_count:d}I', _ss.read(DSIZE * _count)))</pre>
             <p>_count是用于存储列表长度的临时变量</p>
             <p>_listlen_packer由代码片段定义</p>
             <p>DSIZE在编译期间替换为self.D的大小。</p>

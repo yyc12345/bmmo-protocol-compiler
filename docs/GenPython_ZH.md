@@ -53,7 +53,7 @@ class enum_a(enum.IntEnum):
 
 ```py
 class struct_a(BpStruct):
-	_struct_packer: typing.ClassVar[tuple[struct.Struct]] = (struct.Struct('<B3xI'), struct.Struct('<I'), )
+	_struct_packer: typing.ClassVar[tuple[pStructStruct]] = (pStructStruct('<B3xI'), pStructStruct('<I'), )
 
 	# Py / Decl写在此处。
 
@@ -73,7 +73,7 @@ class struct_a(BpStruct):
 
 ```py
 class msg_a(BpMessage):
-	_struct_packer: typing.ClassVar[tuple[struct.Struct]] = (struct.Struct('<B3xI'), struct.Struct('<I'), )
+	_struct_packer: typing.ClassVar[tuple[pStructStruct]] = (pStructStruct('<B3xI'), pStructStruct('<I'), )
 
 	# Py / Decl写在此处。
 
@@ -123,20 +123,21 @@ _ss.write(struct.pack("<III", self.x, self.y, self.z))
 
 ### Struct预编译
 
-为了避免Python反复分析格式字符串，编译器将创建一个名为_struct_packer的类变量。_struct_packer是一个tuple，_struct_packer中的每一项为已编译的struct.Struct。  
-“被合并的连续Primitive成员”，和“Primitive静态数组”将会使用此特性。他们会将他们需要使用的格式字符串预先编译为struct.Struct并存储在_struct_packer中。在运行时直接引用，而无需在运行时解析格式字符串。  
-需要注意的是，“合并的连续Primitive成员”，和“Primitive静态数组”虽然均使用此特性，但“Primitive静态数组”和“连续的Primitive成员”绝对不可以合并在一起！它们绝不可能共享同一个struct.Struct！  
+为了避免Python反复分析格式字符串，编译器将创建一个名为_struct_packer的类变量。_struct_packer是一个tuple，_struct_packer中的每一项为已编译的pStructStruct。  
+pStructStruct在生产环境中将被解析为struct.Struct。在测试环境中将被解析为一个测试用的复杂类。下文将pStructStruct理解为struct.Struct即可。  
+“被合并的连续Primitive成员”，和“Primitive静态数组”将会使用此特性。他们会将他们需要使用的格式字符串预先编译为pStructStruct并存储在_struct_packer中。在运行时直接引用，而无需在运行时解析格式字符串。  
+需要注意的是，“合并的连续Primitive成员”，和“Primitive静态数组”虽然均使用此特性，但“Primitive静态数组”和“连续的Primitive成员”绝对不可以合并在一起！它们绝不可能共享同一个pStructStruct！  
 _struct_packer的定义位置如下图。`typing.ClassVar`用于暗示它是一个类变量，而非实例变量。
 
 ```
 # ...
 class msg_a(BpMessage):
-	_struct_packer: typing.ClassVar[tuple[struct.Struct]] = (struct.Struct('<III'), )
+	_struct_packer: typing.ClassVar[tuple[pStructStruct]] = (pStructStruct('<III'), )
 # ...
 ```
 
 对于_struct_packer的取用将通过下标进行。例如对于上述的被合并的连续Primitive成员，其打包解包将被改写为如下代码。  
-此处的打包解包使用了下标为0的已编译的struct.Struct。其中NAME是当前的类名。
+此处的打包解包使用了下标为0的已编译的pStructStruct。其中NAME是当前的类名。
 
 ```py
 # 序列化
