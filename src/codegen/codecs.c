@@ -548,7 +548,7 @@ static void write_uniform_deserialize(FILE* fs, GSList* msg_ls, BPCGEN_INDENT_TY
 	BPCGEN_INDENT_PRINT;
 	fputs("BpMessage _data = null;", fs);
 	BPCGEN_INDENT_PRINT;
-	fputs("switch ((OpCode)_br.ReadUInt32()) {", fs); BPCGEN_INDENT_INC;
+	fputs("switch ((OpCode)_br._BpReadUInt32()) {", fs); BPCGEN_INDENT_INC;
 	for (cursor = msg_ls; cursor != NULL; cursor = cursor->next) {
 		BPCSMTV_MSG* data = (BPCSMTV_MSG*)cursor->data;
 

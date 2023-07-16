@@ -167,7 +167,7 @@ public static partial class BPHelper {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Int16 _BpReadInt16(this BinaryReader br) => (BPEndianHelper.g_ForceBigEndian ? BPEndianHelper._BpByteSwap(br.ReadInt16()) : br.ReadInt16());
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static UInt32 _BpReadUInt32(this BinaryReader br) => (BPEndianHelper.g_ForceBigEndian ? BPEndianHelper._BpByteSwap(br.ReadUInt32()) : br.br.ReadUInt32());
+    public static UInt32 _BpReadUInt32(this BinaryReader br) => (BPEndianHelper.g_ForceBigEndian ? BPEndianHelper._BpByteSwap(br.ReadUInt32()) : br.ReadUInt32());
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Int32 _BpReadInt32(this BinaryReader br) => (BPEndianHelper.g_ForceBigEndian ? BPEndianHelper._BpByteSwap(br.ReadInt32()) : br.ReadInt32());
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -215,7 +215,13 @@ public static partial class BPHelper {
         var buffer = new byte[data.Length * unit_size];
         br.Read(buffer, 0, buffer.Length);
         if (!BPEndianHelper._IsLittleEndian()) BPEndianHelper._BpByteSwapArray(ref buffer, unit_size);
-        Buffer.BlockCopy(buffer, 0, data, 0, buffer.Length);
+        if (typeof(TItem).IsEnum) {
+            var intermediary = Array.CreateInstance(typeof(TItem).GetEnumUnderlyingType(), data.Length);
+            Buffer.BlockCopy(buffer, 0, intermediary, 0, buffer.Length);
+            Array.Copy(intermediary, data, data.Length);
+        } else {
+            Buffer.BlockCopy(buffer, 0, data, 0, buffer.Length);
+        }
 #endif
     }
 
@@ -283,20 +289,26 @@ public static partial class BPHelper {
 #if _BP_MODERN_CSHARP
         // modern writting
         Span<byte> buffer;
-        if (BPEndianHelper._IsLittleEndian()) {
+        if (_IsLittleEndian()) {
             buffer = MemoryMarshal.Cast<TItem, byte>(data.AsSpan());
         } else {
             // we should not affect original data. create a buffer instead.
             var intermediary = (TItem[])data.Clone();
             buffer = MemoryMarshal.Cast<TItem, byte>(intermediary.AsSpan());
-            BPEndianHelper._BpByteSwapArray(buffer, unit_size);
+            _BpByteSwapArray(buffer, unit_size);
         }
 
         bw.Write(buffer);
 #else
         // legacy writting
         var buffer = new byte[data.Length * unit_size];
-        Buffer.BlockCopy(data, 0, buffer, 0, buffer.Length);
+        if (typeof(TItem).IsEnum) {
+            var intermediary = Array.CreateInstance(typeof(TItem).GetEnumUnderlyingType(), data.Length);
+            Array.Copy(data, intermediary, data.Length);
+            Buffer.BlockCopy(intermediary, 0, buffer, 0, buffer.Length);
+        } else {
+            Buffer.BlockCopy(data, 0, buffer, 0, buffer.Length);
+        }
         if (!BPEndianHelper._IsLittleEndian()) BPEndianHelper._BpByteSwapArray(ref buffer, unit_size);
         bw.Write(buffer);
 #endif

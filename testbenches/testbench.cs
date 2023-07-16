@@ -3,8 +3,8 @@ using System.IO;
 using System.Linq;
 using System.Collections.Generic;
 using System.Reflection;
-using BP = TestNamespace.EmptyName1.EmptyName2;
 using System.Diagnostics;
+using BP = TestNamespace.EmptyName1.EmptyName2;
 
 namespace CSharpTestbench {
     class Program {
@@ -250,8 +250,12 @@ namespace CSharpTestbench {
             }
         }
 
-        static string GetFilename(string ident_lang, string ident_msg) {
-            return System.IO.Path.Combine(DATA_FOLDER_NAME, ident_lang, ident_msg + ".bin");
+        static bool[] g_EndianSwitches = new bool[] { false, true };
+        static string GetEndianStr(bool is_bigendian) {
+            return is_bigendian ? "BE" : "LE";
+        }
+        static string GetFilename(string ident_lang, string ident_msg, bool is_bigendian) {
+            return System.IO.Path.Combine(DATA_FOLDER_NAME, ident_lang, GetEndianStr(is_bigendian) + "_" + ident_msg + ".bin");
         }
         static void LangInteractionTest(List<Type> msgs) {
             // create a list. write standard msg. and write them to file
@@ -261,8 +265,15 @@ namespace CSharpTestbench {
                 AssignVariablesValue(instance);
                 standard.Add(msg.Name, instance);
 
-                using (var fs = new FileStream(GetFilename(THIS_LANG, msg.Name), FileMode.Create, FileAccess.Write, FileShare.None)) {
-                    instance.Serialize(new BinaryWriter(fs));
+                foreach(bool is_bigendian in g_EndianSwitches) {
+                    // open switch
+                    BP.BPEndianHelper.g_ForceBigEndian = is_bigendian;
+                    // write file
+                    using (var fs = new FileStream(GetFilename(THIS_LANG, msg.Name, is_bigendian), FileMode.Create, FileAccess.Write, FileShare.None)) {
+                        instance.Serialize(new BinaryWriter(fs));
+                    }
+                    // reset switch
+                    BP.BPEndianHelper.g_ForceBigEndian = false;
                 }
             }
 
@@ -272,8 +283,15 @@ namespace CSharpTestbench {
 
                 // read from file
                 var instance = (BP.BpMessage)Activator.CreateInstance(msg);
-                using (var fs = new FileStream(GetFilename(REF_LANG, msg.Name), FileMode.Open, FileAccess.Read, FileShare.None)) {
-                    instance.Deserialize(new BinaryReader(fs));
+                foreach (bool is_bigendian in g_EndianSwitches) {
+                    // open switch
+                    BP.BPEndianHelper.g_ForceBigEndian = is_bigendian;
+                    // read file
+                    using (var fs = new FileStream(GetFilename(REF_LANG, msg.Name, is_bigendian), FileMode.Open, FileAccess.Read, FileShare.None)) {
+                        instance.Deserialize(new BinaryReader(fs));
+                    }
+                    // reset switch
+                    BP.BPEndianHelper.g_ForceBigEndian = false;
                 }
 
                 // compare data
