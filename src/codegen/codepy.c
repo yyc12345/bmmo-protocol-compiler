@@ -83,7 +83,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data) {
 
 	// static struct pack for combined primitives and static primitives
 	BPCGEN_INDENT_PRINT;
-	fputs("_struct_packer: typing.ClassVar[tuple[pStructStruct]] = (", fs);
+	fputs("_struct_packer: typing.ClassVar[tuple[_pStructStruct]] = (", fs);
 	BPCGEN_INDENT_INC;
 	for (cursor = bond_vars; cursor != NULL; cursor = cursor->next) {
 		BOND_VARS* data = (BOND_VARS*)cursor->data;
@@ -93,7 +93,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data) {
 			gchar* fmt_str = generate_pack_fmt(data);
 
 			BPCGEN_INDENT_PRINT;
-			fprintf(fs, "pStructStruct('<%s'), ", fmt_str);
+			fprintf(fs, "_pStructStruct('<%s'), ", fmt_str);
 
 			g_free(fmt_str);
 		} else {
@@ -102,7 +102,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data) {
 				BPCSMTV_VARIABLE* vardata = data->plist_vars[0];
 
 				BPCGEN_INDENT_PRINT;
-				fprintf(fs, "pStructStruct('<%" PRIu32 "%c'), ",
+				fprintf(fs, "_pStructStruct('<%" PRIu32 "%c'), ",
 					vardata->variable_array->static_array_len,
 					python_struct_fmt[vardata->variable_type->full_uncover_basic_type]
 				);
@@ -333,7 +333,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data) {
 					fputs("(_count, ) = _listlen_packer.unpack(_ss.read(_listlen_packer.size))", fs);
 
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "self.%s = list(pStructUnpack(f'<{_count:d}%c', _ss.read(%" PRIu32 " * _count)))",
+					fprintf(fs, "self.%s = list(_pStructUnpack(f'<{_count:d}%c', _ss.read(%" PRIu32 " * _count)))",
 						vardata->variable_name,
 						python_struct_fmt[vardata->variable_type->full_uncover_basic_type],
 						bpcsmtv_get_bt_size(vardata->variable_type->full_uncover_basic_type)
@@ -487,7 +487,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data) {
 					fputs("_ss.write(_listlen_packer.pack(_count))", fs);
 
 					BPCGEN_INDENT_PRINT;
-					fprintf(fs, "_ss.write(pStructPack(f'<{_count:d}%c', *self.%s))",
+					fprintf(fs, "_ss.write(_pStructPack(f'<{_count:d}%c', *self.%s))",
 						python_struct_fmt[vardata->variable_type->full_uncover_basic_type],
 						vardata->variable_name);
 

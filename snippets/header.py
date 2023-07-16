@@ -32,19 +32,19 @@ if _g_EnableBpTestbench:
 	def _FakeStructUnpack(format, *args, **kwargs):
 		return struct.unpack((_ChangeFormatEndian(format) if g_ForceBigEndian else format), *args, **kwargs)
 	
-	pStructStruct = _FakeStructStruct
-	pStructPack = _FakeStructPack
-	pStructUnpack = _FakeStructUnpack
+	_pStructStruct = _FakeStructStruct
+	_pStructPack = _FakeStructPack
+	_pStructUnpack = _FakeStructUnpack
 else:
 	# production environment
-	pStructStruct = struct.Struct
-	pStructPack = struct.pack
-	pStructUnpack = struct.unpack
+	_pStructStruct = struct.Struct
+	_pStructPack = struct.pack
+	_pStructUnpack = struct.unpack
 
 
-_opcode_packer: pStructStruct = pStructStruct("<I")
-_listlen_packer: pStructStruct = pStructStruct("<I")
-_strlen_packer: pStructStruct = pStructStruct("<I")
+_opcode_packer: _pStructStruct = _pStructStruct("<I")
+_listlen_packer: _pStructStruct = _pStructStruct("<I")
+_strlen_packer: _pStructStruct = _pStructStruct("<I")
 
 class BpStruct(object):
 	def _ReadBpString(self, _ss: io.BytesIO) -> str:
