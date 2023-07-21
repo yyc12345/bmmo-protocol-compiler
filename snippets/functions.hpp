@@ -113,16 +113,26 @@ namespace BPHelper {
 	bool _ReadBlank(std::stringstream& ss, uint32_t offset);
 	bool _WriteBlank(std::stringstream& ss, uint32_t offset);
 
-	namespace _ByteSwap {
-#if __cpp_lib_endian
+	namespace ByteSwap {
+#if __cpp_lib_endian && !defined(_ENABLE_BP_TESTBENCH)
 		constexpr const bool _g_IsLittleEndian = (std::endian::native == std::endian::little);
-#define _BP_IS_LITTLE_ENDIAN constexpr (BPHelper::_ByteSwap::_g_IsLittleEndian)
-#define _BP_IS_BIG_ENDIAN constexpr (!BPHelper::_ByteSwap::_g_IsLittleEndian)
+#define _BP_IS_LITTLE_ENDIAN constexpr (BPHelper::ByteSwap::_g_IsLittleEndian)
+#define _BP_IS_BIG_ENDIAN constexpr (!BPHelper::ByteSwap::_g_IsLittleEndian)
 #else
 		const uint16_t _g_EndianProbe = UINT16_C(0xFEFF);
 		const bool _g_IsLittleEndian = reinterpret_cast<const uint8_t*>(&_g_EndianProbe)[0] == UINT8_C(0xFF);
-#define _BP_IS_LITTLE_ENDIAN (BPHelper::_ByteSwap::_g_IsLittleEndian)
-#define _BP_IS_BIG_ENDIAN (!BPHelper::_ByteSwap::_g_IsLittleEndian)
+
+#if _ENABLE_BP_TESTBENCH
+		// testbench used code
+		extern bool g_ForceBigEndian;
+		bool _InterIsLittleEndian();
+#define _BP_IS_LITTLE_ENDIAN (BPHelper::ByteSwap::_InterIsLittleEndian())
+#define _BP_IS_BIG_ENDIAN (!BPHelper::ByteSwap::_InterIsLittleEndian())
+#else
+#define _BP_IS_LITTLE_ENDIAN (BPHelper::ByteSwap::_g_IsLittleEndian)
+#define _BP_IS_BIG_ENDIAN (!BPHelper::ByteSwap::_g_IsLittleEndian)
+#endif
+
 #endif
 
 		template <class _Ty>

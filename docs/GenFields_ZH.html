@@ -695,7 +695,7 @@ for (int _i = 0, _count = (int)_br._BpReadUInt32(); _i &gt; _count; ++_i) {
             <pre>_count = D.size();
 if _BP_IS_BIG_ENDIAN { BPHelper::_ByteSwap::_SwapSingle&lt;uint32_t&gt;(&_count); }
 _SS_WR_STRUCT(_ss, &_count, sizeof(uint32_t));
-_SS_WR_STRUCT(_ss, D.data(), _count * sizeof(T));</pre>
+_SS_WR_STRUCT(_ss, D.data(), D.size() * sizeof(T));</pre>
             <p>_count是临时变量。定义为uint32_t _count;</p>
             <p>_BP_IS_BIG_ENDIAN由代码片段定义</p>
             <p>BPHelper::_ByteSwap::_SwapSingle由代码片段定义</p>
@@ -723,7 +723,7 @@ for (auto& _it : D) { _SS_WR_STRING(_ss, _it); }</pre>
             <pre>_count = D.size();
 if _BP_IS_BIG_ENDIAN { BPHelper::_ByteSwap::_SwapSingle&lt;uint32_t&gt;(&_count); }
 _SS_WR_STRUCT(_ss, &_count, sizeof(uint32_t));
-_SS_WR_STRUCT(_ss, D.data(), _count * sizeof(T::Payload_t));</pre>
+_SS_WR_STRUCT(_ss, D.data(), D.size() * sizeof(T::Payload_t));</pre>
         </td>
         <td>
             <pre>_SS_WR_FUNCTION(_ss, D);</pre>
@@ -763,7 +763,7 @@ for (auto& _it : D) { _SS_WR_FUNCTION(_ss, _it); }</pre>
             <pre>_SS_RD_STRUCT(_ss, &_count, sizeof(uint32_t));
 if _BP_IS_BIG_ENDIAN { BPHelper::_ByteSwap::_SwapSingle&lt;uint32_t&gt;(&_count); }
 D.resize(_count);
-_SS_RD_STRUCT(_ss, D.data(), _count * sizeof(T));</pre>
+_SS_RD_STRUCT(_ss, D.data(), D.size() * sizeof(T));</pre>
             <p>_count是临时变量。定义为uint32_t _count;</p>
             <p>_BP_IS_BIG_ENDIAN由代码片段定义</p>
             <p>BPHelper::_ByteSwap::_SwapSingle由代码片段定义</p>
@@ -791,7 +791,7 @@ for (auto& _it : D) { _SS_RD_STRING(_ss, _it); }</pre>
             <pre>_SS_RD_STRUCT(_ss, &_count, sizeof(uint32_t));
 if _BP_IS_BIG_ENDIAN { BPHelper::_ByteSwap::_SwapSingle&lt;uint32_t&gt;(&_count); }
 D.resize(_count);
-_SS_RD_STRUCT(_ss, D.data(), _count * sizeof(T::Payload_t));</pre>
+_SS_RD_STRUCT(_ss, D.data(), D.size() * sizeof(T::Payload_t));</pre>
         </td>
         <td>
             <pre>_SS_RD_FUNCTION(_ss, D);</pre>

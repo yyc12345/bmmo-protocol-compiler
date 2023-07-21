@@ -79,7 +79,7 @@ namespace CSharpTestbench {
                     var item_t = member_t.GetGenericArguments()[0];
 
                     member_t.GetMethod("Clear").Invoke(member.GetValue(instance), null);
-                    for(int i = 0; i < DEFAULT_LIST_LEN; ++i) {
+                    for (int i = 0; i < DEFAULT_LIST_LEN; ++i) {
                         member_t.GetMethod("Add").Invoke(member.GetValue(instance), new[] { GenerateDefaultValue(item_t) });
                     }
                 } else if (member_t.IsArray) {
@@ -143,7 +143,7 @@ namespace CSharpTestbench {
 
                     // check every item
                     for (int i = 0; i < len1; ++i) {
-                        if (!CompareInstanceMember(item_t, 
+                        if (!CompareInstanceMember(item_t,
                             member_t.InvokeMember("Item", BindingFlags.Public | BindingFlags.Instance | BindingFlags.GetProperty, null, instmem1, new object[] { i }),
                             member_t.InvokeMember("Item", BindingFlags.Public | BindingFlags.Instance | BindingFlags.GetProperty, null, instmem2, new object[] { i })
                             )) {
@@ -166,10 +166,10 @@ namespace CSharpTestbench {
 
                     // check every item
                     for (int i = 0; i < len1; ++i) {
-                       if (!CompareInstanceMember(item_t,
-                           absarray1.GetValue(i),
-                           absarray2.GetValue(i)
-                           )) {
+                        if (!CompareInstanceMember(item_t,
+                            absarray1.GetValue(i),
+                            absarray2.GetValue(i)
+                            )) {
                             return false;
                         }
                     }
@@ -265,7 +265,7 @@ namespace CSharpTestbench {
                 AssignVariablesValue(instance);
                 standard.Add(msg.Name, instance);
 
-                foreach(bool is_bigendian in g_EndianSwitches) {
+                foreach (bool is_bigendian in g_EndianSwitches) {
                     // open switch
                     BP.BPEndianHelper.g_ForceBigEndian = is_bigendian;
                     // write file

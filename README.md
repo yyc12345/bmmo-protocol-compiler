@@ -25,7 +25,9 @@ Considering Google Protobuf, this project is not suit for production environment
 ### Supported Language
 
 * Python (at least 3.5.3)
-* C\# (at least .Net Core 2.1)
+* C\#
+  - Legacy Mode (For Unity / Godot user. Low performance.): at least .Net Framework 4.6. `unsafe` switch required.
+  - Modern Mode (High performance): at least .Net Core 2.1
 * C++ (at least C++ 17. Optimized for C++ 20 and 23)
 * Google Protobuf 3
 

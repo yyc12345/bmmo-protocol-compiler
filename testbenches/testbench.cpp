@@ -1,10 +1,10 @@
-﻿#define _ENABLE_BP_TESTBENCH 1
-#include "CodeGenTest.hpp"
+﻿#include "CodeGenTest.hpp"
 #include <cstdio>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <stdexcept>
+#include <array>
 
 namespace BP = TestNamespace::EmptyName1::EmptyName2;
 
@@ -285,6 +285,7 @@ namespace CppTestbench {
 		}
 	}
 
+	static std::array<bool, 2> g_ForceBigEndianTuple{ true, false };
 	static void LangInteractionTest() {
 		std::filesystem::path wd(DATA_FOLDER_NAME);
 		std::stringstream buffer;
@@ -297,22 +298,31 @@ namespace CppTestbench {
 			BP::BpMessage* instance = BP::BPHelper::MessageFactory(static_cast<BP::OpCode>(id));
 			void* payload = GetPayloadPtr(msgname, instance);
 			AssignVariablesValue(msgname, payload);
-
+			
 			// add into list
 			standard.emplace_back(instance);
 
-			// write into file
-			bool hr = instance->Serialize(buffer);
-			Stream2File(buffer, wd / THIS_LANG / (BP::_BPTestbench_MessageList[id] + ".bin"));
-			if (!hr) {
-				throw std::runtime_error("unexpected failed on serialization!");
-			}
+			// write into file with 2 different endian
+			for (auto& is_bigendian : g_ForceBigEndianTuple) {
+				// set endian
+				BP::BPHelper::ByteSwap::g_ForceBigEndian = is_bigendian;
 
-			// clear buf
-			buffer.str("");
-			buffer.seekg(0, std::ios_base::beg);
-			buffer.seekp(0, std::ios_base::beg);
-			buffer.clear();
+				// write file
+				bool hr = instance->Serialize(buffer);
+				Stream2File(buffer, wd / THIS_LANG / ((is_bigendian ? "BE_" : "LE_") + msgname + ".bin"));
+				if (!hr) {
+					throw std::runtime_error("unexpected failed on serialization!");
+				}
+
+				// reset endian
+				BP::BPHelper::ByteSwap::g_ForceBigEndian = false;
+
+				// clear buf
+				buffer.str("");
+				buffer.seekg(0, std::ios_base::beg);
+				buffer.seekp(0, std::ios_base::beg);
+				buffer.clear();
+			}
 		}
 
 		// read from file. and compare it with standard
@@ -321,22 +331,31 @@ namespace CppTestbench {
 
 			printf("Checking %s data correction...\n", msgname.c_str());
 
-			// read from file
-			File2Stream(buffer, wd / REF_LANG / (msgname + ".bin"));
-			BP::BpMessage* instance = BP::BPHelper::MessageFactory(static_cast<BP::OpCode>(id));
-			bool hr = instance->Deserialize(buffer);
+			// read from file with 2 different endian
+			for (auto& is_bigendian : g_ForceBigEndianTuple) {
+				// set endian
+				BP::BPHelper::ByteSwap::g_ForceBigEndian = is_bigendian;
 
-			// compare data
-			if (!hr || !CompareInstance(msgname, GetPayloadPtr(msgname, instance), GetPayloadPtr(msgname, standard[id]))) {
-				printf("Failed on data correction check!\n");
+				// read from file
+				File2Stream(buffer, wd / REF_LANG / ((is_bigendian ? "BE_" : "LE_") + msgname + ".bin"));
+				BP::BpMessage* instance = BP::BPHelper::MessageFactory(static_cast<BP::OpCode>(id));
+				bool hr = instance->Deserialize(buffer);
+
+				// compare data
+				if (!hr || !CompareInstance(msgname, GetPayloadPtr(msgname, instance), GetPayloadPtr(msgname, standard[id]))) {
+					printf("Failed on data correction check!\n");
+				}
+
+				// reset endian
+				BP::BPHelper::ByteSwap::g_ForceBigEndian = false;
+
+				// clear buf
+				delete instance;
+				buffer.str("");
+				buffer.seekg(0, std::ios_base::beg);
+				buffer.seekp(0, std::ios_base::beg);
+				buffer.clear();
 			}
-
-			// clear buf
-			delete instance;
-			buffer.str("");
-			buffer.seekg(0, std::ios_base::beg);
-			buffer.seekp(0, std::ios_base::beg);
-			buffer.clear();
 		}
 
 		// free standard
