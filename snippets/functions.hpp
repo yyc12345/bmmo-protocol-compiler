@@ -34,8 +34,8 @@ public:
 	BpStruct() {};
 	virtual ~BpStruct() {};
 
-	virtual bool Serialize(std::stringstream& data) = 0;
-	virtual bool Deserialize(std::stringstream& data) = 0;
+	virtual bool Serialize(std::ostream& data) = 0;
+	virtual bool Deserialize(std::istream& data) = 0;
 };
 
 class BpMessage : public BpStruct {
@@ -104,14 +104,14 @@ struct CStyleArray {
 
 namespace BPHelper {
 	BpMessage* MessageFactory(OpCode code);
-	bool UniformSerialize(std::stringstream& ss, BpMessage* instance);
-	BpMessage* UniformDeserialize(std::stringstream& ss);
+	bool UniformSerialize(std::ostream& ss, BpMessage* instance);
+	BpMessage* UniformDeserialize(std::istream& ss);
 
-	bool _ReadString(std::stringstream& ss, std::string& strl);
-	bool _WriteString(std::stringstream& ss, std::string& strl);
+	bool _ReadString(std::istream& ss, std::string& strl);
+	bool _WriteString(std::ostream& ss, std::string& strl);
 
-	bool _ReadBlank(std::stringstream& ss, uint32_t offset);
-	bool _WriteBlank(std::stringstream& ss, uint32_t offset);
+	bool _ReadBlank(std::istream& ss, uint32_t offset);
+	bool _WriteBlank(std::ostream& ss, uint32_t offset);
 
 	namespace ByteSwap {
 #if __cpp_lib_endian && !defined(_ENABLE_BP_TESTBENCH)

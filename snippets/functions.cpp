@@ -1,50 +1,50 @@
 
 // ==================== RW Macro ====================
 
-// ss: std::stringstream&
-#define _SS_PRE_RD(ss) if (!(ss).good()) \
+// ss: std::istream&
+#define _SS_PRE_RD(ist) if (!(ist).good()) \
 return false;
 
 // ptr: void*
 // len: size_t
-#define _SS_RD_STRUCT(ss, ptr, len) (ss).read(reinterpret_cast<char*>(ptr), (len)); \
-if (!(ss).good() || (ss).gcount() != (len)) \
+#define _SS_RD_STRUCT(ist, ptr, len) (ist).read(reinterpret_cast<char*>(ptr), (len)); \
+if (!(ist).good() || (ist).gcount() != (len)) \
 return false;
 
 // strl: std::string&
-#define _SS_RD_STRING(ss, strl) if (!BPHelper::_ReadString(ss, strl)) \
+#define _SS_RD_STRING(ist, strl) if (!BPHelper::_ReadString(ist, strl)) \
 return false;
 
-#define _SS_RD_BLANK(ss, len) if (!BPHelper::_ReadBlank(ss, len)) \
+#define _SS_RD_BLANK(ist, len) if (!BPHelper::_ReadBlank(ist, len)) \
 return false;
 
 // obj: BpStruct&
-#define _SS_RD_FUNCTION(ss, obj) if (!((obj).Deserialize(ss))) \
+#define _SS_RD_FUNCTION(ist, obj) if (!((obj).Deserialize(ist))) \
 return false;
 
-#define _SS_END_RD(ss) return (ss).good();
+#define _SS_END_RD(ist) return (ist).good();
 
-// ss: std::stringstream&
-#define _SS_PRE_WR(ss) ;
+// ss: std::ostream&
+#define _SS_PRE_WR(ost) ;
 
 // ptr: void*
 // len: size_t
-#define _SS_WR_STRUCT(ss, ptr, len) (ss).write(reinterpret_cast<const char*>(ptr), (len)); \
-if (!(ss).good()) \
+#define _SS_WR_STRUCT(ost, ptr, len) (ost).write(reinterpret_cast<const char*>(ptr), (len)); \
+if (!(ost).good()) \
 return false;
 
 // obj: BpStruct&
-#define _SS_WR_STRING(ss, strl) if (!BPHelper::_WriteString(ss, strl)) \
+#define _SS_WR_STRING(ost, strl) if (!BPHelper::_WriteString(ost, strl)) \
 return false;
 
-#define _SS_WR_BLANK(ss, len) if (!BPHelper::_WriteBlank(ss, len)) \
+#define _SS_WR_BLANK(ost, len) if (!BPHelper::_WriteBlank(ost, len)) \
 return false;
 
 // obj: BpStruct&
-#define _SS_WR_FUNCTION(ss, obj) if (!((obj).Serialize(ss))) \
+#define _SS_WR_FUNCTION(ost, obj) if (!((obj).Serialize(ost))) \
 return false;
 
-#define _SS_END_WR(ss) return (ss).good();
+#define _SS_END_WR(ost) return (ost).good();
 
 namespace BPHelper {
 	// ==================== Global Variabls & Testbench Function ====================
@@ -60,7 +60,7 @@ namespace BPHelper {
 
 	// ==================== RW Assist Functions ====================
 
-	bool UniformSerialize(std::stringstream& ss, BpMessage* instance) {
+	bool UniformSerialize(std::ostream& ss, BpMessage* instance) {
 		OpCode code = instance->GetOpCode();
 		if _BP_IS_BIG_ENDIAN { BPHelper::ByteSwap::_SwapSingle<uint32_t>(&code); }
 		_SS_WR_STRUCT(ss, &code, sizeof(uint32_t));
@@ -68,7 +68,7 @@ namespace BPHelper {
 		return instance->Serialize(ss);
 	}
 
-	BpMessage* UniformDeserialize(std::stringstream& ss) {
+	BpMessage* UniformDeserialize(std::istream& ss) {
 		OpCode code;
 		if (![&ss, &code]() { _SS_RD_STRUCT(ss, &code, sizeof(uint32_t)); return true; }()) return nullptr;
 		if _BP_IS_BIG_ENDIAN { BPHelper::ByteSwap::_SwapSingle<uint32_t>(&code); }
@@ -83,11 +83,11 @@ namespace BPHelper {
 		return instance;
 	}
 
-	bool _ReadString(std::stringstream& ss, std::string& strl) {
+	bool _ReadString(std::istream& ss, std::string& strl) {
 		uint32_t length = 0;
 		_SS_RD_STRUCT(ss, &length, sizeof(uint32_t));
 		if _BP_IS_BIG_ENDIAN { BPHelper::ByteSwap::_SwapSingle<uint32_t>(&length); }
-		if (length > ss.str().length()) return false;
+		// if (length > ss.str().length()) return false;
 
 		strl.resize(length);
 		_SS_RD_STRUCT(ss, strl.data(), length);
@@ -95,7 +95,7 @@ namespace BPHelper {
 		return true;
 	}
 
-	bool _WriteString(std::stringstream& ss, std::string& strl) {
+	bool _WriteString(std::ostream& ss, std::string& strl) {
 		uint32_t length = strl.size();
 		if _BP_IS_BIG_ENDIAN { BPHelper::ByteSwap::_SwapSingle<uint32_t>(&length); }
 		_SS_WR_STRUCT(ss, &length, sizeof(uint32_t));
@@ -104,12 +104,12 @@ namespace BPHelper {
 		return true;
 	}
 
-	bool _ReadBlank(std::stringstream& ss, uint32_t offset) {
+	bool _ReadBlank(std::istream& ss, uint32_t offset) {
 		ss.seekg(offset, std::ios_base::cur);
 		return ss.good();
 	}
 
-	bool _WriteBlank(std::stringstream& ss, uint32_t offset) {
+	bool _WriteBlank(std::ostream& ss, uint32_t offset) {
 		constexpr const uint32_t len_ph = 512;
 		const char placeholder[len_ph]{ 0 };
 

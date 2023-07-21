@@ -5,6 +5,7 @@
 #include <fstream>
 #include <stdexcept>
 #include <array>
+#include <sstream>
 
 namespace BP = TestNamespace::EmptyName1::EmptyName2;
 
@@ -288,7 +289,6 @@ namespace CppTestbench {
 	static std::array<bool, 2> g_ForceBigEndianTuple{ true, false };
 	static void LangInteractionTest() {
 		std::filesystem::path wd(DATA_FOLDER_NAME);
-		std::stringstream buffer;
 
 		// create a list. write standard msg. and write them to file
 		std::vector<BP::BpMessage*> standard;
@@ -308,20 +308,16 @@ namespace CppTestbench {
 				BP::BPHelper::ByteSwap::g_ForceBigEndian = is_bigendian;
 
 				// write file
-				bool hr = instance->Serialize(buffer);
-				Stream2File(buffer, wd / THIS_LANG / ((is_bigendian ? "BE_" : "LE_") + msgname + ".bin"));
+				std::ofstream fs;
+				fs.open(wd / THIS_LANG / ((is_bigendian ? "BE_" : "LE_") + msgname + ".bin"), std::ios_base::out | std::ios_base::binary);
+				bool hr = instance->Serialize(fs);
+				fs.close();
 				if (!hr) {
 					throw std::runtime_error("unexpected failed on serialization!");
 				}
 
 				// reset endian
 				BP::BPHelper::ByteSwap::g_ForceBigEndian = false;
-
-				// clear buf
-				buffer.str("");
-				buffer.seekg(0, std::ios_base::beg);
-				buffer.seekp(0, std::ios_base::beg);
-				buffer.clear();
 			}
 		}
 
@@ -337,9 +333,12 @@ namespace CppTestbench {
 				BP::BPHelper::ByteSwap::g_ForceBigEndian = is_bigendian;
 
 				// read from file
-				File2Stream(buffer, wd / REF_LANG / ((is_bigendian ? "BE_" : "LE_") + msgname + ".bin"));
 				BP::BpMessage* instance = BP::BPHelper::MessageFactory(static_cast<BP::OpCode>(id));
-				bool hr = instance->Deserialize(buffer);
+
+				std::ifstream fs;
+				fs.open(wd / REF_LANG / ((is_bigendian ? "BE_" : "LE_") + msgname + ".bin"), std::ios_base::in | std::ios_base::binary);
+				bool hr = instance->Deserialize(fs);
+				fs.close();
 
 				// compare data
 				if (!hr || !CompareInstance(msgname, GetPayloadPtr(msgname, instance), GetPayloadPtr(msgname, standard[id]))) {
@@ -351,10 +350,6 @@ namespace CppTestbench {
 
 				// clear buf
 				delete instance;
-				buffer.str("");
-				buffer.seekg(0, std::ios_base::beg);
-				buffer.seekp(0, std::ios_base::beg);
-				buffer.clear();
 			}
 		}
 
@@ -377,6 +372,3 @@ int main(int argc, char* args[]) {
 
 	return 0;
 }
-
-
-

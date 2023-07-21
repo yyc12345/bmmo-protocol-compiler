@@ -165,9 +165,9 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 	fputs("Payload_t& operator=(Payload_t&& _rhs) noexcept;", fs);
 	// define serialization functions
 	BPCGEN_INDENT_PRINT;
-	fputs("bool Serialize(std::stringstream& _ss);", fs);
+	fputs("bool Serialize(std::ostream& _ss);", fs);
 	BPCGEN_INDENT_PRINT;
-	fputs("bool Deserialize(std::stringstream& _ss);", fs);
+	fputs("bool Deserialize(std::istream& _ss);", fs);
 	BPCGEN_INDENT_PRINT;
 	fputs("void ByteSwap();", fs);
 	// defination is over
@@ -198,7 +198,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 	fprintf(fs, "%s& operator=(%s&& rhs) noexcept { this->Payload = std::move(rhs.Payload); return *this; }", struct_like_name, struct_like_name);
 	// declare serialization related functions
 	BPCGEN_INDENT_PRINT;
-	fputs("virtual bool Serialize(std::stringstream& _ss) override {", fs); BPCGEN_INDENT_INC;
+	fputs("virtual bool Serialize(std::ostream& _ss) override {", fs); BPCGEN_INDENT_INC;
 	BPCGEN_INDENT_PRINT;
 	fputs("Payload_t* pPayload = nullptr;", fs);
 	BPCGEN_INDENT_PRINT;
@@ -216,7 +216,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 	fputc('}', fs);
 
 	BPCGEN_INDENT_PRINT;
-	fputs("virtual bool Deserialize(std::stringstream& _ss) override {", fs); BPCGEN_INDENT_INC;
+	fputs("virtual bool Deserialize(std::istream& _ss) override {", fs); BPCGEN_INDENT_INC;
 	BPCGEN_INDENT_PRINT;
 	fputs("bool hr = Payload.Deserialize(_ss);", fs);
 	BPCGEN_INDENT_PRINT;

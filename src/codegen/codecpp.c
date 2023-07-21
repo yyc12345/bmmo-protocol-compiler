@@ -313,7 +313,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 
 	// real deserializer
 	BPCGEN_INDENT_PRINT;
-	fprintf(fs, "bool %s::Payload_t::Deserialize(std::stringstream& _ss) {", struct_like_name); BPCGEN_INDENT_INC;
+	fprintf(fs, "bool %s::Payload_t::Deserialize(std::istream& _ss) {", struct_like_name); BPCGEN_INDENT_INC;
 	// may be used variables
 	if (need_extra_var) {
 		BPCGEN_INDENT_PRINT;
@@ -465,7 +465,7 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data, BPCGEN
 
 	// real serializer
 	BPCGEN_INDENT_PRINT;
-	fprintf(fs, "bool %s::Payload_t::Serialize(std::stringstream& _ss) {", struct_like_name); BPCGEN_INDENT_INC;
+	fprintf(fs, "bool %s::Payload_t::Serialize(std::ostream& _ss) {", struct_like_name); BPCGEN_INDENT_INC;
 	// may be used variables
 	if (need_extra_var) {
 		BPCGEN_INDENT_PRINT;

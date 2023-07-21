@@ -44,7 +44,7 @@ namespace /* 命名空间生成在此 */ {
 * 基类BpStruct和BpMessage
 * 不具有任何额外成员的，模拟C-style数组的struct，CStyleArray。并为其添加必要的拷贝，移动构造函数，以及拷贝，移动赋值函数。
 * 定义命名空间BPHelper，其中包括各类辅助函数。
-* 定义命名空间BPHelper::_ByteSwap，其中包含端序转换的相关代码。
+* 定义命名空间BPHelper::ByteSwap，其中包含端序转换的相关代码。
 
 _ENABLE_BP_TESTBENCH是启用测试的宏。若在引用此HPP前定义此宏，则将启用测试用代码的编译。本宏不应该在生产环境中定义。在本工程中，本宏只在testbench.cpp中引用，为测试服务。  
 由于C++没有动态反射机制，所以在测试中需要创建_BPTestbench_StructLayouts和_BPTestbench_MessageList变量来记录生成的msg的个数，以及struct和msg中各类成员的属性和相对偏移以便测试。相当于实现了一个反射。
@@ -83,8 +83,8 @@ public:
         Payload_t(Payload_t&& _rhs) noexcept;
         Payload_t& operator=(const Payload_t& _rhs);
         Payload_t& operator=(Payload_t&& _rhs) noexcept;
-        bool Serialize(std::stringstream& _ss);
-        bool Deserialize(std::stringstream& _ss);
+        bool Serialize(std::ostream& _ss);
+        bool Deserialize(std::istream& _ss);
         void ByteSwap();
     };
     #pragma pack()
@@ -95,7 +95,7 @@ public:
     struct_empty_narrow(struct_empty_narrow&& rhs) noexcept : Payload(std::move(rhs.Payload)) {}
     struct_empty_narrow& operator=(const struct_empty_narrow& rhs) { this->Payload = rhs.Payload; return *this; }
     struct_empty_narrow& operator=(struct_empty_narrow&& rhs) noexcept { this->Payload = std::move(rhs.Payload); return *this; }
-    virtual bool Serialize(std::stringstream& _ss) override {
+    virtual bool Serialize(std::ostream& _ss) override {
         Payload_t* pPayload = nullptr;
         if _BP_IS_BIG_ENDIAN { pPayload = new Payload_t(Payload); pPayload->ByteSwap(); }
         else { pPayload = &Payload; }
@@ -103,7 +103,7 @@ public:
         if _BP_IS_BIG_ENDIAN { delete pPayload; }
         return hr;
     }
-    virtual bool Deserialize(std::stringstream& _ss) override {
+    virtual bool Deserialize(std::istream& _ss) override {
         bool hr = Payload.Deserialize(_ss);
         if _BP_IS_BIG_ENDIAN { Payload.ByteSwap(); }
         return hr;
@@ -131,8 +131,8 @@ public:
         Payload_t(Payload_t&& _rhs) noexcept;
         Payload_t& operator=(const Payload_t& _rhs);
         Payload_t& operator=(Payload_t&& _rhs) noexcept;
-        bool Serialize(std::stringstream& _ss);
-        bool Deserialize(std::stringstream& _ss);
+        bool Serialize(std::ostream& _ss);
+        bool Deserialize(std::istream& _ss);
         void ByteSwap();
     };
     #pragma pack()
@@ -143,7 +143,7 @@ public:
     struct_empty_narrow(struct_empty_narrow&& rhs) noexcept : Payload(std::move(rhs.Payload)) {}
     struct_empty_narrow& operator=(const struct_empty_narrow& rhs) { this->Payload = rhs.Payload; return *this; }
     struct_empty_narrow& operator=(struct_empty_narrow&& rhs) noexcept { this->Payload = std::move(rhs.Payload); return *this; }
-    virtual bool Serialize(std::stringstream& _ss) override {
+    virtual bool Serialize(std::ostream& _ss) override {
         Payload_t* pPayload = nullptr;
         if _BP_IS_BIG_ENDIAN { pPayload = new Payload_t(Payload); pPayload->ByteSwap(); }
         else { pPayload = &Payload; }
@@ -151,7 +151,7 @@ public:
         if _BP_IS_BIG_ENDIAN { delete pPayload; }
         return hr;
     }
-    virtual bool Deserialize(std::stringstream& _ss) override {
+    virtual bool Deserialize(std::istream& _ss) override {
         bool hr = Payload.Deserialize(_ss);
         if _BP_IS_BIG_ENDIAN { Payload.ByteSwap(); }
         return hr;
@@ -223,12 +223,12 @@ void struct_a::Payload_t::ByteSwap() {
     if _BP_IS_LITTLE_ENDIAN return;
     // C++ / ByteSwap写在此处。
 }
-bool struct_a::Payload_t::Deserialize(std::stringstream& _ss) {
+bool struct_a::Payload_t::Deserialize(std::istream& _ss) {
     _SS_PRE_RD(_ss);
     // C++ / Serialize写在此处。
     _SS_END_RD(_ss);
 }
-bool struct_a::Payload_t::Serialize(std::stringstream& _ss) {
+bool struct_a::Payload_t::Serialize(std::ostream& _ss) {
     _SS_PRE_WR(_ss);
     // C++ / Deserialize写在此处。
     _SS_END_WR(_ss);
