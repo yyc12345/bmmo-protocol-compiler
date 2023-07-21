@@ -115,34 +115,44 @@ public static class BPEndianHelper {
 #else
     // legacy byte swap
     public static void _BpByteSwapArray(ref byte[] data, int unit_size) {
+        var count = data.Length / unit_size;
         switch (unit_size) {
             case 1:
                 return;     // byte do not need any swap
             case 2: {
-                    var span16 = new ushort[data.Length / unit_size];
-                    Buffer.BlockCopy(data, 0, span16, 0, data.Length);
-                    for (int i = 0; i < span16.Length; i += unit_size) {
-                        span16[i] = _BpByteSwap(span16[i]);
+                    unsafe {
+                        fixed(byte* raw = data) {
+                            ushort* ptr = (ushort*)raw;
+                            for (int i = 0; i < count; ++i) {
+                                *ptr = _BpByteSwap(*ptr);
+                                ++ptr;
+                            }
+                        }
                     }
-                    Buffer.BlockCopy(span16, 0, data, 0, data.Length);
                     break;
                 }
             case 4: {
-                    var span32 = new uint[data.Length / unit_size];
-                    Buffer.BlockCopy(data, 0, span32, 0, data.Length);
-                    for (int i = 0; i < span32.Length; ++i) {
-                        span32[i] = _BpByteSwap(span32[i]);
+                    unsafe {
+                        fixed (byte* raw = data) {
+                            uint* ptr = (uint*)raw;
+                            for (int i = 0; i < count; ++i) {
+                                *ptr = _BpByteSwap(*ptr);
+                                ++ptr;
+                            }
+                        }
                     }
-                    Buffer.BlockCopy(span32, 0, data, 0, data.Length);
                     break;
                 }
             case 8: {
-                    var span64 = new ulong[data.Length / unit_size];
-                    Buffer.BlockCopy(data, 0, span64, 0, data.Length);
-                    for (int i = 0; i < span64.Length; ++i) {
-                        span64[i] = _BpByteSwap(span64[i]);
+                    unsafe {
+                        fixed (byte* raw = data) {
+                            ulong* ptr = (ulong*)raw;
+                            for (int i = 0; i < count; ++i) {
+                                *ptr = _BpByteSwap(*ptr);
+                                ++ptr;
+                            }
+                        }
                     }
-                    Buffer.BlockCopy(span64, 0, data, 0, data.Length);
                     break;
                 }
             default:
@@ -204,28 +214,34 @@ public static partial class BPHelper {
         return Encoding.UTF8.GetString(br.ReadBytes((int)length));
     }
 
-    public static void _BpReadNumberTuple<TItem>(this BinaryReader br, ref TItem[] data, int unit_size) where TItem : struct {
 #if _BP_MODERN_CSHARP
+    public static void _BpReadNumberTuple<TItem>(this BinaryReader br, ref TItem[] data, int unit_size) where TItem : struct {
         // modern reading
         var buffer = MemoryMarshal.Cast<TItem, byte>(data.AsSpan());
         br.Read(buffer);
         if (!BPEndianHelper._IsLittleEndian()) BPEndianHelper._BpByteSwapArray(buffer, unit_size);
 #else
+    public static void _BpReadNumberTuple<TItem>(this BinaryReader br, ref TItem[] data, int unit_size) where TItem : unmanaged {
         // legacy reading
         var buffer = new byte[data.Length * unit_size];
         br.Read(buffer, 0, buffer.Length);
         if (!BPEndianHelper._IsLittleEndian()) BPEndianHelper._BpByteSwapArray(ref buffer, unit_size);
-        if (typeof(TItem).IsEnum) {
-            var intermediary = Array.CreateInstance(typeof(TItem).GetEnumUnderlyingType(), data.Length);
-            Buffer.BlockCopy(buffer, 0, intermediary, 0, buffer.Length);
-            Array.Copy(intermediary, data, data.Length);
-        } else {
-            Buffer.BlockCopy(buffer, 0, data, 0, buffer.Length);
+
+        unsafe {
+            fixed (byte* src = buffer) {
+                fixed (TItem* dst = data) {
+                    Buffer.MemoryCopy(src, (byte*)dst, buffer.Length, buffer.Length);
+                }
+            }
         }
 #endif
     }
 
+#if _BP_MODERN_CSHARP
     public static void _BpReadNumberList<TItem>(this BinaryReader br, ref List<TItem> data, int count, int unit_size) where TItem : struct {
+#else
+    public static void _BpReadNumberList<TItem>(this BinaryReader br, ref List<TItem> data, int count, int unit_size) where TItem : unmanaged {
+#endif
         var raw = new TItem[count];
         br._BpReadNumberTuple<TItem>(ref raw, unit_size);
         data.AddRange(raw);
@@ -285,42 +301,44 @@ public static partial class BPHelper {
         bw.Write(rawstr);
     }
 
-    public static void _BpWriteNumberTuple<TItem>(this BinaryWriter bw, ref TItem[] data, int unit_size) where TItem : struct {
 #if _BP_MODERN_CSHARP
+    public static void _BpWriteNumberTuple<TItem>(this BinaryWriter bw, ref TItem[] data, int unit_size) where TItem : struct {
         // modern writting
         Span<byte> buffer;
-        if (_IsLittleEndian()) {
+        if (BPEndianHelper._IsLittleEndian()) {
             buffer = MemoryMarshal.Cast<TItem, byte>(data.AsSpan());
         } else {
             // we should not affect original data. create a buffer instead.
             var intermediary = (TItem[])data.Clone();
             buffer = MemoryMarshal.Cast<TItem, byte>(intermediary.AsSpan());
-            _BpByteSwapArray(buffer, unit_size);
+            BPEndianHelper._BpByteSwapArray(buffer, unit_size);
         }
 
         bw.Write(buffer);
 #else
+    public static void _BpWriteNumberTuple<TItem>(this BinaryWriter bw, ref TItem[] data, int unit_size) where TItem : unmanaged {
         // legacy writting
         var buffer = new byte[data.Length * unit_size];
-        if (typeof(TItem).IsEnum) {
-            var intermediary = Array.CreateInstance(typeof(TItem).GetEnumUnderlyingType(), data.Length);
-            Array.Copy(data, intermediary, data.Length);
-            Buffer.BlockCopy(intermediary, 0, buffer, 0, buffer.Length);
-        } else {
-            Buffer.BlockCopy(data, 0, buffer, 0, buffer.Length);
+        unsafe {
+            fixed (byte* dst = buffer) {
+                fixed (TItem* src = data) {
+                    Buffer.MemoryCopy((byte*)src, dst, buffer.Length, buffer.Length);
+                }
+            }
         }
         if (!BPEndianHelper._IsLittleEndian()) BPEndianHelper._BpByteSwapArray(ref buffer, unit_size);
         bw.Write(buffer);
 #endif
     }
 
-    public static void _BpWriteNumberList<TItem>(this BinaryWriter bw, ref List<TItem> data, int unit_size) where TItem : struct {
 #if _BP_MODERN_CSHARP
+    public static void _BpWriteNumberList<TItem>(this BinaryWriter bw, ref List<TItem> data, int unit_size) where TItem : struct {
         // modern writting
         var buffer = MemoryMarshal.Cast<TItem, byte>(data.ToArray().AsSpan());
         if (!BPEndianHelper._IsLittleEndian()) BPEndianHelper._BpByteSwapArray(buffer, unit_size);
         bw.Write(buffer);
 #else
+    public static void _BpWriteNumberList<TItem>(this BinaryWriter bw, ref List<TItem> data, int unit_size) where TItem : unmanaged {
         // legacy writting
         var buffer = data.ToArray();
         bw._BpWriteNumberTuple<TItem>(ref buffer, unit_size);
