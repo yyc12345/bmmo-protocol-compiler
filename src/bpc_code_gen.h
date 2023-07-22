@@ -133,4 +133,4 @@ void codepy_write_document(FILE* fs, BPCSMTV_DOCUMENT* document);
 void codecs_write_document(FILE* fs, BPCSMTV_DOCUMENT* document);
 void codehpp_write_document(FILE* fs, BPCSMTV_DOCUMENT* document);
 void codecpp_write_document(FILE* fs, BPCSMTV_DOCUMENT* document, const gchar* hpp_reference);
-void codeproto_write_document(FILE* fs, BPCSMTV_DOCUMENT* document);
+void codefbs_write_document(FILE* fs, BPCSMTV_DOCUMENT* document);

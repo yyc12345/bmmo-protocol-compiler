@@ -10,7 +10,7 @@ static gchar* opt_python = NULL;
 static gchar* opt_csharp = NULL;
 static gchar* opt_cpp_header = NULL;
 static gchar* opt_cpp_source = NULL;
-static gchar* opt_proto = NULL;
+static gchar* opt_fbs = NULL;
 
 static GOptionEntry opt_entries[] = {
 	{ "help", 'h', 0, G_OPTION_ARG_NONE, &opt_help, "Print help page", NULL },
@@ -20,7 +20,7 @@ static GOptionEntry opt_entries[] = {
 	{ "cs", 'c', 0, G_OPTION_ARG_FILENAME, &opt_csharp, "Output C# code", "example.cs" },
 	{ "cpp-header", 'd', 0, G_OPTION_ARG_FILENAME, &opt_cpp_header, "Output C++ header code", "example.hpp"},
 	{ "cpp-source", 's', 0, G_OPTION_ARG_FILENAME, &opt_cpp_source, "Output C++ source code", "example.cpp"},
-	{ "proto", 't', 0, G_OPTION_ARG_FILENAME, &opt_proto, "Output Protobuf3 code", "example.proto"},
+	{ "flatbuffers", 'b', 0, G_OPTION_ARG_FILENAME, &opt_fbs, "Output Flatbuffers code", "example.fbs"},
 	G_OPTION_ENTRY_NULL
 };
 
@@ -78,7 +78,7 @@ void bpccmd_free_parsed_args(BPCCMD_PARSED_ARGS* struct_args) {
 	SAFE_CLOSE_FS(struct_args->out_csharp_file);
 	SAFE_CLOSE_FS(struct_args->out_cpp_header_file);
 	SAFE_CLOSE_FS(struct_args->out_cpp_source_file);
-	SAFE_CLOSE_FS(struct_args->out_proto_file);
+	SAFE_CLOSE_FS(struct_args->out_fbs_file);
 #undef SAFE_CLOSE_FS
 	g_free(struct_args->ref_cpp_relative_hdr);
 
@@ -146,7 +146,7 @@ BPCCMD_PARSED_ARGS* _bpccmd_alloc_parsed_args() {
 	st->out_csharp_file = bpcfs_fopen_glibfs(opt_csharp, false);
 	st->out_cpp_header_file = bpcfs_fopen_glibfs(opt_cpp_header, false);
 	st->out_cpp_source_file = bpcfs_fopen_glibfs(opt_cpp_source, false);
-	st->out_proto_file = bpcfs_fopen_glibfs(opt_proto, false);
+	st->out_fbs_file = bpcfs_fopen_glibfs(opt_fbs, false);
 
 	st->ref_cpp_relative_hdr = _bpccmd_get_cpp_relative_header(opt_cpp_source, opt_cpp_header);
 
@@ -165,9 +165,9 @@ void _bpccmd_clean_static_value() {
 	g_free(opt_csharp);
 	g_free(opt_cpp_header);
 	g_free(opt_cpp_source);
-	g_free(opt_proto);
+	g_free(opt_fbs);
 
 	opt_version = opt_help = false;
-	opt_input = opt_python = opt_csharp = opt_cpp_header = opt_cpp_source = opt_proto = NULL;
+	opt_input = opt_python = opt_csharp = opt_cpp_header = opt_cpp_source = opt_fbs = NULL;
 }
 

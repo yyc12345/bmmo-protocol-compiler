@@ -20,7 +20,7 @@ static FILE* _bpcerr_error_type_to_stream(BPCERR_ERROR_TYPE err_type) {
 	}
 }
 
-static void _bpcerr_printf(BPCERR_ERROR_SOURCE src, BPCERR_ERROR_TYPE err_type, const char* format, va_list ap) {
+static void _bpcerr_printf(BPCERR_ERROR_SOURCE src, BPCERR_ERROR_CODEGEN_SOURCE codegen_src, BPCERR_ERROR_TYPE err_type, const char* format, va_list ap) {
 	FILE* stream = _bpcerr_error_type_to_stream(err_type);
 	g_assert(stream != NULL);
 	bool use_color = g_log_writer_supports_color(fileno(stream));
@@ -64,6 +64,28 @@ static void _bpcerr_printf(BPCERR_ERROR_SOURCE src, BPCERR_ERROR_TYPE err_type, 
 	}
 	if (use_color) fputs("\033[0m", stream);
 
+	// display codegen source
+	if (src == BPCERR_ERROR_SOURCE_CODEGEN && codegen_src != BPCERR_ERROR_CODEGEN_SOURCE_NONE) {
+		if (use_color) fputs("\033[1;35m", stream);	// magenta
+		switch (codegen_src) {
+			case BPCERR_ERROR_CODEGEN_SOURCE_PYTHON:
+				fputs("[Python     ] ", stream);
+				break;
+			case BPCERR_ERROR_CODEGEN_SOURCE_CSHARP:
+				fputs("[C#         ] ", stream);
+				break;
+			case BPCERR_ERROR_CODEGEN_SOURCE_CPP:
+				fputs("[C++        ] ", stream);
+				break;
+			case BPCERR_ERROR_CODEGEN_SOURCE_FLATBUFFERS:
+				fputs("[Flatbuffers] ", stream);
+				break;
+			default:
+				g_assert_not_reached();
+		}
+		if (use_color) fputs("\033[0m", stream);
+	}
+
 	// output result
 	vfprintf(stream, format, ap);
 	fputc('\n', stream);
@@ -82,29 +104,57 @@ G_NORETURN static void _bpcerr_nuke_process(int rc) {
 void bpcerr_info(BPCERR_ERROR_SOURCE src, const char* format, ...) {
 	va_list ap;
 	va_start(ap, format);
-	_bpcerr_printf(src, BPCERR_ERROR_TYPE_INFO, format, ap);
+	_bpcerr_printf(src, BPCERR_ERROR_CODEGEN_SOURCE_NONE, BPCERR_ERROR_TYPE_INFO, format, ap);
 	va_end(ap);
 }
 
 void bpcerr_warning(BPCERR_ERROR_SOURCE src, const char* format, ...) {
 	va_list ap;
 	va_start(ap, format);
-	_bpcerr_printf(src, BPCERR_ERROR_TYPE_WARNING, format, ap);
+	_bpcerr_printf(src, BPCERR_ERROR_CODEGEN_SOURCE_NONE, BPCERR_ERROR_TYPE_WARNING, format, ap);
 	va_end(ap);
 }
 
 void bpcerr_error(BPCERR_ERROR_SOURCE src, const char* format, ...) {
 	va_list ap;
 	va_start(ap, format);
-	_bpcerr_printf(src, BPCERR_ERROR_TYPE_ERROR, format, ap);
+	_bpcerr_printf(src, BPCERR_ERROR_CODEGEN_SOURCE_NONE, BPCERR_ERROR_TYPE_ERROR, format, ap);
 	va_end(ap);
 }
 
 G_NORETURN void bpcerr_panic(BPCERR_ERROR_SOURCE src, const char* format, ...) {
 	va_list ap;
 	va_start(ap, format);
-	_bpcerr_printf(src, BPCERR_ERROR_TYPE_ERROR, format, ap);
+	_bpcerr_printf(src, BPCERR_ERROR_CODEGEN_SOURCE_NONE, BPCERR_ERROR_TYPE_ERROR, format, ap);
 	va_end(ap);
 
 	_bpcerr_nuke_process(1);
 }
+
+void bpcerr_codegen_info(BPCERR_ERROR_CODEGEN_SOURCE src, const char* format, ...) {
+	va_list ap;
+	va_start(ap, format);
+	_bpcerr_printf(BPCERR_ERROR_SOURCE_CODEGEN, src, BPCERR_ERROR_TYPE_INFO, format, ap);
+	va_end(ap);
+}
+void bpcerr_codegen_warning(BPCERR_ERROR_CODEGEN_SOURCE src, const char* format, ...) {
+	va_list ap;
+	va_start(ap, format);
+	_bpcerr_printf(BPCERR_ERROR_SOURCE_CODEGEN, src, BPCERR_ERROR_TYPE_WARNING, format, ap);
+	va_end(ap);
+}
+void bpcerr_codegen_error(BPCERR_ERROR_CODEGEN_SOURCE src, const char* format, ...) {
+	va_list ap;
+	va_start(ap, format);
+	_bpcerr_printf(BPCERR_ERROR_SOURCE_CODEGEN, src, BPCERR_ERROR_TYPE_ERROR, format, ap);
+	va_end(ap);
+}
+G_NORETURN void bpcerr_codegen_panic(BPCERR_ERROR_CODEGEN_SOURCE src, const char* format, ...) {
+	va_list ap;
+	va_start(ap, format);
+	_bpcerr_printf(BPCERR_ERROR_SOURCE_CODEGEN, src, BPCERR_ERROR_TYPE_ERROR, format, ap);
+	va_end(ap);
+
+	_bpcerr_nuke_process(1);
+}
+

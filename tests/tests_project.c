@@ -359,7 +359,7 @@ static void project_test_wrapper(void) {
 	g_free(glibfs_infile);
 
 	fake_args.out_cpp_header_file = fake_args.out_cpp_source_file =
-		fake_args.out_csharp_file = fake_args.out_proto_file = fake_args.out_python_file = NULL;
+		fake_args.out_csharp_file = fake_args.out_fbs_file = fake_args.out_python_file = NULL;
 	fake_args.ref_cpp_relative_hdr = NULL;
 
 	// call test

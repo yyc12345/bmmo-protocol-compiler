@@ -11,7 +11,7 @@ typedef struct _BPCCMD_PARSED_ARGS {
 	FILE* out_csharp_file;
 	FILE* out_cpp_header_file;
 	FILE* out_cpp_source_file;
-	FILE* out_proto_file;
+	FILE* out_fbs_file;
 	gchar* ref_cpp_relative_hdr;
 }BPCCMD_PARSED_ARGS;
 

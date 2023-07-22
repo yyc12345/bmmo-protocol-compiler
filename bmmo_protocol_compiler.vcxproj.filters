@@ -63,7 +63,7 @@
     <ClCompile Include="src\codegen\codecpp.c">
       <Filter>Sources\codegen</Filter>
     </ClCompile>
-    <ClCompile Include="src\codegen\codeproto.c">
+    <ClCompile Include="src\codegen\codefbs.c">
       <Filter>Sources\codegen</Filter>
     </ClCompile>
   </ItemGroup>

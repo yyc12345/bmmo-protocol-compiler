@@ -48,7 +48,7 @@ set(shared_c
 	src/codegen/codecs.c
 	src/codegen/codehpp.c
 	src/codegen/codecpp.c
-	src/codegen/codeproto.c
+	src/codegen/codefbs.c
 	src/lex.yy.c
 	src/y.tab.c
 )
