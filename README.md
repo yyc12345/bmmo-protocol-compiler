@@ -1,6 +1,6 @@
 # bmmo-protocol-compiler
 
-Yet Another Protobuf.  
+Yet Another Protobuf / Flatbuffers.  
 It just my exercise for Flex/Bison. It should not be used in any production environment, however I will keep it as stable as I can.  
 This compiler is written in pure C (I hate C++).
 
@@ -15,21 +15,21 @@ Imagine following circumstance, You have developed a new network application, yo
 
 Congratulation! This project is very suit for you.
 
-This project is originally served for [Swung0x48/BallanceMMO](https://github.com/Swung0x48/BallanceMMO), because I want to create a standalone protocol parser to erase the dependency to original BallanceMMO project. Original BallanceMMO protocol become more and more complex. It is hard to be written by hand, so I create this compiler. Now, I can get effective code in any language via just writing a tiny protocol prototype file like Google Protobuf proto file. However, it is okay that you want to use this project in any other applications, because what your demo is facing is usually the same as current BMMO's circumstance.  
+This project is originally served for [Swung0x48/BallanceMMO](https://github.com/Swung0x48/BallanceMMO), because I want to create a standalone protocol parser to erase the dependency to original BallanceMMO project. Original BallanceMMO protocol become more and more complex. It is hard to be written by hand, so I create this compiler. Now, I can get effective code in any language via just writing a tiny protocol prototype file like Google Flatbuffers fbs file. However, it is okay that you want to use this project in any other applications, because what your demo is facing is usually the same as current BMMO's circumstance.  
 Now, because the protocol of BMMO no longer follow some crucial syntax. This project is not focus on BMMO protocol anymore. However I don't want to change its name. I just want keep its name to show where it comes from.
 
-Considering Google Protobuf, this project is not suit for production environment, just like I said previously. If your application become more and more strong and ready for release, I suggest you switch to more strong serializer, for example, Google Protobuf. This project also provide the function that convert bp file used by this program to proto file used by Google Protobuf. It is convenient for migration.
+Considering Google Flatbuffers, this project is not suit for production environment, just like I said previously. If your application become more and more strong and ready for release, I suggest you switch to more strong serializer, for example, Google Flatbuffers. This project also provide the function that convert bp file used by this program to fbs file used by Google Flatbuffers. It is convenient for migration.
 
 ## Features
 
 ### Supported Language
 
-* Python (at least 3.5.3)
+* Python (at least 3.5.3 in theory. 3.7 higher suggested.)
 * C\#
   - Legacy Mode (For Unity / Godot user. Low performance.): at least .Net Framework 4.6. `unsafe` switch required.
   - Modern Mode (High performance): at least .Net Core 2.1
 * C++ (at least C++ 17. Optimized for C++ 20 and 23)
-* Google Protobuf 3
+* Google Flatbuffers
 
 ### Supported Features
 
@@ -55,7 +55,7 @@ Syntax: `bmmo_protocol_compiler [switches]`
 * `-c --cs PATH`: Generate a C\# code file in `PATH`.
 * `-d --cpp-header PATH`: Generate a C++ header file in `PATH`.
 * `-s --cpp-source PATH`: Generate a C++ source file in `PATH`.
-* `-t --proto PATH`: Generate a Proto3 file in `PATH`.
+* `-b --flatbuffers PATH`: Generate a Flatbuffers file in `PATH`.
 
 `-d` and `-s` both are usually used together to generate full C++ code file.  
 If there are no any generation switches chosen, the compiler will only check the syntax of the input file.  

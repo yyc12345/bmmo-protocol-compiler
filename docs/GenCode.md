@@ -4,9 +4,9 @@
 
 Before starting your reading, please allow me introduce the aim of each generated languages. And, a small, arrogant and realistic warning for C++ code user.
 
-Compiler supports 4 languages now, Python, C\#, C++ and Proto. Python code is generated for quick test, small demo and etc. Python code is not ready for production environment.   
+Compiler supports 4 languages now, Python, C\#, C++ and Flatbuffers. Python code is generated for quick test, small demo and etc. Python code is not ready for production environment.   
 Oppositely, C\# and C++ code is more suit for your productions. C\# code can be used in some game engine easily, such as Unity. C++ code can be applied to game server and etc.  
-Proto code generation is a migration way. As I said in readme, if you want to migrate to more stable binary protocol, use this output can let you feel more fluent about migration.
+Flatbuffers code generation is a migration way. As I said in readme, if you want to migrate to more stable binary protocol, use this output can let you feel more fluent about migration.
 
 You may notice the requirement of some laguages are extremely high. For example, we order C++17 for C++ and .Net Core 2.1 for C\#. That's because the feature we needed only provided in the version higher that our requested version. If you think these version are too high, you can create a fork and change the code on your requirement freely.
 
@@ -16,26 +16,26 @@ Following table introduce the data type conversion used by Bp Compiler.
 
 ### Basic Type
 
-|Bp		|Python	|C\#	|C++			|Proto	|
-|:---	|:---	|:---	|:---			|:---	|
-|float	|float	|float	|float			|float	|
-|double	|float	|double	|double			|double	|
-|int8	|int	|sbyte	|int8_t			|int32	|
-|int16	|int	|short	|int16_t		|int32	|
-|int32	|int	|int	|int32_t		|int32	|
-|int64	|int	|long	|int64_t		|int64	|
-|uint8	|int	|byte	|uint8_t		|uint32	|
-|uint16	|int	|ushort	|uint16_t		|uint32	|
-|uint32	|int	|uint	|uint32_t		|uint32	|
-|uint64	|int	|ulong	|uint64_t		|uint64	|
-|string	|str	|string	|std::string	|string	|
+|Bp		|Python	|C\#	|C++			|Flatbuffers|
+|:---	|:---	|:---	|:---			|:---		|
+|float	|float	|float	|float			|float		|
+|double	|float	|double	|double			|double		|
+|int8	|int	|sbyte	|int8_t			|byte		|
+|int16	|int	|short	|int16_t		|short		|
+|int32	|int	|int	|int32_t		|int		|
+|int64	|int	|long	|int64_t		|long		|
+|uint8	|int	|byte	|uint8_t		|ubyte		|
+|uint16	|int	|ushort	|uint16_t		|ushort		|
+|uint32	|int	|uint	|uint32_t		|uint		|
+|uint64	|int	|ulong	|uint64_t		|ulong		|
+|string	|str	|string	|std::string	|string		|
 
 ## Container
 
-|Bp		|Python		|C\#									|C++				|Proto		|
-|:---	|:---		|:---									|:---				|:---		|
-|tuple	|list[T]	|T[]									|CStyleArray\<T, N\>|repeated	|
-|list	|list[T]	|System.Collections.Generic.List\<T\>	|std::vector\<T\>	|repeated	|
+|Bp		|Python		|C\#									|C++				|Flatbuffers	|
+|:---	|:---		|:---									|:---				|:---			|
+|tuple	|list[T]	|T[]									|CStyleArray\<T, N\>|[T:N] (Array)	|
+|list	|list[T]	|System.Collections.Generic.List\<T\>	|std::vector\<T\>	|[T] (Vector)	|
 
 Tips:
 
@@ -249,3 +249,16 @@ delete your_data;
 0. Send gotten binary sequence via stream or anything you like.
 0. Clear buffer like deserialization.
 0. Free your initialized message in anytime you want.
+
+## Flatbuffers
+
+The generation of Flatbuffers just interpret the BP file's entries one by one, because Flatbuffers is served for migration.  
+Some essential properies and features may be ignored during generation.  
+There is a list containing what you should notice during conversion.
+
+* All align number and padding will be wiped out.
+* Natural and narrow keywords are ignored.
+* Reliability is ignored.
+* `struct` will be translate to `struct` and `msg` will be translated to `table`.
+* Compiler do not check field type legality during conversion. For example, Flatbuffers `table` do not accept static array, but we still write it if you specify a static array in BP file's `msg`.
+* No mechanism to ensure the geenerated fbs can pass compiling without any modifications.

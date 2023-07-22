@@ -35,41 +35,6 @@ static void write_enum(FILE* fs, BPCSMTV_ENUM* smtv_enum) {
 
 }
 
-static bool has_static_array(GSList* bond_vars) {
-	GSList* cursor = NULL;
-	for (cursor = bond_vars; cursor != NULL; cursor = cursor->next) {
-		BOND_VARS* data = (BOND_VARS*)cursor->data;
-		uint32_t c;
-		for (c = 0; c < data->bond_vars_len; ++c) {
-			switch (data->vars_type[c]) {
-				case BPCGEN_VARTYPE_STATIC_PRIMITIVE:
-				case BPCGEN_VARTYPE_STATIC_STRING:
-				case BPCGEN_VARTYPE_STATIC_NARROW:
-				case BPCGEN_VARTYPE_STATIC_NATURAL:
-				{
-					return true;	// has static array
-				}
-				case BPCGEN_VARTYPE_SINGLE_PRIMITIVE:
-				case BPCGEN_VARTYPE_SINGLE_STRING:
-				case BPCGEN_VARTYPE_SINGLE_NARROW:
-				case BPCGEN_VARTYPE_SINGLE_NATURAL:
-				case BPCGEN_VARTYPE_DYNAMIC_PRIMITIVE:
-				case BPCGEN_VARTYPE_DYNAMIC_STRING:
-				case BPCGEN_VARTYPE_DYNAMIC_NARROW:
-				case BPCGEN_VARTYPE_DYNAMIC_NATURAL:
-				{
-					break;
-				}
-
-				default:
-					g_assert_not_reached();
-			}
-		}
-	}
-
-	return false;	// do not have static array
-}
-
 static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data) {
 	GSList* cursor = NULL;
 	bool is_msg;  GSList* variables; char* struct_like_name;
@@ -80,25 +45,9 @@ static void write_struct_or_msg(FILE* fs, BPCGEN_STRUCT_LIKE* union_data) {
 	GSList* bond_vars = bpcgen_constructor_bond_vars(variables, BPCGEN_VARTYPE_NONE);
 
 	// message body
-	// decide table or struct
 	BPCGEN_INDENT_PRINT;
-	if (is_msg) {
-		if (has_static_array(bond_vars)) {
-			// downgrade to struct
-			bpcerr_codegen_warning(BPCERR_ERROR_CODEGEN_SOURCE_FLATBUFFERS,
-				"Downgrade \"%s\" from table to struct because flatbuffers do not support array in table.",
-				struct_like_name
-			);
-			fputs("struct", fs);
-		} else {
-			// still use table
-			fputs("table", fs);
-		}
-	} else {
-		// use struct in default
-		fputs("struct", fs);
-	}
-	// write name and bracket
+	if (is_msg) { fputs("table", fs); } 
+	else { fputs("struct", fs); }
 	fprintf(fs, " %s {", struct_like_name); BPCGEN_INDENT_INC;
 
 	for (cursor = bond_vars; cursor != NULL; cursor = cursor->next) {
@@ -156,7 +105,9 @@ void codefbs_write_document(FILE* fs, BPCSMTV_DOCUMENT* document) {
 	
 	// raise general warning for fbs
 	bpcerr_codegen_warning(BPCERR_ERROR_CODEGEN_SOURCE_FLATBUFFERS,
-		"Flatbuffers output is designed for migration. Some properties may be ignored in migration, such as padding and align."
+		"Flatbuffers output is designed for migration. "
+		"Some properties may be ignored in migration, such as padding and align. "
+		"The generated schema also may contain issues, such as table and struct restrictions."
 	);
 
 	// write namespace
