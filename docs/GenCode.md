@@ -2,13 +2,13 @@
 
 ## Before Reading
 
-Before starting your reading, please allow me introduce the aim of each generated languages. And, a small, arrogant and realistic warning for C++ code user.
+Before starting your reading, please allow me introduce the aim of each generated languages.
 
-Compiler supports 4 languages now, Python, C\#, C++ and Flatbuffers. Python code is generated for quick test, small demo and etc. Python code is not ready for production environment.   
+Compiler supports 3 languages officially now, Python, C\#, C++ and Flatbuffers. Python code is generated for quick test, small demo and etc. Python code is not ready for production environment.   
 Oppositely, C\# and C++ code is more suit for your productions. C\# code can be used in some game engine easily, such as Unity. C++ code can be applied to game server and etc.  
 Flatbuffers code generation is a migration way. As I said in readme, if you want to migrate to more stable binary protocol, use this output can let you feel more fluent about migration.
 
-You may notice the requirement of some laguages are extremely high. For example, we order C++17 for C++ and .Net Core 2.1 for C\#. That's because the feature we needed only provided in the version higher that our requested version. If you think these version are too high, you can create a fork and change the code on your requirement freely.
+You may notice the requirement of some laguages are extremely high. For example, we order C++17 for C++ and .Net Core 2.1 / .Net Framework 4.6 for C\#. That's because the features we needed only provided in the version higher that our requested version. If you think these version are too high, you can create a fork and change the code on your requirement freely.
 
 ## Data Type Conversion
 
@@ -30,20 +30,36 @@ Following table introduce the data type conversion used by Bp Compiler.
 |uint64	|int	|ulong	|uint64_t		|ulong		|
 |string	|str	|string	|std::string	|string		|
 
-## Container
+### Container
 
 |Bp		|Python		|C\#									|C++				|Flatbuffers	|
 |:---	|:---		|:---									|:---				|:---			|
-|tuple	|list[T]	|T[]									|CStyleArray\<T, N\>|[T:N] (Array)	|
-|list	|list[T]	|System.Collections.Generic.List\<T\>	|std::vector\<T\>	|[T] (Vector)	|
+|tuple	|list[T]	|T[]									|CStyleArray\<T, N\>|[T:N]			|
+|list	|list[T]	|System.Collections.Generic.List\<T\>	|std::vector\<T\>	|[T]			|
 
 Tips:
 
 * Python do not have compulsory type system, so I use Python type hints system instead.
 * Python use `list[T]` for the static and dynamic array of Bp file just due to `tuple[T]` do not support assigning value one by one.
+* In Flatbuffers, `[T:N]` is called Array, and `[T]` is called Vector.
 * String type need special treatment in almost languages although it is grouped as basic type. For convenience, we name the collection of all basic types without string as a new name, primitive type.
 * At the opposite, we call string type and struct type as non-primitive type.
 * Enum also can be seen as primitive type because its inheriting type is primitive type.
+
+## Serialized Binary Data
+
+This section will briefly introduce some features of Serialized Binary Data.
+
+* Serialized Binary Data always is written in Little Endian, no matter the OS endian it is.
+* Align and padding is like C compiler does.
+* String is stored with following steps.
+  1. Encode this string into UTF8 encoding.
+  1. Get the length of this UTF8 string and store it as an `uint32`.
+  1. Store the whole UTF8 string without null terminator.
+* When storing tuple, no space between each members in tuple.
+* List is stored with following steps.  
+  1. Get the length of this list and store it as an `uint32`.
+  1. Store the members of list like tuple.
 
 ## Name Conflict Principle
 
@@ -181,6 +197,10 @@ ms.SetLength(0);
 
 * Bp use `nullptr` as the symbol of null pointer, not `NULL`. If you want to check null pointer for some Bp managed variables (however you might not need to check in almost situation.), please compare its pointer with `nullptr`, not `NULL`.
 * Bp use naked pointer if it needed. But for the most cases, pointer is not used.
+
+### Encoding
+
+The principle order Bp string must be UTF8 encoding. However, our generated C++ code do not ensure this. You should create your encoding convertion code to make sure that all you stored in std::string is writtin in UTF8 encoding.
 
 ### Ownerships
 

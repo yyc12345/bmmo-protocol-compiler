@@ -1,7 +1,7 @@
 # Testbench Readme
 
 This testbench is served for checking whether the generated code can work.  
-Before using this testbench, you should execute `./bmmo_protocol_compiler -i examples/codegen.bp -p CodeGenTest.py -c CodeGenTest.cs -d CodeGenTest.hpp -s CodeGenTest.cpp -t CodeGenTest.pb` first to get all necessary files.
+Before using this testbench, you should execute `./bmmo_protocol_compiler -i examples/codegen.bp -p CodeGenTest.py -c CodeGenTest.cs -d CodeGenTest.hpp -s CodeGenTest.cpp -b CodeGenTest.fbs` first to get all necessary files.
 
 Next step, put `testbench.py` with `CodeGenTest.py`. Then executing `python3 testbench.py` (I develop it under Python 3.9 and I use a frequently changed module `typing`. Please choose a proper python version.).  
 At first running, script will create a folder called `TestbenchData`. And benchmark the performance of generated ython code.
@@ -15,4 +15,5 @@ Technical infos:
 * C\# need 2 different tests.
   - .Net Framework 4.6 Test
   - .Net Core 2.1 Test
+* Flatbuffers is not included in test.
 
