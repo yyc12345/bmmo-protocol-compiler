@@ -346,9 +346,23 @@ public static partial class BPHelper {
     }
 
 
+    public static OpCode ReadOpCode(BinaryReader br) => (OpCode)br._BpReadInt32();
+    public static OpCode PeekOpCode(BinaryReader br) {
+        OpCode code = (OpCode)br._BpReadInt32();
+        br.BaseStream.Seek(-sizeof(OpCode), SeekOrigin.Current);
+        return code;
+    }
+    public static void WriteOpCode(BinaryWriter bw, OpCode code) => bw._BpWriteUInt32((UInt32)code);
+
     public static void UniformSerialize(BpMessage instance, BinaryWriter bw) {
-        bw._BpWriteUInt32((UInt32)instance.GetOpCode());
+        WriteOpCode(bw, instance.GetOpCode());
         instance.Serialize(bw);
+    }
+    public static BpMessage UniformDeserialize(BinaryReader br) {
+        OpCode code = ReadOpCode(br);
+        BpMessage instance = MessageFactory(code);
+        if (!(instance is null)) instance.Deserialize(br);
+        return instance;
     }
 
 }

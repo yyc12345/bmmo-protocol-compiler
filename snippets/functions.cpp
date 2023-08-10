@@ -61,17 +61,13 @@ namespace BPHelper {
 	// ==================== RW Assist Functions ====================
 
 	bool UniformSerialize(std::ostream& ss, BpMessage* instance) {
-		OpCode code = instance->GetOpCode();
-		if _BP_IS_BIG_ENDIAN { BPHelper::ByteSwap::_SwapSingle<uint32_t>(&code); }
-		_SS_WR_STRUCT(ss, &code, sizeof(uint32_t));
-
+		if (!WriteOpCode(ss, instance->GetOpCode())) return false;
 		return instance->Serialize(ss);
 	}
 
 	BpMessage* UniformDeserialize(std::istream& ss) {
 		OpCode code;
-		if (![&ss, &code]() { _SS_RD_STRUCT(ss, &code, sizeof(uint32_t)); return true; }()) return nullptr;
-		if _BP_IS_BIG_ENDIAN { BPHelper::ByteSwap::_SwapSingle<uint32_t>(&code); }
+		if (!ReadOpCode(ss, code)) return nullptr;
 
 		BpMessage* instance = MessageFactory(code);
 		if (instance != nullptr) {
@@ -81,6 +77,23 @@ namespace BPHelper {
 			}
 		}
 		return instance;
+	}
+
+	bool ReadOpCode(std::istream& ss, OpCode& code) {
+		_SS_RD_STRUCT(ss, &code, sizeof(uint32_t));
+		if _BP_IS_BIG_ENDIAN { BPHelper::ByteSwap::_SwapSingle<uint32_t>(&code); }
+		return true;
+	}
+	bool PeekOpCode(std::istream& ss, OpCode& code) {
+		std::streampos pos = ss.tellg();
+		bool ret = ReadOpCode(ss, code);
+		ss.seekg(pos, std::ios_base::beg);
+		return ret;
+	}
+	bool WriteOpCode(std::ostream& ss, OpCode code) {
+		if _BP_IS_BIG_ENDIAN { BPHelper::ByteSwap::_SwapSingle<uint32_t>(&code); }
+		_SS_WR_STRUCT(ss, &code, sizeof(uint32_t));
+		return true;
 	}
 
 	bool _ReadString(std::istream& ss, std::string& strl) {

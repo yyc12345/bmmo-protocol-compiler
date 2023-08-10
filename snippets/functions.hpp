@@ -107,6 +107,10 @@ namespace BPHelper {
 	bool UniformSerialize(std::ostream& ss, BpMessage* instance);
 	BpMessage* UniformDeserialize(std::istream& ss);
 
+	bool ReadOpCode(std::istream& ss, OpCode& code);
+	bool PeekOpCode(std::istream& ss, OpCode& code);
+	bool WriteOpCode(std::ostream& ss, OpCode code);
+
 	bool _ReadString(std::istream& ss, std::string& strl);
 	bool _WriteString(std::ostream& ss, std::string& strl);
 

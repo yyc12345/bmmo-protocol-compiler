@@ -536,7 +536,7 @@ static void write_opcode_enum(FILE* fs, GSList* msg_ls, BPCGEN_INDENT_TYPE inden
 	fputc('}', fs);
 }
 
-static void write_uniform_deserialize(FILE* fs, GSList* msg_ls, BPCGEN_INDENT_TYPE indent) {
+static void write_msg_factory(FILE* fs, GSList* msg_ls, BPCGEN_INDENT_TYPE indent) {
 	GSList* cursor;
 	BPCGEN_INDENT_INIT_REF(fs, indent);
 
@@ -544,36 +544,22 @@ static void write_uniform_deserialize(FILE* fs, GSList* msg_ls, BPCGEN_INDENT_TY
 	BPCGEN_INDENT_PRINT;
 	fputs("public static partial class BPHelper {", fs); BPCGEN_INDENT_INC;
 	BPCGEN_INDENT_PRINT;
-	fputs("public static BpMessage UniformDeserialize(BinaryReader _br) {", fs); BPCGEN_INDENT_INC;
+	fputs("public static BpMessage MessageFactory(OpCode _code) {", fs); BPCGEN_INDENT_INC;
 	BPCGEN_INDENT_PRINT;
-	fputs("BpMessage _data = null;", fs);
-	BPCGEN_INDENT_PRINT;
-	fputs("switch ((OpCode)_br._BpReadUInt32()) {", fs); BPCGEN_INDENT_INC;
+	fputs("switch (_code) {", fs); BPCGEN_INDENT_INC;
 	for (cursor = msg_ls; cursor != NULL; cursor = cursor->next) {
 		BPCSMTV_MSG* data = (BPCSMTV_MSG*)cursor->data;
 
 		BPCGEN_INDENT_PRINT;
-		fprintf(fs, "case OpCode.%s:", data->msg_name);
-
-		// write if body
-		BPCGEN_INDENT_INC;
-		BPCGEN_INDENT_PRINT;
-		fprintf(fs, "_data = new %s();", data->msg_name);
-		BPCGEN_INDENT_PRINT;
-		fputs("break;", fs);
-
-		BPCGEN_INDENT_DEC;
+		fprintf(fs, "case OpCode.%s: return new %s();", data->msg_name, data->msg_name);
 	}
+	// write default
+	BPCGEN_INDENT_PRINT;
+	fputs("default: return null;", fs);
 	// switch over
 	BPCGEN_INDENT_DEC;
 	BPCGEN_INDENT_PRINT;
 	fputc('}', fs);
-
-	// deserialize and return
-	BPCGEN_INDENT_PRINT;
-	fprintf(fs, "if (!(_data is null)) _data.Deserialize(_br);");
-	BPCGEN_INDENT_PRINT;
-	fputs("return _data;", fs);
 
 
 	// uniform func is over
@@ -634,7 +620,7 @@ void codecs_write_document(FILE* fs, BPCSMTV_DOCUMENT* document) {
 	}
 
 	// write uniformed deserializer
-	write_uniform_deserialize(fs, msg_ls, BPCGEN_INDENT_REF);
+	write_msg_factory(fs, msg_ls, BPCGEN_INDENT_REF);
 
 	// free msg list
 	bpcgen_destructor_msg_list(msg_ls);

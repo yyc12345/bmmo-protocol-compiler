@@ -611,7 +611,7 @@ static void write_opcode_enum(FILE* fs, GSList* msg_ls) {
 	BPCGEN_INDENT_DEC;
 }
 
-static void write_uniform_deserialize(FILE* fs, GSList* msg_ls) {
+static void write_msg_factory(FILE* fs, GSList* msg_ls) {
 	GSList* cursor;
 	BPCGEN_INDENT_INIT_NEW(fs);
 
@@ -631,19 +631,15 @@ static void write_uniform_deserialize(FILE* fs, GSList* msg_ls) {
 
 	// write uniformed deserialize func
 	BPCGEN_INDENT_PRINT;
-	fputs("def UniformDeserialize(_ss: io.BytesIO) -> BpMessage:", fs); BPCGEN_INDENT_INC;
-	// get opcode and check overflow
-	BPCGEN_INDENT_PRINT;
-	fputs("(_opcode, ) = _opcode_packer.unpack(_ss.read(_opcode_packer.size))", fs);
+	fputs("def MessageFactory(_opcode: OpCode) -> BpMessage:", fs); BPCGEN_INDENT_INC;
+	// check opcode overflow
 	BPCGEN_INDENT_PRINT;
 	fputs("if _opcode < 0 or _opcode >= len(_all_msgs): return None", fs);
-	// start real deserialize function
+	// run real constructor
 	BPCGEN_INDENT_PRINT;
 	fputs("else:", fs); BPCGEN_INDENT_INC;
 	BPCGEN_INDENT_PRINT;
 	fputs("_data = _all_msgs[_opcode]()", fs);
-	BPCGEN_INDENT_PRINT;
-	fputs("_data.Deserialize(_ss)", fs);
 	BPCGEN_INDENT_PRINT;
 	fputs("return _data", fs);
 	BPCGEN_INDENT_DEC;	// it's over
@@ -659,6 +655,9 @@ void codepy_write_document(FILE* fs, BPCSMTV_DOCUMENT* document) {
 	// write opcode
 	GSList* msg_ls = bpcgen_constructor_msg_list(document->protocol_body);
 	write_opcode_enum(fs, msg_ls);
+
+	// write functions
+	bpcfs_write_snippets(fs, &bpcsnp_py_functions);
 
 	// iterate list to get data
 	// and pick msg
@@ -689,7 +688,7 @@ void codepy_write_document(FILE* fs, BPCSMTV_DOCUMENT* document) {
 	}
 
 	// write uniform deserialize
-	write_uniform_deserialize(fs, msg_ls);
+	write_msg_factory(fs, msg_ls);
 
 	// free msg list
 	bpcgen_destructor_msg_list(msg_ls);

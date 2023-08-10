@@ -31,6 +31,7 @@ echo "#include \"snippets.h\"" > $snippets_c
 
 # create snippets
 do_bin2c "py_header" snippets/header.py
+do_bin2c "py_functions" snippets/functions.py
 do_bin2c "cs_header" snippets/header.cs
 do_bin2c "cs_functions" snippets/functions.cs
 do_bin2c "hpp_header" snippets/header.hpp
