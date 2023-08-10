@@ -59,7 +59,7 @@ struct CStyleArray {
 			for (int _i = 0; _i < _Nsize; ++_i) this->_Elems[_i] = rhs._Elems[_i];
 		}
 	}
-	CStyleArray(CStyleArray&& rhs) : _Elems() {
+	CStyleArray(CStyleArray&& rhs) noexcept : _Elems() {
 		if constexpr (std::is_arithmetic_v<_Ty>) {
 			std::memmove(_Elems, rhs._Elems, sizeof(_Elems));
 		} else {
@@ -74,7 +74,7 @@ struct CStyleArray {
 		}
 		return *this;
 	}
-	CStyleArray& operator=(CStyleArray&& rhs) {
+	CStyleArray& operator=(CStyleArray&& rhs) noexcept {
 		if constexpr (std::is_arithmetic_v<_Ty>) {
 			std::memmove(_Elems, rhs._Elems, sizeof(_Elems));
 		} else {
