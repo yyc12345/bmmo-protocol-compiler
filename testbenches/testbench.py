@@ -23,10 +23,10 @@ BENCHMARK_TIMES: int = 100
 
 def RewindSS():
     global SS
-    SS.seek(io.SEEK_SET, 0)
+    SS.seek(0, io.SEEK_SET)
 def ClearSS():
     global SS
-    SS.seek(io.SEEK_SET, 0)
+    SS.seek(0, io.SEEK_SET)
     SS.truncate(0)
 
 def GetStructMsgsName() -> tuple[list[str]]:

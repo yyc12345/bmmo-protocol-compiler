@@ -114,7 +114,7 @@ your_reliable_setter(your_data.IsReliable())
 your_opcode_setter(your_data.GetOpCode())
 your_data_sender(ss.getvalue())
 
-ss.seek(io.SEEK_SET, 0)
+ss.seek(0, io.SEEK_SET)
 ss.truncate(0)
 ```
 
