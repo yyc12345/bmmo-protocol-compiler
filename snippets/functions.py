@@ -28,7 +28,7 @@ def ReadOpCode(_ss: io.BytesIO) -> OpCode:
 	return _opcode
 def PeekOpCode(_ss: io.BytesIO) -> OpCode:
 	(_opcode, ) = _opcode_packer.unpack(_ss.read(_opcode_packer.size))
-	_ss.seek(_opcode_packer.size, os.SEEK_CUR)
+	_ss.seek(-(_opcode_packer.size), os.SEEK_CUR)
 	return _opcode
 def WriteOpCode(_opcode: OpCode, _ss: io.BytesIO):
 	_ss.write(_opcode_packer.pack(_opcode))

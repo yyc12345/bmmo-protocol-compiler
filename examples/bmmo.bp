@@ -25,12 +25,9 @@ natural reliable msg player_disconnected_msg {
     gnsid connection_id;
 }
 
-narrow struct chat_body {
+narrow reliable msg chat_msg {
     gnsid player_id;
     string chat_content;
-}
-narrow reliable msg chat_msg {
-    chat_body data;
 }
 
 // ============= v3.1 anti-cheat update chapter
