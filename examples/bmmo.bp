@@ -106,12 +106,6 @@ natural struct map {
     uint8[16] md5;
     int32 level;
 }
-narrow struct named_map {
-    string name;
-    map_type type;
-    uint8[16] md5;
-    uint32 level;
-}
 natural reliable msg level_finish_v2_msg {
     gnsid player_id;
     int32 points, lives, lifeBonus, levelBonus;

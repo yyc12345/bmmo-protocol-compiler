@@ -427,6 +427,34 @@ uint32_t bpcsmtv_get_bt_size(BPCSMTV_BASIC_TYPE bt) {
 	return basic_type_sizeof[bt];
 }
 
+// A helper function to get variable size and alignment requirement
+static void bpcsmtv_get_variable_type_size_and_align_req(BPCSMTV_VARIABLE* variable, uint32_t* tsize, uint32_t* talign_req, const char* hint_name) {
+	if (variable->variable_type->full_uncover_is_basic_type) {
+		// direct basic type, enum or alias
+		// check len
+		if (G_UNLIKELY(variable->variable_type->full_uncover_basic_type == BPCSMTV_BASIC_TYPE_STRING)) {
+			bpcerr_panic(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "Get string as natural elements in accident when getting basic type alignof.");
+		}
+		size_t index = (size_t)variable->variable_type->full_uncover_basic_type;
+		if (G_UNLIKELY(index >= basic_type_len)) {
+			bpcerr_panic(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "Element offset overflow when getting basic type alignof.");
+		}
+
+		if (tsize != NULL) *tsize = basic_type_sizeof[index];
+		if (talign_req != NULL) *talign_req = basic_type_alignof[index];
+	} else {
+		// struct
+		// look up its natural struct
+		BPCSMTV_PROTOCOL_BODY* entry = bpcsmtv_registery_identifier_get(variable->variable_type->type_data.custom_type);
+		if (G_UNLIKELY(entry == NULL)) {
+			bpcerr_panic(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "Fail to get already defined data struct \"%s\" when analysing \"%s\".",
+				variable->variable_type->type_data.custom_type, hint_name);
+		}
+
+		if (tsize != NULL) *tsize = entry->node_data.struct_data->struct_modifier->struct_size;
+		if (talign_req != NULL) *talign_req = entry->node_data.struct_data->struct_modifier->struct_unit_size;
+	}
+}
 void bpcsmtv_setup_field_layout(GSList* variables, BPCSMTV_STRUCT_MODIFIER* modifier, const char* hint_name) {
 	// check data
 	bool can_be_natural = true;
@@ -470,7 +498,7 @@ void bpcsmtv_setup_field_layout(GSList* variables, BPCSMTV_STRUCT_MODIFIER* modi
 			bpcerr_warning(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, 
 				"Speficied field layout modifier \"natural\" is not suit for \"%s\". we change it to \"narrow\" forcely.", hint_name);
 
-			modifier->is_narrow = !can_be_natural;
+			modifier->is_narrow = true;
 		}
 	} else {
 		bpcerr_info(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "The field layout modifier of \"%s\" is not found, we assume it as \"%s\".",
@@ -491,66 +519,37 @@ void bpcsmtv_setup_field_layout(GSList* variables, BPCSMTV_STRUCT_MODIFIER* modi
 		for (cursor = variables; cursor != NULL; cursor = cursor->next) {
 			variable = (BPCSMTV_VARIABLE*)cursor->data;
 
-			if (variable->variable_type->full_uncover_is_basic_type) {
-				// direct basic type, enum or alias
-				// check len
-				if (G_UNLIKELY(variable->variable_type->full_uncover_basic_type == BPCSMTV_BASIC_TYPE_STRING)) {
-					bpcerr_panic(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "Get string as natural elements in accident when getting basic type alignof.");
-				}
-				size_t gotten_alignof_offset = (size_t)variable->variable_type->full_uncover_basic_type;
-				if (G_UNLIKELY(gotten_alignof_offset >= basic_type_len)) {
-					bpcerr_panic(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "Element offset overflow when getting basic type alignof.");
-				}
-				
-				uint32_t gotten_alignof = basic_type_alignof[gotten_alignof_offset];
-				modifier->struct_unit_size = modifier->struct_unit_size >= gotten_alignof ?
-					modifier->struct_unit_size : gotten_alignof;
-			} else {
-				// struct
-				// look up its natural struct
-				BPCSMTV_PROTOCOL_BODY* entry = bpcsmtv_registery_identifier_get(variable->variable_type->type_data.custom_type);
-				if (G_UNLIKELY(entry == NULL)) {
-					bpcerr_panic(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "Fail to get already defined data struct \"%s\" when analysing \"%s\".",
-						variable->variable_type->type_data.custom_type, hint_name);
-				}
+			// get align size
+			uint32_t align_size;
+			bpcsmtv_get_variable_type_size_and_align_req(variable, NULL, &align_size, hint_name);
 
-				BPCSMTV_STRUCT_MODIFIER* ref_modifier = entry->node_data.struct_data->struct_modifier;
-				// compare and get larger one.
-				modifier->struct_unit_size = modifier->struct_unit_size >= ref_modifier->struct_unit_size ?
-					modifier->struct_unit_size : ref_modifier->struct_unit_size;
-			}
+			// compare and get larger one.
+			modifier->struct_unit_size = modifier->struct_unit_size >= align_size ?
+				modifier->struct_unit_size : align_size;
 		}
 		
 		// set align for each item
 		modifier->struct_size = UINT32_C(0);
 		uint32_t padding = UINT32_C(0), real_size = UINT32_C(0);
+		BPCSMTV_VARIABLE* nextvar;
 		for (cursor = variables; cursor != NULL; cursor = cursor->next) {
 			variable = (BPCSMTV_VARIABLE*)cursor->data;
+			nextvar = (cursor->next == NULL) ? NULL : ((BPCSMTV_VARIABLE*)cursor->next->data);
 			
-			// calc real size first
-			// considering base type
-			if (variable->variable_type->full_uncover_is_basic_type) {
-				// direct basic type, enum or alias
-				if (G_UNLIKELY(variable->variable_type->full_uncover_basic_type == BPCSMTV_BASIC_TYPE_STRING)) {
-					bpcerr_panic(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "Get string as natural elements in accident when getting basic type sizeof.");
-				}
-				size_t gotten_sizeof_offset = (size_t)variable->variable_type->full_uncover_basic_type;
-				if (G_UNLIKELY(gotten_sizeof_offset >= basic_type_len)) {
-					bpcerr_panic(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "Element offset overflow when getting basic type sizeof.");
-				}
-				
-				real_size = basic_type_sizeof[gotten_sizeof_offset];
-			} else {
-				// struct
-				// look up its natural struct
-				BPCSMTV_PROTOCOL_BODY* entry = bpcsmtv_registery_identifier_get(variable->variable_type->type_data.custom_type);
-				if (G_UNLIKELY(entry == NULL)) {
-					bpcerr_panic(BPCERR_ERROR_SOURCE_SEMANTIC_VALUE, "Fail to get already defined data struct \"%s\" when analysing \"%s\".",
-						variable->variable_type->type_data.custom_type, hint_name);
-				}
+			// get this variable size
+			bpcsmtv_get_variable_type_size_and_align_req(variable, &real_size, NULL, hint_name);
 
-				real_size = entry->node_data.struct_data->struct_modifier->struct_size;
+			// and get align boundary
+			uint32_t align_boundary;
+			if (nextvar == NULL) {
+				// last memeber should align with struct align
+				align_boundary = modifier->struct_unit_size;
+			} else {
+				// non-last memeber should pad blank for next variable required boundary
+				bpcsmtv_get_variable_type_size_and_align_req(nextvar, NULL, &align_boundary, hint_name);
 			}
+
+			// calc real size
 			// considering array
 			if (variable->variable_array->is_array) {
 				real_size *= variable->variable_array->static_array_len;
@@ -558,7 +557,7 @@ void bpcsmtv_setup_field_layout(GSList* variables, BPCSMTV_STRUCT_MODIFIER* modi
 			
 			// calc padding
 			// Ref: https://en.wikipedia.org/wiki/Data_structure_alignment
-			padding = (modifier->struct_unit_size - (real_size & (modifier->struct_unit_size - UINT32_C(1)))) & (modifier->struct_unit_size - UINT32_C(1));
+			padding = (align_boundary - ((modifier->struct_size + real_size) % align_boundary)) % align_boundary;
 			
 			// set align if necessary
 			// raise warning if there is a existed align

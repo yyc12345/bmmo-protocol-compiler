@@ -177,8 +177,9 @@ def BenchmarkTest(vtypes: dict[str, dict], msgs: list[str]):
 EXPECTED_STR_DLEN = len(DEFAULT_STR.encode('utf-8', errors='ignore')) + 4
 EXPECTED_SIZE: dict[str, int] = {
     'codegen_test_align': (1 + 3) + 4 + (1 * 3 + 1) + (4 * 3) + (1 + 3) + 4 + (1 * 3 + 1) + (4 * 3),
+    "codegen_test_align2": 1 + 15 + 4 + (1 + 3),
     'codegen_test_manual_align': 1 + 4 + (1 + 3) + 4 + (EXPECTED_STR_DLEN + 3) + EXPECTED_STR_DLEN,
-    'codegen_test_natural': 4 + (4 * 3) + (4 * 5) + (1 + 3) + (1 * 3 + 1) + (1 * 5 + 3),
+    'codegen_test_natural': 4 + (4 * 3) + (4 * 5) + 1 + (1 * 3) + (1 * 5 + 3),
     'codegen_test_natural_alternative': 4 + (4 * 3) + 4 + (4 * 3) + 4 + (4 * 3),
     'codegen_test_narrow': 4 + (4 * 3) + (4 * DEFAULT_LIST_LEN + 4) + 
         EXPECTED_STR_DLEN + (EXPECTED_STR_DLEN * 3) + (EXPECTED_STR_DLEN * DEFAULT_LIST_LEN + 4) + 
