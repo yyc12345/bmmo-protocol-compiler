@@ -120,7 +120,7 @@ enum uint8 weather {
     Sunday,
     Cloudy,
     Raining,
-    Unknow = 255
+    Unknown = 255
 }
 ```
 

@@ -195,8 +195,8 @@ struct tests_struct_error_overflow {
     int8[114514191981011451419198101145141919810] data3;
     int8 data4;
 }
-struct tests_struct_error_unknow_type {
-    unknow_type data1;
+struct tests_struct_error_unknown_type {
+    unknown_type data1;
     int8 data2;
 }
 narrow natural struct tests_struct_error_dup_modifier {

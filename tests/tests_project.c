@@ -317,8 +317,8 @@ static void project_test_core(BPCSMTV_DOCUMENT* document) {
 	check_struct_variable_no_array("tests_struct_error_overflow", "data3");
 	check_struct_variable("tests_struct_error_overflow", "data4");
 
-	check_struct_no_variable("tests_struct_error_unknow_type", "data1");
-	check_struct_variable("tests_struct_error_unknow_type", "data2");
+	check_struct_no_variable("tests_struct_error_unknown_type", "data1");
+	check_struct_variable("tests_struct_error_unknown_type", "data2");
 
 	check_no_identifier("tests_struct_error_dup_modifier");
 
